@@ -1,11 +1,10 @@
-site_name: DAMSON documentation
-repo_url: https://git.mpib-berlin.mpg.de/koch/damson
-site_url: https://koch.mpib.berlin/damson
+site_name: PEDLR documentation
+repo_url: https://git.mpib-berlin.mpg.de/koch/pedlr
+site_url: https://koch.mpib.berlin/pedlr
 docs_dir: documentation/docs
 copyright: 'Copyright &copy; 2019 - Christoph Koch'
 nav:
   - Home: home.md
-  - BIDS conversion: bids_conversion.md
 
 markdown_extensions:
     - admonition
