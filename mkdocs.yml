@@ -4,7 +4,7 @@ site_url: https://koch.mpib.berlin/pedlr
 docs_dir: documentation/docs
 copyright: 'Copyright &copy; 2019 - Christoph Koch'
 nav:
-  - Home: home.md
+  - Home: index.md
   - Models: pedlr_models.md
 
 markdown_extensions:
