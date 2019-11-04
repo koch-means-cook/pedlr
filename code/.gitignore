@@ -1,1 +1,6 @@
+# Ignore .pdf files (mostly figures)
 *.pdf
+
+# Ignore R cache files
+.Rhistory
+.RData
