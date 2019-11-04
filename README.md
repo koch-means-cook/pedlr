@@ -5,4 +5,4 @@ scientists are Christoph Koch, Yuanwei Yao, Ondrej zika, and Nicolas W. Schuck.
 
 ---
 
-[Documentation website](koch.mpib.berlin/pedlr/home/)
+[Documentation website](https://koch.mpib.berlin/pedlr/home/)
