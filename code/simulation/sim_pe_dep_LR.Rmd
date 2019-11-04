@@ -28,7 +28,7 @@ library(viridis)
 #source_path = getSourceEditorContext()$path
 
 # For knitting
-source_path = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/final_sim'
+source_path = '/Volumes/MPRG-Neurocode/Users/christoph/pedlr/code/simulation/'
 
 # Source functions required for this script
 source(file.path(source_path, 'Beta_pseudo_sim.R', fsep = .Platform$file.sep))
