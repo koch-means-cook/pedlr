@@ -1,4 +1,4 @@
-Welcome to the PEDLR documentation.
+**Welcome to the PEDLR documentation.**
 
 ---
 
