@@ -161,23 +161,23 @@ p_dist = ggplot(data=data_densities, aes(x=reward_space, y=value, group=as.facto
 
 # Different plots for LIFE academy talk
 p_dist_a = p_dist +  scale_alpha_manual(values=c(0.3,1,0.3))
-file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_a.pdf'
+file = file.path(source_path, 'figures', 'distributions_a.pdf', fsep = .Platform$file.sep)
 ggsave(file, plot = p_dist_a, height=11, width=20, unit='cm')
 
 p_dist_b = p_dist +  scale_alpha_manual(values=c(1,0.3,0.3))
-file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_b.pdf'
+file = file.path(source_path, 'figures', 'distributions_b.pdf', fsep = .Platform$file.sep)
 ggsave(file, plot = p_dist_b, height=11, width=20, unit='cm')
 
 p_dist_c = p_dist +  scale_alpha_manual(values=c(0.3,0.3,1))
-file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_c.pdf'
+file = file.path(source_path, 'figures', 'distributions_c.pdf', fsep = .Platform$file.sep)
 ggsave(file, plot = p_dist_c, height=11, width=20, unit='cm')
 
 p_dist_ab = p_dist +  scale_alpha_manual(values=c(1,1,0.3))
-file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_ab.pdf'
+file = file.path(source_path, 'figures', 'distributions_ab.pdf', fsep = .Platform$file.sep)
 ggsave(file, plot = p_dist_ab, height=11, width=20, unit='cm')
 
 p_dist_bc = p_dist +  scale_alpha_manual(values=c(1,0.3,1))
-file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_bc.pdf'
+file = file.path(source_path, 'figures', 'distributions_bc.pdf', fsep = .Platform$file.sep)
 ggsave(file, plot = p_dist_bc, height=11, width=20, unit='cm')
 ```
 
