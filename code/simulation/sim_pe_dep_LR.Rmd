@@ -1,0 +1,1560 @@
+---
+title: "Simulation PE dependent LR"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Pre set-up
+
+### Import libraries
+```{r message=FALSE}
+library(reshape2)
+library(ggplot2)
+library(plotly)
+library(plyr)
+library(Rfast)
+library(data.table)
+library(knitr)
+library(rstudioapi)
+library(here)
+library(viridis)
+```
+
+### Import own functions
+```{r}
+# Get path current script is in
+#source_path = file.path(here(), 'simulation', 'final_sim', fsep=.Platform$file.sep)
+#source_path = getSourceEditorContext()$path
+
+# For knitting
+source_path = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/final_sim'
+
+# Source functions required for this script
+source(file.path(source_path, 'Beta_pseudo_sim.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Gaussian_pseudo_sim.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Create_design.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Create_miniblock.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'PE_dep_LR_choice_model.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'PE_dep_LR_choice_model_alt.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Softmax_choice.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'PE_dep_LR_single_model.R', fsep = .Platform$file.sep))
+
+```
+
+# Parameter set-up
+
+### Set up reward space
+```{r}
+# Reward lower and upper boundary
+reward_space_lb = 1
+reward_space_ub = 100
+
+# Set up space for plotting
+reward_space_length = 1000
+reward_space = seq(reward_space_lb, 
+                   reward_space_ub,
+                   length=reward_space_length)
+```
+
+### Gaussian parameters and distribution
+```{r}
+# Parameters
+gaussian_mean = (100 * 1/6) * 3
+gaussian_sd = (100 * 1/6) / 3
+
+# Distribution
+gaussian_densities = dnorm(reward_space, gaussian_mean, gaussian_sd)
+# Normalize density
+gaussian_densities = scale(gaussian_densities) - min(scale(gaussian_densities))
+```
+
+### Beta parameters and distributions
+```{r}
+# Set up "skewdness" parameter for easier change of slope
+beta_skewedness = 5
+# Parameters for lower end beta and upper end beta
+beta_a_le = beta_skewedness/3
+beta_b_le = 2*beta_skewedness/3
+beta_a_ue = 2*beta_skewedness/3
+beta_b_ue = beta_skewedness/3
+# Create distributions
+beta_densities_le = dbeta(seq(0,1,length=reward_space_length), beta_a_le,beta_b_le)
+beta_densities_ue = dbeta(seq(0,1,length=reward_space_length), beta_a_ue,beta_b_ue)
+# Normalize densities
+beta_densities_le = scale(beta_densities_le) - min(scale(beta_densities_le))
+beta_densities_ue = scale(beta_densities_ue) - min(scale(beta_densities_le))
+```
+
+### Set rare event threshold
+```{r}
+# Set rare events to be 20% of the sampled data
+rare_lim = 0.2
+```
+
+### Set up model parameters
+```{r}
+alpha0 = 0.3
+#alpha1 = 0.5
+alpha1 = 0.7
+temperature = 7
+```
+
+---
+
+# Control plots
+
+### Plot distributions
+```{r out.width='100%', warning=FALSE}
+# Form data frame from density values
+data_densities = data.frame(reward_space, 
+                            gaussian_densities,
+                            beta_densities_le,
+                            beta_densities_ue)
+
+# Bring data frame into long format
+data_densities = melt(data_densities, id.vars='reward_space')
+
+# Disribution plot
+p_dist = ggplot(data=data_densities, aes(x=reward_space, y=value, group=as.factor(variable),
+                                         color=as.factor(variable))) +
+  geom_line(size=1) +
+  scale_color_brewer(palette='Accent') +
+  scale_x_continuous(limits = c(1,100)) +
+  #stat_summary(fun.data = 'mean', geom = 'vline') +
+  geom_vline(xintercept=c(1/3, 1/2, 2/3)*100, linetype='dashed', alpha=0.5, size=0.1) +
+  labs(title='Density functions of used distributions',
+       x='Outcome',
+       y='Normalized density',
+       color='Distributions') +
+  scale_y_continuous(limits=c(0,4.5)) +
+  theme(plot.title=element_text(size=15, face='bold', hjust=0.5),
+        axis.title=element_text(size=12))
+
+p_dist
+```
+
+
+### Save plot to .pdf
+```{r}
+file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions.pdf'
+ggsave(file, plot = p_dist, height=11, width=20, unit='cm')
+```
+
+```{r}
+# Disribution plot
+p_dist = ggplot(data=data_densities, aes(x=reward_space, y=value, group=as.factor(variable),
+                                         color=as.factor(variable),
+                                         alpha=as.factor(variable))) +
+  geom_line(size=1) +
+  scale_color_brewer(palette='Accent') +
+  scale_x_continuous(limits = c(1,100)) +
+  #stat_summary(fun.data = 'mean', geom = 'vline') +
+  geom_vline(xintercept=c(1/3, 1/2, 2/3)*100, linetype='dashed', alpha=0.5, size=0.1) +
+  labs(title='Density functions of used distributions',
+       x='Outcome',
+       y='Normalized density',
+       color='Distributions') +
+  scale_y_continuous(limits=c(0,4.5)) +
+  theme(plot.title=element_text(size=15, face='bold', hjust=0.5),
+        axis.title=element_text(size=12))
+
+# Different plots for LIFE academy talk
+p_dist_a = p_dist +  scale_alpha_manual(values=c(0.3,1,0.3))
+file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_a.pdf'
+ggsave(file, plot = p_dist_a, height=11, width=20, unit='cm')
+
+p_dist_b = p_dist +  scale_alpha_manual(values=c(1,0.3,0.3))
+file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_b.pdf'
+ggsave(file, plot = p_dist_b, height=11, width=20, unit='cm')
+
+p_dist_c = p_dist +  scale_alpha_manual(values=c(0.3,0.3,1))
+file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_c.pdf'
+ggsave(file, plot = p_dist_c, height=11, width=20, unit='cm')
+
+p_dist_ab = p_dist +  scale_alpha_manual(values=c(1,1,0.3))
+file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_ab.pdf'
+ggsave(file, plot = p_dist_ab, height=11, width=20, unit='cm')
+
+p_dist_bc = p_dist +  scale_alpha_manual(values=c(1,0.3,1))
+file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions_bc.pdf'
+ggsave(file, plot = p_dist_bc, height=11, width=20, unit='cm')
+```
+
+
+### Test sampling with histograms
+```{r out.width='100%', warning=FALSE}
+# Define parameters
+n_samples = 500
+data_sampling = data.frame(c(1:n_samples))
+colnames(data_sampling) = 'Sample'
+
+# Fill data frame with samples
+data_sampling$stim_1 = Beta_pseudo_sim(n_samples, beta_a_le, beta_b_le, 'b_le',
+                                       reward_space_lb, reward_space_ub)$outcome
+data_sampling$stim_2 = Gaussian_pseudo_sim(n_samples, gaussian_mean, gaussian_sd, 'g_an',
+                                           reward_space_lb, reward_space_ub)$outcome
+data_sampling$stim_3 = Beta_pseudo_sim(n_samples, beta_a_ue, beta_b_ue, 'b_ue',
+                                       reward_space_lb, reward_space_ub)$outcome
+data_sampling = melt(data_sampling, id.vars='Sample')
+
+# Plot histograms
+p_sampling = ggplot(data=data_sampling, aes(x=value, fill=variable)) +
+  scale_fill_brewer(palette = 'Accent') +
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~variable)
+
+ggplotly(p_sampling)
+```
+
+# Simulating data for the choice model
+
+```{r echo=FALSE}
+# Define simulation parameters
+n_subjects = 40
+subjects = c(1:n_subjects)
+n_miniblocks = 25
+
+# Set up matrix to store data in (to append subjects)
+data_model = matrix(0,0,17)
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(n_miniblocks,
+                         beta_a_le,
+                         beta_b_le,
+                         gaussian_mean,
+                         gaussian_sd,
+                         beta_a_ue,
+                         beta_b_ue,
+                         two_betas = TRUE,
+                         reward_space_lb,
+                         reward_space_ub)
+  
+  # Create matrix to store data for each subject
+  results = matrix(0,nrow(design),ncol(data_model))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model(design, alpha0, alpha1, temperature)
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choice$choice
+  results[,9:11] = as.matrix(sim$values)
+  results[,12:14] = as.matrix(sim$PE)
+  results[,15:17] = as.matrix(sim$fPE)
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model_2b = data.frame(data_model)
+colnames(data_model_2b) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                        'v_stim_1', 'v_stim_2', 'v_stim_3',
+                        'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                        'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model_2b = data_model_2b[order(data_model_2b$sub_id),]
+```
+
+### Plot results of choice model
+
+##### All choices
+```{r warning=FALSE}
+# Cut down data frame for plotting
+data_plot = data_model_2b[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+ggplotly(p_choice)
+```
+
+---
+
+### Print single participant
+
+```{r}
+# Cut down data frame for plotting
+data_plot = data_model_2b[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+# data_plot = ddply(data_plot,
+#                   .(trial, variable),
+#                   summarize,
+#                   mean_value = mean(value),
+#                   sd_value = sd (value))
+
+data_plot = subset(data_plot, sub_id == 1)
+data_plot = subset(data_plot, variable == 'v_stim_2' | variable == 'v_stim_3')
+
+# Plot model values
+p_choice = ggplot(data=data_plot, aes(x=trial, y=value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_line(size=1, alpha=0.8) +
+  scale_color_viridis(option='D', discrete = TRUE) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus') +
+theme(legend.position = 'none')
+ggplotly(p_choice)
+```
+
+
+```{r}
+file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/choice_bc.pdf'
+ggsave(file, plot = p_choice, height=11, width=20, unit='cm')
+```
+
+---
+
+# Single model
+
+## Use single model on gain beta rewards from design
+```{r}
+# Set up matrix to store data in (to append subjects)
+data_model_single_gain = data.frame(matrix(0,0,6))
+colnames(data_model_single_gain)= c('sub_id', 'trial', 'reward', 'value', 'PE', 'fPE')
+
+# Loop over each subject
+for(sub_count in subjects){
+  # Simulate data for subject
+  design = Create_design(25,
+                         beta_a_le, beta_b_le,
+                         gaussian_mean, gaussian_sd,
+                         beta_a_ue, beta_b_ue,
+                         two_betas = TRUE,
+                         reward_space_lb, reward_space_ub)
+  # Extract gain beta rewards
+  reward_index_left = which(design$option_left == 1)
+  # Eliminate forced choice trials from left stimulus
+  reward_index_right = which(design$option_right == 1)
+  reward_index_right = reward_index_right[-which(reward_index_right %in% reward_index_left)]
+  reward = c(design$reward_stim_1[reward_index_left], design$reward_stim_2[reward_index_right])
+
+  # Fill design with rewards stemming only from gain beta sampling
+  design = data.frame(matrix(NA, length(reward), 2))
+  colnames(design) = c('trial', 'reward')
+  design$trial = c(1:nrow(design))
+  design$reward = reward
+
+  # Create subject specific 'results' data frame to append subjects
+  results = data.frame(matrix(NA, nrow(design), 6))
+  colnames(results) = c('sub_id', 'trial', 'reward', 'value', 'PE', 'fPE')
+  results[,1] = sub_count
+  results[,2:3] = design
+  
+  # Run model over simulated data
+  sim = PE_dep_LR_single_model(design, alpha0, alpha1, temperature)
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,4] = sim$values$value[-length(sim$values$value)]
+  results[,5] = sim$PE$pe
+  results[,6] = sim$fPE$fpe
+
+  # Append all subjects
+  data_model_single_gain = rbind(data_model_single_gain, results)
+}
+
+# Sort after participants
+data_model_single_gain = data_model_single_gain[order(data_model_single_gain$sub_id),]
+```
+
+## Plot model performing on single gain beta extracted from task design
+```{r}
+# Prepare data frame for plotting
+data_plot = data_model_single_gain[1:4]
+
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'reward'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_line(size=1, alpha=0.8) +
+  geom_hline(yintercept=1/3*100, linetype='dashed') +
+  geom_hline(aes(yintercept=mean(mean_value))) +
+  labs(title=paste('Single model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus') +
+  theme(legend.position = 'none')
+ggplotly(p_choice)
+
+```
+
+## Single model on loss beta
+
+```{r}
+# Set up matrix to store data in (to append subjects)
+data_model_single_loss = data.frame(matrix(0,0,6))
+colnames(data_model_single_loss)= c('sub_id', 'trial', 'reward', 'value', 'PE', 'fPE')
+
+# Loop over each subject
+for(sub_count in subjects){
+  # Simulate data for subject
+  design = Create_design(25,
+                         beta_a_le, beta_b_le,
+                         gaussian_mean, gaussian_sd,
+                         beta_a_ue, beta_b_ue,
+                         two_betas = TRUE,
+                         reward_space_lb, reward_space_ub)
+  # Extract gain beta rewards
+  reward_index_left = which(design$option_left == 3)
+  # Eliminate forced choice trials from left stimulus
+  reward_index_right = which(design$option_right == 3)
+  reward_index_right = reward_index_right[-which(reward_index_right %in% reward_index_left)]
+  reward = c(design$reward_stim_1[reward_index_left], design$reward_stim_2[reward_index_right])
+
+  # Fill design with rewards stemming only from gain beta sampling
+  design = data.frame(matrix(NA, length(reward), 2))
+  colnames(design) = c('trial', 'reward')
+  design$trial = c(1:nrow(design))
+  design$reward = reward
+
+  # Create subject specific 'results' data frame to append subjects
+  results = data.frame(matrix(NA, nrow(design), 6))
+  colnames(results) = c('sub_id', 'trial', 'reward', 'value', 'PE', 'fPE')
+  results[,1] = sub_count
+  results[,2:3] = design
+  
+  # Run model over simulated data
+  sim = PE_dep_LR_single_model(design, alpha0, alpha1, temperature)
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,4] = sim$values$value[-length(sim$values$value)]
+  results[,5] = sim$PE$pe
+  results[,6] = sim$fPE$fpe
+
+  # Append all subjects
+  data_model_single_loss = rbind(data_model_single_loss, results)
+}
+
+# Sort after participants
+data_model_single_loss = data_model_single_loss[order(data_model_single_loss$sub_id),]
+```
+
+## Plot model performing on single loss beta extracted from task design
+```{r}
+# Prepare data frame for plotting
+data_plot = data_model_single_loss[1:4]
+
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'reward'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_line(size=1, alpha=0.8) +
+  geom_hline(yintercept=2/3*100, linetype='dashed') +
+  geom_hline(aes(yintercept=mean(mean_value))) +
+  labs(title=paste('Single model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus') +
+  theme(legend.position = 'none')
+ggplotly(p_choice)
+
+```
+
+Why is the bias way stronger in the choice model than in the single model?
+
+- Probably softmax?
+
+---
+
+# Using the alternative model
+
+Alternative model which can switch between greedy and softmax (and can use a variable reward space).
+
+## Softmax choice
+```{r}
+# Set up matrix to store data in (to append subjects)
+data_model = data.frame(matrix(0,0,17))
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         beta_a_le, beta_b_le,
+                         gaussian_mean, gaussian_sd,
+                         beta_a_ue, beta_b_ue,
+                         two_betas = TRUE,
+                         reward_space_lb, reward_space_ub)
+
+  # Create matrix to store data for each subject
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choices
+  results[,9:11] = sim$values
+  results[,12:14] = sim$PE
+  results[,15:17] = sim$fPE
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                         'v_stim_1', 'v_stim_2', 'v_stim_3',
+                         'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                         'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+```
+
+## Plot results of choice model
+```{r, out.width='100%'}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
+
+## Greedy choice
+
+```{r}
+# Set up matrix to store data in (to append subjects)
+data_model = data.frame(matrix(0,0,17))
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         beta_a_le, beta_b_le,
+                         gaussian_mean, gaussian_sd,
+                         beta_a_ue, beta_b_ue,
+                         two_betas = TRUE,
+                         reward_space_lb, reward_space_ub)
+
+  # Create matrix to store data for each subject
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'greedy')
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choices
+  results[,9:11] = sim$values
+  results[,12:14] = sim$PE
+  results[,15:17] = sim$fPE
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                         'v_stim_1', 'v_stim_2', 'v_stim_3',
+                         'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                         'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+```
+
+## Plot results of choice model
+```{r, out.width='100%'}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
+
+
+
+---
+
+
+# What happens if there is an assymetric distribution gaining on the upper bound in the multi-dist case?
+
+## Swap position of betas
+
+```{r}
+# Set up matrix to store data in (to append subjects)
+data_model = matrix(0,0,17)
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         beta_a_le, beta_b_le,
+                         gaussian_mean, gaussian_sd,
+                         beta_a_ue, beta_b_ue,
+                         two_betas = TRUE,
+                         reward_space_lb, reward_space_ub)
+  # Switch positions of distributions (gain beta on UE, loss beta on LE)
+  # Gain beta
+  reward_index_left = which(design$option_left == 1)
+  design$reward_stim_1[reward_index_left] = design$reward_stim_1[reward_index_left] + 33
+  design$reward_stim_1[which(design$reward_stim_1 >= 100)] = 100
+  reward_index_right = which(design$option_right == 1)
+  design$reward_stim_2[reward_index_right] = design$reward_stim_2[reward_index_right] + 33
+  design$reward_stim_2[which(design$reward_stim_2 >= 100)] = 100
+  # Loss beta
+  reward_index_left = which(design$option_left == 3)
+  design$reward_stim_1[reward_index_left] = design$reward_stim_1[reward_index_left] - 33
+  design$reward_stim_1[which(design$reward_stim_1 <= 1)] = 1
+  reward_index_right = which(design$option_right == 3)
+  design$reward_stim_2[reward_index_right] = design$reward_stim_2[reward_index_right] - 33
+  design$reward_stim_2[which(design$reward_stim_2 <= 1)] = 1
+
+  # Create matrix to store data for each subject
+  results = matrix(0,nrow(design),ncol(data_model))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model(design, alpha0, alpha1, temperature)
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choice$choice
+  results[,9:11] = as.matrix(sim$values)
+  results[,12:14] = as.matrix(sim$PE)
+  results[,15:17] = as.matrix(sim$fPE)
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                         'v_stim_1', 'v_stim_2', 'v_stim_3',
+                         'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                         'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+```
+
+## Histograms of switched gain/loss betas
+```{r out.width='100%', message=FALSE}
+gain_samples = c(subset(data_model, 'stim_1' != 'stim_2')$reward_stim_1[subset(data_model, 'stim_1' != 'stim_2')$stim_1 == 1],
+                 subset(data_model, 'stim_1' != 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' != 'stim_2')$stim_2 == 1],
+                 subset(data_model, 'stim_1' == 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' == 'stim_2')$stim_1 == 1])
+
+loss_samples = c(subset(data_model, 'stim_1' != 'stim_2')$reward_stim_1[subset(data_model, 'stim_1' != 'stim_2')$stim_1 == 3],
+                 subset(data_model, 'stim_1' != 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' != 'stim_2')$stim_2 == 3],
+                 subset(data_model, 'stim_1' == 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' == 'stim_2')$stim_1 == 3])
+
+gauss_samples = c(subset(data_model, 'stim_1' != 'stim_2')$reward_stim_1[subset(data_model, 'stim_1' != 'stim_2')$stim_1 == 2],
+                  subset(data_model, 'stim_1' != 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' != 'stim_2')$stim_2 == 2],
+                  subset(data_model, 'stim_1' == 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' == 'stim_2')$stim_1 == 2])
+
+data_sampling = data.frame(matrix(NA, length(gain_samples), 3))
+colnames(data_sampling) = c('stim_1', 'stim_2', 'stim_3')
+data_sampling$stim_1 = gain_samples
+data_sampling$stim_2 = gauss_samples
+data_sampling$stim_3 = loss_samples
+data_sampling = melt(data_sampling)
+
+# Plot histograms
+p_sampling = ggplot(data=data_sampling, aes(x=value, fill=variable)) +
+  scale_fill_brewer(palette = 'Accent') +
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~variable)
+
+ggplotly(p_sampling)
+```
+
+The gain and loss beta distributions are now on the swapped ends of the reward space. If this would switch the
+bias we would know its due to the position and maybe the undersampling.
+
+## Plot results of choice model
+```{r, out.width='100%'}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
+
+The stimuli changed position but the bias pattern stayed the same. The bias does not swap for the loss beta,
+even if it is posted to the lower end. Same for the gain beta.
+
+# What happens in the case of three Gaussian distributions?
+```{r}
+# Set up matrix to store data in (to append subjects)
+data_model = matrix(0,0,17)
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         beta_a_le, beta_b_le,
+                         gaussian_mean, gaussian_sd,
+                         beta_a_ue, beta_b_ue,
+                         two_betas = TRUE,
+                         reward_space_lb, reward_space_ub)
+  # Resample beta distirbutions as Gaussians
+  # Gain beta
+  # Find gain beta comparisons
+  reward_index_left = which(design$option_left == 1)
+  reward_index_right = which(design$option_right == 1)
+  # Delete forced choices from comparisons to handle them separately
+  reward_index_forced = intersect(reward_index_left, reward_index_right)
+  reward_index_left = reward_index_left[!reward_index_left %in% reward_index_forced]
+  reward_index_right = reward_index_right[!reward_index_right %in% reward_index_forced]
+  # Sample as many rewards as needed from LE gaussian
+  replace = Gaussian_pseudo_sim(length(c(reward_index_left, reward_index_right, reward_index_forced)),
+                                1/3 * 100,
+                                gaussian_sd,
+                                'gauss_ue',
+                                0,
+                                100)
+  # Replace rewards of gain beta
+  design$reward_stim_1[reward_index_left] = replace$outcome[1:length(reward_index_left)]
+  design$reward_stim_2[reward_index_right] = replace$outcome[(length(reward_index_left)+1):(length(reward_index_right)+length(reward_index_left))]
+  # Forced choices are copied for both stimuli
+  design$reward_stim_1[reward_index_forced] = replace$outcome[(length(reward_index_right)+
+                                                                 length(reward_index_left)+1):(
+                                                                   length(reward_index_right)+
+                                                                     length(reward_index_left)+
+                                                                length(reward_index_forced))]
+  design$reward_stim_2[reward_index_forced] = design$reward_stim_1[reward_index_forced]
+  
+  # Loss beta
+  reward_index_left = which(design$option_left == 3)
+  reward_index_right = which(design$option_right == 3)
+  # Delete forced choices from comparisons to handle them separately
+  reward_index_forced = intersect(reward_index_left, reward_index_right)
+  reward_index_left = reward_index_left[!reward_index_left %in% reward_index_forced]
+  reward_index_right = reward_index_right[!reward_index_right %in% reward_index_forced]
+  # Sample as many rewards as needed from LE gaussian
+  replace = Gaussian_pseudo_sim(length(c(reward_index_left, reward_index_right, reward_index_forced)),
+                                2/3 * 100,
+                                gaussian_sd,
+                                'gauss_ue',
+                                0,
+                                100)
+  # Replace rewards of gain beta
+  # Replace rewards of gain beta
+  design$reward_stim_1[reward_index_left] = replace$outcome[1:length(reward_index_left)]
+  design$reward_stim_2[reward_index_right] = replace$outcome[(length(reward_index_left)+1):(length(reward_index_right)+length(reward_index_left))]
+  # Forced choices are copied for both stimuli
+  design$reward_stim_1[reward_index_forced] = replace$outcome[(length(reward_index_right)+
+                                                                 length(reward_index_left)+1):(
+                                                                   length(reward_index_right)+
+                                                                     length(reward_index_left)+
+                                                                length(reward_index_forced))]
+  design$reward_stim_2[reward_index_forced] = design$reward_stim_1[reward_index_forced]
+
+  # Create matrix to store data for each subject
+  results = matrix(0,nrow(design),ncol(data_model))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model(design, alpha0, alpha1, temperature)
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choice$choice
+  results[,9:11] = as.matrix(sim$values)
+  results[,12:14] = as.matrix(sim$PE)
+  results[,15:17] = as.matrix(sim$fPE)
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                         'v_stim_1', 'v_stim_2', 'v_stim_3',
+                         'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                         'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+```
+
+## Histograms of switched gain/loss betas
+```{r out.width='100%', message=FALSE}
+gain_samples = c(subset(data_model, 'stim_1' != 'stim_2')$reward_stim_1[subset(data_model, 'stim_1' != 'stim_2')$stim_1 == 1],
+                 subset(data_model, 'stim_1' != 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' != 'stim_2')$stim_2 == 1],
+                 subset(data_model, 'stim_1' == 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' == 'stim_2')$stim_1 == 1])
+
+loss_samples = c(subset(data_model, 'stim_1' != 'stim_2')$reward_stim_1[subset(data_model, 'stim_1' != 'stim_2')$stim_1 == 3],
+                 subset(data_model, 'stim_1' != 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' != 'stim_2')$stim_2 == 3],
+                 subset(data_model, 'stim_1' == 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' == 'stim_2')$stim_1 == 3])
+
+gauss_samples = c(subset(data_model, 'stim_1' != 'stim_2')$reward_stim_1[subset(data_model, 'stim_1' != 'stim_2')$stim_1 == 2],
+                  subset(data_model, 'stim_1' != 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' != 'stim_2')$stim_2 == 2],
+                  subset(data_model, 'stim_1' == 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' == 'stim_2')$stim_1 == 2])
+
+data_sampling = data.frame(matrix(NA, length(gain_samples), 3))
+colnames(data_sampling) = c('stim_1', 'stim_2', 'stim_3')
+data_sampling$stim_1 = gain_samples
+data_sampling$stim_2 = gauss_samples
+data_sampling$stim_3 = loss_samples
+data_sampling = melt(data_sampling)
+
+# Plot histograms
+p_sampling = ggplot(data=data_sampling, aes(x=value, fill=variable)) +
+  scale_fill_brewer(palette = 'Accent') +
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~variable)
+
+ggplotly(p_sampling)
+```
+
+## Plot results of choice model
+```{r, out.width='100%'}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
+
+Bias disappears for Gaussian distributions
+
+---
+
+# What happens if we have a single beta
+
+## Gain beta
+```{r echo=FALSE}
+
+# Define simulation parameters
+n_subjects = 40
+subjects = c(1:n_subjects)
+n_miniblocks = 25
+
+# Set up matrix to store data in (to append subjects)
+data_model = matrix(0,0,17)
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         1/6*100, gaussian_sd,
+                         beta_a_le, beta_b_le,
+                         3/6*100, gaussian_sd,
+                         two_betas = FALSE,
+                         reward_space_lb, reward_space_ub)
+
+  # Create matrix to store data for each subject
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choices
+  results[,9:11] = sim$values
+  results[,12:14] = sim$PE
+  results[,15:17] = sim$fPE
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                         'v_stim_1', 'v_stim_2', 'v_stim_3',
+                         'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                         'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+```
+
+### Plot results of choice model
+
+##### All choices
+```{r warning=FALSE}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/6*100, 2/6*100, 3/6*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(unique(subset(data_plot, variable == 'v_stim_1')$mean_value)),
+                          mean(unique(subset(data_plot, variable == 'v_stim_2')$mean_value)),
+                          mean(unique(subset(data_plot, variable == 'v_stim_3')$mean_value)))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+ggplotly(p_choice)
+```
+
+
+## Loss beta
+```{r echo=FALSE}
+# Define simulation parameters
+n_subjects = 40
+subjects = c(1:n_subjects)
+n_miniblocks = 25
+
+# Set up matrix to store data in (to append subjects)
+data_model = matrix(0,0,17)
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         3/6*100, gaussian_sd,
+                         beta_a_ue, beta_b_ue,
+                         5/6*100, gaussian_sd,
+                         two_betas = FALSE,
+                         reward_space_lb, reward_space_ub)
+
+  # Create matrix to store data for each subject
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choices
+  results[,9:11] = sim$values
+  results[,12:14] = sim$PE
+  results[,15:17] = sim$fPE
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                        'v_stim_1', 'v_stim_2', 'v_stim_3',
+                        'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                        'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+```
+
+### Plot results of choice model
+
+##### All choices
+```{r warning=FALSE}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(3/6*100, 4/6*100, 5/6*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(unique(subset(data_plot, variable == 'v_stim_1')$mean_value)),
+                          mean(unique(subset(data_plot, variable == 'v_stim_2')$mean_value)),
+                          mean(unique(subset(data_plot, variable == 'v_stim_3')$mean_value)))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+ggplotly(p_choice)
+```
+
+# Anaysis of PE
+
+## Gain beta
+```{r}
+# Number of samples for mean pe
+i = 10
+pe_mean_gain = c(1:i)
+
+for(i in 1:10){
+  # Define simulation parameters
+  n_subjects = 40
+  subjects = c(1:n_subjects)
+  n_miniblocks = 25
+  
+  # Set up matrix to store data in (to append subjects)
+  data_model = matrix(0,0,17)
+  
+  # Loop over each subject
+  for(sub_count in subjects){
+    
+    set.seed(sub_count)
+    
+    # Simulate data for subject
+    design = Create_design(25,
+                           1/6*100, gaussian_sd,
+                           beta_a_le, beta_b_le,
+                           3/6*100, gaussian_sd,
+                           two_betas = FALSE,
+                           reward_space_lb, reward_space_ub)
+    
+    # Create matrix to store data for each subject
+    results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+    results[,1] = subjects[sub_count]
+    results[,2] = c(1:nrow(design))
+    results[,3] = design$option_left
+    results[,4] = design$option_right
+    results[,5] = design$reward_stim_1
+    results[,6] = design$reward_stim_2
+    results[,7] = design$comp_number
+    
+    # Run model over simulated data
+    sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+    # Save model values, PE and fPE for ech trial and subject into matrix
+    results[,8] = sim$choices
+    results[,9:11] = sim$values
+    results[,12:14] = sim$PE
+    results[,15:17] = sim$fPE
+    
+    # Append all subjects
+    data_model = rbind(data_model, results)
+  }
+  
+  # Convert to data frame (How our data will look like in the study)
+  data_model = data.frame(data_model)
+  colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                           'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                           'v_stim_1', 'v_stim_2', 'v_stim_3',
+                           'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                           'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+  # Sort after participants
+  data_model = data_model[order(data_model$sub_id),]
+  
+  # PE analysis
+  pe_mean_gain[i] = mean(data_model$pe_stim_2[data_model$pe_stim_2 != 0], na.rm = TRUE)
+}
+
+pe_mean_gain
+mean(pe_mean_gain)
+```
+
+Negative average PE in Gain beta
+
+## Loss beta
+```{r}
+# Number of samples for mean pe
+i = 10
+pe_mean_loss = c(1:i)
+
+for(i in 1:10){
+  # Define simulation parameters
+  n_subjects = 40
+  subjects = c(1:n_subjects)
+  n_miniblocks = 25
+  
+  # Set up matrix to store data in (to append subjects)
+  data_model = matrix(0,0,17)
+  
+  # Loop over each subject
+  for(sub_count in subjects){
+    
+    set.seed(sub_count)
+    
+    # Simulate data for subject
+    design = Create_design(25,
+                           3/6*100, gaussian_sd,
+                           beta_a_ue, beta_b_ue,
+                           5/6*100, gaussian_sd,
+                           two_betas = FALSE,
+                           reward_space_lb, reward_space_ub)
+    
+    # Create matrix to store data for each subject
+    results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+    results[,1] = subjects[sub_count]
+    results[,2] = c(1:nrow(design))
+    results[,3] = design$option_left
+    results[,4] = design$option_right
+    results[,5] = design$reward_stim_1
+    results[,6] = design$reward_stim_2
+    results[,7] = design$comp_number
+    
+    # Run model over simulated data
+    sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+    # Save model values, PE and fPE for ech trial and subject into matrix
+    results[,8] = sim$choices
+    results[,9:11] = sim$values
+    results[,12:14] = sim$PE
+    results[,15:17] = sim$fPE
+    
+    # Append all subjects
+    data_model = rbind(data_model, results)
+  }
+  
+  # Convert to data frame (How our data will look like in the study)
+  data_model = data.frame(data_model)
+  colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                           'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                           'v_stim_1', 'v_stim_2', 'v_stim_3',
+                           'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                           'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+  # Sort after participants
+  data_model = data_model[order(data_model$sub_id),]
+  
+  # PE analysis
+  pe_mean_loss[i] = mean(data_model$pe_stim_2[data_model$pe_stim_2 != 0], na.rm = TRUE)
+}
+
+pe_mean_loss
+mean(pe_mean_loss)
+
+```
+
+Positive average PE in Loss beta
+
+## Greedy choice
+
+
+
+---
+
+# Mean only considering choices
+
+### Gain beta
+```{r echo=FALSE}
+
+# Define simulation parameters
+n_subjects = 40
+subjects = c(1:n_subjects)
+n_miniblocks = 25
+
+# Set up matrix to store data in (to append subjects)
+data_model = data.frame(matrix(0,0,17))
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         1/6*100, gaussian_sd,
+                         beta_a_le, beta_b_le, 
+                         3/6*100, gaussian_sd,
+                         two_betas = FALSE,
+                         reward_space_lb, reward_space_ub)
+
+  # Create matrix to store data for each subject
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'greedy')
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choices
+  results[,9:11] = sim$values
+  results[,12:14] = sim$PE
+  results[,15:17] = sim$fPE
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                         'v_stim_1', 'v_stim_2', 'v_stim_3',
+                         'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                         'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+
+```
+
+### Plot results of choice model
+
+##### All choices
+```{r warning=FALSE}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/6*100, 2/6*100, 3/6*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(unique(subset(data_plot, variable == 'v_stim_1')$mean_value)),
+                          mean(unique(subset(data_plot, variable == 'v_stim_2')$mean_value)),
+                          mean(unique(subset(data_plot, variable == 'v_stim_3')$mean_value)))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+ggplotly(p_choice)
+```
+
+### Loss beta
+```{r echo=FALSE}
+# Define simulation parameters
+n_subjects = 40
+subjects = c(1:n_subjects)
+n_miniblocks = 25
+
+# Set up matrix to store data in (to append subjects)
+data_model = matrix(0,0,17)
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         3/6*100, gaussian_sd,
+                         beta_a_ue, beta_b_ue, 
+                         5/6*100, gaussian_sd,
+                         two_betas = FALSE,
+                         reward_space_lb, reward_space_ub)
+
+  # Create matrix to store data for each subject
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'greedy')
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choices
+  results[,9:11] = sim$values
+  results[,12:14] = sim$PE
+  results[,15:17] = sim$fPE
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                        'v_stim_1', 'v_stim_2', 'v_stim_3',
+                        'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                        'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+```
+
+### Plot results of choice model
+
+##### All choices
+```{r warning=FALSE}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(3/6*100, 4/6*100, 5/6*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(unique(subset(data_plot, variable == 'v_stim_1')$mean_value)),
+                          mean(unique(subset(data_plot, variable == 'v_stim_2')$mean_value)),
+                          mean(unique(subset(data_plot, variable == 'v_stim_3')$mean_value)))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+ggplotly(p_choice)
+```
+
+---
+
+# Tryout
+```{r}
+pe_stim1 = subset(data_model, pe_stim_1 !=0)
+update_stim1 = pe_stim1$pe_stim_1 * pe_stim1$fpe_stim_1
+mean(update_stim1)
+pe_stim3 = subset(data_model, pe_stim_3 !=0)
+update_stim3 = pe_stim3$pe_stim_3 * pe_stim3$fpe_stim_3
+mean(update_stim3)
+
+mean_value_at_choice_s1 = mean(pe_stim1$v_stim_1)
+mean_value_at_choice_s3 = mean(pe_stim3$v_stim_3)
+```
