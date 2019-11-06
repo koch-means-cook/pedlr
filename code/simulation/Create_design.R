@@ -7,7 +7,10 @@
 library(rstudioapi)
 
 # Get path current function is in
-source_path = dirname(rstudioapi::getSourceEditorContext()$path)
+#source_path = dirname(rstudioapi::getSourceEditorContext()$path)
+# For knitting:
+source_path = '/Volumes/MPRG-Neurocode/Users/christoph/pedlr/code/simulation/'
+
 # Source functions required for this script
 source(file.path(source_path, 'Create_miniblock.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Beta_pseudo_sim.R', fsep = .Platform$file.sep))

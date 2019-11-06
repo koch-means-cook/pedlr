@@ -16,8 +16,8 @@ library(plyr)
 library(Rfast)
 library(data.table)
 library(knitr)
-library(rstudioapi)
-library(here)
+#library(rstudioapi)
+#library(here)
 library(viridis)
 ```
 
@@ -309,7 +309,7 @@ ggplotly(p_choice)
 
 ### Print single participant
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 # Cut down data frame for plotting
 data_plot = data_model_2b[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
@@ -347,7 +347,7 @@ ggplotly(p_choice)
 ```
 
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/choice_bc.pdf'
 ggsave(file, plot = p_choice, height=11, width=20, unit='cm')
 ```
