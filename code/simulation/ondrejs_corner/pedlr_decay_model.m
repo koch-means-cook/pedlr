@@ -1,4 +1,4 @@
-function[out]  = pedlr_model(p, out)
+function[out]  = pedlr_decay_model(p, out)
 P = [];
 ch  =[]; %(choice)
 al = [];
