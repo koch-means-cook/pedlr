@@ -1,6 +1,6 @@
 clear all
 close all
-iter = 100;
+iter = 50;
 domain = 0; % 0 = positive domain; -1 = negative domain   
 
 for t = 1:iter
@@ -8,12 +8,16 @@ for t = 1:iter
     % Generate distributions of rewards
     n = 10000;
     for i = 1:n
+        %C(1, i) = betarnd(1.66, 3.33)*100 + domain*100; 
+        %C(3, i) = betarnd(3.33, 1.66 )*100 + domain*100;
+        %C(2, i) = normrnd(50, 15) + domain*100;
         C(1, i) = betarnd(1.66, 3.33)*100 + domain*100; 
         C(3, i) = betarnd(3.33, 1.66 )*100 + domain*100;
-        C(2, i) = normrnd(50, 15) + domain*100;
-        %C(1, i) = betarnd(10.01, 20.02)*100 + domain*100; 
-        %C(3, i) = betarnd(20.02, 10.01 )*100 + domain*100;
-        %C(2, i) = normrnd(50, 15) + domain*100;
+        C(2, i) = betarnd(2.5, 2.5)*100 + domain*100;
+        
+        %C(1, i) = normrnd(33, 20) + domain*100;
+        %C(3, i) = normrnd(66, 20) + domain*100;
+        %C(2, i) = normrnd(50, 20) + domain*100;
     end
 
     % visually check distributions
@@ -39,7 +43,7 @@ for t = 1:iter
     %out.Q = [-50 -50 -50];
 
     p.al0 = 0.3;
-    p.al1 = 0.1;
+    p.al1 = 0.5;
     p.beta   = 1;
     out = pedlr_model(p, out);
 
