@@ -11,9 +11,9 @@ for t = 1:iter
         %C(1, i) = betarnd(1.66, 3.33)*100 + domain*100; 
         %C(3, i) = betarnd(3.33, 1.66 )*100 + domain*100;
         %C(2, i) = normrnd(50, 15) + domain*100;
-        C(1, i) = betarnd(1.66, 3.33)*100 + domain*100; 
-        C(3, i) = betarnd(3.33, 1.66 )*100 + domain*100;
-        C(2, i) = betarnd(2.5, 2.5)*100 + domain*100;
+        %C(1, i) = betarnd(1.66, 3.33)*100 + domain*100; 
+        %C(3, i) = betarnd(3.33, 1.66 )*100 + domain*100;
+        %C(2, i) = betarnd(2.5, 2.5)*100 + domain*100;
         
         %C(1, i) = normrnd(33, 20) + domain*100;
         %C(3, i) = normrnd(66, 20) + domain*100;
