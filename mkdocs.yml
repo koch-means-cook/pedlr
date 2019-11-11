@@ -6,6 +6,7 @@ copyright: 'Copyright &copy; 2019 - Christoph Koch'
 nav:
   - Home: index.md
   - Models: pedlr_models.md
+    - ProblemChase: problem_chase.md
   - Simulation: sim_pe_dep_LR.html
 
 markdown_extensions:
