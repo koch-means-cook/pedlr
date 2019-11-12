@@ -2,7 +2,7 @@ clear all
 close all
 iter = 50;
 domain = 0; % 0 = positive domain; -1 = negative domain   
-
+ncues = 3;
 for t = 1:iter
     clear('out', 'C')
     % Generate distributions of rewards
@@ -11,9 +11,9 @@ for t = 1:iter
         %C(1, i) = betarnd(1.66, 3.33)*100 + domain*100; 
         %C(3, i) = betarnd(3.33, 1.66 )*100 + domain*100;
         %C(2, i) = normrnd(50, 15) + domain*100;
-        %C(1, i) = betarnd(1.66, 3.33)*100 + domain*100; 
-        %C(3, i) = betarnd(3.33, 1.66 )*100 + domain*100;
-        %C(2, i) = betarnd(2.5, 2.5)*100 + domain*100;
+        C(1, i) = betarnd(1.66, 3.33)*100 + domain*100; 
+        C(3, i) = betarnd(3.33, 1.66 )*100 + domain*100;
+        C(2, i) = betarnd(2.5, 2.5)*100 + domain*100;
         
         %C(1, i) = normrnd(33, 20) + domain*100;
         %C(3, i) = normrnd(66, 20) + domain*100;
@@ -26,6 +26,7 @@ for t = 1:iter
 
     %%
     out = [];
+    out.ncues =ncues;
     ntrls_each = 200; %should be 100 of each choice
     tr_types = nchoosek(1:3,2);
     tr_types = [tr_types; [tr_types(:,2) tr_types(:,1)]];
@@ -42,8 +43,8 @@ for t = 1:iter
     out.Q = [50 50 50];
     %out.Q = [-50 -50 -50];
 
-    p.al0 = 0.3;
-    p.al1 = 0.5;
+    p.al0 = 0.1;
+    p.al1 = 0.9;
     p.beta   = 1;
     out = pedlr_model(p, out);
 
@@ -69,11 +70,11 @@ for t = 1:iter
     %    meanR(t,k) = mean(deliveredR(out.chb==k,k));
     %    meanQ(t,k) = mean(estimatedQ(out.chb==k,k));
     %end
-    meanR(t,:) = mean(out.R);
-    meanQ(t,:) = mean(out.Q);
-    
-    for i = 1:3
-        chosen(t,i) = length(find(out.chb==i));
+    for k = 1:ncues
+        cho = find(out.chb==k);
+        chosen(t,k)=length(cho);
+        meanR(t,k) = mean(out.R(cho, k));
+        meanQ(t,k) = mean(out.Q(cho, k));
     end
 end
 mean_diff = meanQ - meanR;
@@ -128,7 +129,7 @@ plot(out.Q);
 f.Position(3) = 800;
 f.Position(4) = 800;
     
-for i = 1:3
+for i = 1:ncues
     [r,p]=corr(mean_diff(:,i), chosen(:,i));
     disp(['Cue ' num2str(i) ' r=' num2str(r) ' p=' num2str(p)]);
 end

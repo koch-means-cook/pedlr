@@ -13,12 +13,16 @@ for i = 1:size(out.sch,1)
     end
     
     % Only update chosen bandit
-    [chosen_b, out.chb(i)] = deal(out.sch(i,ch(i,1)));
+    try
+        [chosen_b, out.chb(i)] = deal(out.sch(i,ch(i,1)));
+    catch
+        i =1;
+    end
     al(i,1) = p.al0 + (1-p.al0)*(p.al1)* abs(out.R(i,chosen_b) - out.Q(i, chosen_b))/100;
     out.Q(i+1, chosen_b) = out.Q(i, chosen_b) + al(i,1)*(out.R(i,chosen_b) - out.Q(i, chosen_b)); 
     
     % For unchosen bandits pass forward previous value
-    unchosen_bs = setdiff(1:3, chosen_b);
+    unchosen_bs = setdiff(1:out.ncues, chosen_b);
     out.Q(i+1,unchosen_bs) = out.Q(i,unchosen_bs);
     
 end
