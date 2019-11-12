@@ -21,6 +21,8 @@ There appears to be consistently larger bias in the lower distribution. To exami
   - had 10 bandits with means ranging from 10 to 100
   - the distributions used to generate the data were unbiased (symmetrical) Beta(2.5, 2.5), centered at the means above
   ![problem_description](img/bias_over_parameters.png)
+Forced choice
+  ![problem_description](img/bias_over_parameters_forced_choice.png)
 
 It seems that there is a general bias in the lower end that goes away as alpha0 increases. Remember that thes are symmetrical distributions, so here we shouldn't expect any deviations due to alpha1.
 

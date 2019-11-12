@@ -7,82 +7,94 @@ f=figure;
 [al1vals,al0vals] = deal([0.1:0.2:0.9]);
 c=1;
 I ={};
+calc = 0;
+if calc == 0
+load('bias_over_parameters_forced_choice.mat', 'I');
+end
 for al1 = 1:numel(al1vals)
     for al0 = 1:numel(al0vals)
-        for t = 1:iter
-            clear('out', 'C')
-            % Generate distributions of rewards
-            n = 10000;
-            for i = 1:n
-                for j = 1:ncues
-                    C(j, i) = (betarnd(2.5, 2.5)-0.5+(shift*(j)))*100; 
+        p.al0 = al0vals(al0);
+        p.al1 = al1vals(al1);
+        p.beta   = 1;
+        
+        if calc == 1
+            for t = 1:iter
+                clear('out', 'C')
+                % Generate distributions of rewards
+                n = 10000;
+                for i = 1:n
+                    for j = 1:ncues
+                        C(j, i) = (betarnd(2.5, 2.5)-0.5+(shift*(j)))*100; 
+                    end
+
                 end
 
+                % visually check distributions
+
+
+
+                %%
+                out = [];
+                out.ncues = ncues;
+                ntrls_each = 100;  %should be 100 of each choice
+                tr_types = nchoosek(1:ncues,2);
+                tr_types = [tr_types; [tr_types(:,2) tr_types(:,1)]];
+                out.sch = (repmat(tr_types,ntrls_each,1));
+                ntrls = size(out.sch,1);
+
+                 %add force choice
+                out.sch(1:0.2*ntrls,4) = 1;
+                out.sch(0.2*ntrls+1:end,4) = 1;
+                out.sch = out.sch(randperm(ntrls),:);
+
+                %select 600 rewards from the 10k generated above
+                C= C(:,randperm(n))';
+                out.R = C(1:ntrls,:);
+                out.Q = repmat([50], 1, ncues);
+                %out.Q = [-50 -50 -50];
+
+                
+                out = pedlr_model(p, out);
+
+                fi = 0;
+                if fi 
+                    f=figure;
+                    subplot(1,4,[1 2])
+                    title('Reward Distributions');
+                    hold on 
+                    hist(out.R, 50)
+                    xlim([0 100]);
+
+                    subplot(1,4,[3 4])
+                    title('Model-estimated Distributions');
+                    hold on 
+                    hist(out.Q, 50)
+                    xlim([0 100]);
+                end
+
+                deliveredR = out.R(:, out.chb');
+                estimatedQ = out.Q(:, out.chb');
+                for k = 1:ncues
+                    chosen=find(out.chb==k);
+                    meanR(t,k) = mean(out.R(chosen, k));
+                    meanQ(t,k) = mean(out.Q(chosen, k));;
+                end
+                %meanR(t,:) = mean(out.R);
+                %meanQ(t,:) = mean(out.Q);
             end
 
-            % visually check distributions
-
-
-
-            %%
-            out = [];
-            out.ncues = ncues;
-            ntrls_each = 100;  %should be 100 of each choice
-            tr_types = nchoosek(1:ncues,2);
-            tr_types = [tr_types; [tr_types(:,2) tr_types(:,1)]];
-            out.sch = (repmat(tr_types,ntrls_each,1));
-            ntrls = size(out.sch,1);
-
-             %add force choice
-            out.sch(1:0.2*ntrls,4) = 1;
-            out.sch(0.2*ntrls+1:end,4) = 0;
-            out.sch = out.sch(randperm(ntrls),:);
-
-            %select 600 rewards from the 10k generated above
-            C= C(:,randperm(n))';
-            out.R = C(1:ntrls,:);
-            out.Q = repmat([50], 1, ncues);
-            %out.Q = [-50 -50 -50];
-
-            p.al0 = al0vals(al0);
-            p.al1 = al1vals(al1);
-            p.beta   = 1;
-            out = pedlr_model(p, out);
-
-            fi = 0;
-            if fi 
-                f=figure;
-                subplot(1,4,[1 2])
-                title('Reward Distributions');
-                hold on 
-                hist(out.R, 50)
-                xlim([0 100]);
-
-                subplot(1,4,[3 4])
-                title('Model-estimated Distributions');
-                hold on 
-                hist(out.Q, 50)
-                xlim([0 100]);
-            end
-
-            deliveredR = out.R(:, out.chb');
-            estimatedQ = out.Q(:, out.chb');
-            for k = 1:ncues
-                chosen=find(out.chb==k);
-                meanR(t,k) = mean(out.R(chosen, k));
-                meanQ(t,k) = mean(out.Q(chosen, k));;
-            end
-            %meanR(t,:) = mean(out.R);
-            %meanQ(t,:) = mean(out.Q);
+            mean_diff = meanQ - meanR;
+            mR = mean(meanR);
+            mQ = mean(meanQ);
+            y_coord = [0 100];
+            I{al0, al1}.meanQ       = meanQ;
+            I{al0, al1}.meanQ       = meanR;
+            I{al0, al1}.mean_diff   = mean_diff;
+        else
+            meanQ = I{al0, al1}.meanQ ;
+            meanR = I{al0, al1}.meanQ ;
+            mean_diff = I{al0, al1}.mean_diff;
         end
-        
-        mean_diff = meanQ - meanR;
-        mR = mean(meanR);
-        mQ = mean(meanQ);
-        y_coord = [0 100];
-        I{al0, al1}.meanQ       = meanQ;
-        I{al0, al1}.meanQ       = meanR;
-        I{al0, al1}.mean_diff   = mean_diff;
         
         
         subplot(numel(al1vals), numel(al0vals), c);
@@ -92,7 +104,7 @@ for al1 = 1:numel(al1vals)
             hold on
 
             plot([scaled_i-0.2*shift*100 scaled_i+0.2*shift*100], repmat(mean(mean_diff(:,i)),2,1), 'Color', [0.8 0.1 0.1], 'LineWidth', 5);
-            ylim([-0.3 1.5]);
+            ylim([-0.5 0.5]);
         end
         title(['$\alpha_0=' num2str(round(p.al0,2)) '\hspace*{1cm} \alpha_1=' num2str(round(p.al1,2)) '$'], 'Interpreter', 'Latex') 
         ylabel('Est-Mean')
@@ -100,7 +112,7 @@ for al1 = 1:numel(al1vals)
         c=c+1;
     end 
 end
-save('bias_over_parameters.mat', 'I');
+save('bias_over_parameters_forced_choice.mat', 'I');
 f.Position(3) = 1500;
 f.Position(4) = 1500;
 %{
