@@ -43,7 +43,7 @@ for t = 1:iter
     out.Q = [50 50 50];
     %out.Q = [-50 -50 -50];
 
-    p.al0 = 0.1;
+    p.al0 = 0.01;
     p.al1 = 0.9;
     p.beta   = 1;
     out = pedlr_model(p, out);

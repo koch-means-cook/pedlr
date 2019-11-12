@@ -1,11 +1,12 @@
 clear all
 close all
-iter = 30;
+iter = 20;
 shift = 0.1; % 0 = positive domain; -1 = negative domain   
 ncues = 10;
 f=figure;
 [al1vals,al0vals] = deal([0.1:0.2:0.9]);
 c=1;
+I ={};
 for al1 = 1:numel(al1vals)
     for al0 = 1:numel(al0vals)
         for t = 1:iter
@@ -74,12 +75,16 @@ for al1 = 1:numel(al1vals)
             %meanR(t,:) = mean(out.R);
             %meanQ(t,:) = mean(out.Q);
         end
-
+        
         mean_diff = meanQ - meanR;
         mR = mean(meanR);
         mQ = mean(meanQ);
         y_coord = [0 100];
-
+        I{al0, al1}.meanQ       = meanQ;
+        I{al0, al1}.meanQ       = meanR;
+        I{al0, al1}.mean_diff   = mean_diff;
+        
+        
         subplot(numel(al1vals), numel(al0vals), c);
         for i = 1:ncues
             scaled_i = i*shift*100;
@@ -87,6 +92,7 @@ for al1 = 1:numel(al1vals)
             hold on
 
             plot([scaled_i-0.2*shift*100 scaled_i+0.2*shift*100], repmat(mean(mean_diff(:,i)),2,1), 'Color', [0.8 0.1 0.1], 'LineWidth', 5);
+            ylim([-0.3 1.5]);
         end
         title(['$\alpha_0=' num2str(round(p.al0,2)) '\hspace*{1cm} \alpha_1=' num2str(round(p.al1,2)) '$'], 'Interpreter', 'Latex') 
         ylabel('Est-Mean')
@@ -94,6 +100,7 @@ for al1 = 1:numel(al1vals)
         c=c+1;
     end 
 end
+save('bias_over_parameters.mat', 'I');
 f.Position(3) = 1500;
 f.Position(4) = 1500;
 %{
