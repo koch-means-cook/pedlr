@@ -23,6 +23,8 @@ There appears to be consistently larger bias in the lower distribution. To exami
   ![problem_description](img/bias_over_parameters.png)
 Forced choice
   ![problem_description](img/bias_over_parameters_forced_choice.png)
+Forced choice and only last 10% of trials
+  ![problem_description](img/bias_over_parameters_forced_choice_last10perc.png)
 
 It seems that there is a general bias in the lower end that goes away as alpha0 increases. Remember that thes are symmetrical distributions, so here we shouldn't expect any deviations due to alpha1.
 

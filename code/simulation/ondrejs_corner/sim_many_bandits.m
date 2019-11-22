@@ -9,7 +9,7 @@ c=1;
 I ={};
 calc = 0;
 if calc == 0
-load('bias_over_parameters_forced_choice.mat', 'I');
+load('bias_over_parameters_forced_choice_last10perc.mat', 'I');
 end
 for al1 = 1:numel(al1vals)
     for al0 = 1:numel(al0vals)
@@ -76,8 +76,8 @@ for al1 = 1:numel(al1vals)
                 estimatedQ = out.Q(:, out.chb');
                 for k = 1:ncues
                     chosen=find(out.chb==k);
-                    meanR(t,k) = mean(out.R(chosen, k));
-                    meanQ(t,k) = mean(out.Q(chosen, k));;
+                    meanR(t,k) = mean(out.R(intersect(8100:9000, chosen), k));
+                    meanQ(t,k) = mean(out.Q(intersect(8100:9000, chosen), k));;
                 end
                 %meanR(t,:) = mean(out.R);
                 %meanQ(t,:) = mean(out.Q);
@@ -104,7 +104,7 @@ for al1 = 1:numel(al1vals)
             hold on
 
             plot([scaled_i-0.2*shift*100 scaled_i+0.2*shift*100], repmat(mean(mean_diff(:,i)),2,1), 'Color', [0.8 0.1 0.1], 'LineWidth', 5);
-            ylim([-0.5 0.5]);
+            ylim([-1 1]);
         end
         title(['$\alpha_0=' num2str(round(p.al0,2)) '\hspace*{1cm} \alpha_1=' num2str(round(p.al1,2)) '$'], 'Interpreter', 'Latex') 
         ylabel('Est-Mean')
@@ -112,7 +112,7 @@ for al1 = 1:numel(al1vals)
         c=c+1;
     end 
 end
-save('bias_over_parameters_forced_choice.mat', 'I');
+save('bias_over_parameters_forced_choice_last10perc.mat', 'I');
 f.Position(3) = 1500;
 f.Position(4) = 1500;
 %{
