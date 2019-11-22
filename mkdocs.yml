@@ -5,8 +5,11 @@ docs_dir: documentation/docs
 copyright: 'Copyright &copy; 2019 - Christoph Koch'
 nav:
   - Home: index.md
-  - Models: pedlr_models.md
-  - Issues: 
+  - Models:
+    - Pedlr:
+      - Model: pedlr_models.md
+      - Autopsy: pedlr_autopsy.md
+  - Issues:
     - ProblemChase: problem_chase.md
   - Simulation: sim_pe_dep_LR.html
 
