@@ -37,6 +37,7 @@ source(file.path(source_path, 'Create_design.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Create_miniblock.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'PE_dep_LR_choice_model.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'PE_dep_LR_choice_model_alt.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'PE_dep_LR_choice_model_interdep.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Softmax_choice.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'PE_dep_LR_single_model.R', fsep = .Platform$file.sep))
 
@@ -704,6 +705,160 @@ p
 
 ---
 
+# Interdependet a0 and a1 model
+
+For now we fix the parameter to 0.5 (equal influence)
+
+```{r}
+interdep = 0.5
+```
+
+
+## Softmax choice
+
+```{r}
+# Set up matrix to store data in (to append subjects)
+data_model = data.frame(matrix(0,0,17))
+
+# Loop over each subject
+for(sub_count in subjects){
+  
+  set.seed(sub_count)
+  
+  # Simulate data for subject
+  design = Create_design(25,
+                         beta_a_le, beta_b_le,
+                         gaussian_mean, gaussian_sd,
+                         beta_a_ue, beta_b_ue,
+                         two_betas = TRUE,
+                         reward_space_lb, reward_space_ub)
+
+  # Create matrix to store data for each subject
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+  results[,1] = subjects[sub_count]
+  results[,2] = c(1:nrow(design))
+  results[,3] = design$option_left
+  results[,4] = design$option_right
+  results[,5] = design$reward_stim_1
+  results[,6] = design$reward_stim_2
+  results[,7] = design$comp_number
+
+  # Run model over simulated data
+  sim = PE_dep_LR_choice_model_interdep(design,
+                                        alpha0,
+                                        alpha1,
+                                        interdep,
+                                        temperature,
+                                        reward_space_ub,
+                                        'softmax')
+  # Save model values, PE and fPE for ech trial and subject into matrix
+  results[,8] = sim$choices
+  results[,9:11] = sim$values
+  results[,12:14] = sim$PE
+  results[,15:17] = sim$fPE
+
+  # Append all subjects
+  data_model = rbind(data_model, results)
+}
+
+# Convert to data frame (How our data will look like in the study)
+data_model = data.frame(data_model)
+colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                         'v_stim_1', 'v_stim_2', 'v_stim_3',
+                         'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                         'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+# Sort after participants
+data_model = data_model[order(data_model$sub_id),]
+```
+
+## Plot results of choice model
+```{r, out.width='100%'}
+# Cut down data frame for plotting
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
+                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
+
+## Average over only chosen option over all participants
+
+```{r}
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+# Select only choices of stim 1 to calculate mean value (leaving out plateaus)
+data_1 = subset(data_plot, choice == 1 & variable == 'v_stim_1')
+# Calculate mean value of dist 1 WHEN CHOSEN
+mean_1 = mean(data_1$value, na.rm = TRUE)
+
+# Same for 2
+data_2 = subset(data_plot, choice == 2 & variable == 'v_stim_2')
+mean_2 = mean(data_2$value, na.rm = TRUE)
+
+# Same for 3
+data_3 = subset(data_plot, choice == 3 & variable == 'v_stim_3')
+mean_3 = mean(data_3$value, na.rm = TRUE)
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean_1,
+                          mean_2,
+                          mean_3)) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
+
+
+---
+
 
 # What happens if there is an assymetric distribution gaining on the upper bound in the multi-dist case?
 
@@ -1112,6 +1267,54 @@ p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, col
        y='Estimated outcome',
        color='Stimulus')
 ggplotly(p_choice)
+```
+
+### Interdependet model
+
+```{r}
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+# Select only choices of stim 1 to calculate mean value (leaving out plateaus)
+data_1 = subset(data_plot, choice == 1 & variable == 'v_stim_1')
+# Calculate mean value of dist 1 WHEN CHOSEN
+mean_1 = mean(data_1$value, na.rm = TRUE)
+
+# Same for 2
+data_2 = subset(data_plot, choice == 2 & variable == 'v_stim_2')
+mean_2 = mean(data_2$value, na.rm = TRUE)
+
+# Same for 3
+data_3 = subset(data_plot, choice == 3 & variable == 'v_stim_3')
+mean_3 = mean(data_3$value, na.rm = TRUE)
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean_1,
+                          mean_2,
+                          mean_3)) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
 ```
 
 
