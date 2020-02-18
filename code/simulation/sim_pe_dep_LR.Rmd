@@ -306,6 +306,54 @@ p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, col
 ggplotly(p_choice)
 ```
 
+## Average over only chosen option over all participants
+
+```{r}
+data_plot = data_model_2b[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+# Select only choices of stim 1 to calculate mean value (leaving out plateaus)
+data_1 = subset(data_plot, choice == 1 & variable == 'v_stim_1')
+# Calculate mean value of dist 1 WHEN CHOSEN
+mean_1 = mean(data_1$value, na.rm = TRUE)
+
+# Same for 2
+data_2 = subset(data_plot, choice == 2 & variable == 'v_stim_2')
+mean_2 = mean(data_2$value, na.rm = TRUE)
+
+# Same for 3
+data_3 = subset(data_plot, choice == 3 & variable == 'v_stim_3')
+mean_3 = mean(data_3$value, na.rm = TRUE)
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean_1,
+                          mean_2,
+                          mean_3)) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
+
 ---
 
 ### Print single participant
@@ -613,6 +661,54 @@ p = ggplotly(p)
 p
 ```
 
+## Average over only chosen option over all participants
+
+```{r}
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+# Select only choices of stim 1 to calculate mean value (leaving out plateaus)
+data_1 = subset(data_plot, choice == 1 & variable == 'v_stim_1')
+# Calculate mean value of dist 1 WHEN CHOSEN
+mean_1 = mean(data_1$value, na.rm = TRUE)
+
+# Same for 2
+data_2 = subset(data_plot, choice == 2 & variable == 'v_stim_2')
+mean_2 = mean(data_2$value, na.rm = TRUE)
+
+# Same for 3
+data_3 = subset(data_plot, choice == 3 & variable == 'v_stim_3')
+mean_3 = mean(data_3$value, na.rm = TRUE)
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean_1,
+                          mean_2,
+                          mean_3)) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
+
 ## Greedy choice
 
 ```{r}
@@ -701,7 +797,53 @@ p = ggplotly(p)
 p
 ```
 
+## Average over only chosen option over all participants
 
+```{r}
+data_plot = data_model[,1:11]
+data_plot = melt(data_plot, id.vars=c('sub_id',
+                                      'trial',
+                                      'stim_1',
+                                      'stim_2',
+                                      'reward_stim_1',
+                                      'reward_stim_2',
+                                      'choice',
+                                      'comp_number'))
+# Select only choices of stim 1 to calculate mean value (leaving out plateaus)
+data_1 = subset(data_plot, choice == 1 & variable == 'v_stim_1')
+# Calculate mean value of dist 1 WHEN CHOSEN
+mean_1 = mean(data_1$value, na.rm = TRUE)
+
+# Same for 2
+data_2 = subset(data_plot, choice == 2 & variable == 'v_stim_2')
+mean_2 = mean(data_2$value, na.rm = TRUE)
+
+# Same for 3
+data_3 = subset(data_plot, choice == 3 & variable == 'v_stim_3')
+mean_3 = mean(data_3$value, na.rm = TRUE)
+
+# Average over all subjects
+data_plot = ddply(data_plot,
+                  .(trial, variable),
+                  summarize,
+                  mean_value = mean(value),
+                  sd_value = sd (value))
+
+# Plot model values
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean_1,
+                          mean_2,
+                          mean_3)) +
+  geom_line(size=1, alpha=0.8) +
+  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+       x='Trial',
+       y='Estimated outcome',
+       color='Stimulus')
+p = ggplotly(p)
+
+p
+```
 
 ---
 
@@ -770,42 +912,6 @@ colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
                          'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
 # Sort after participants
 data_model = data_model[order(data_model$sub_id),]
-```
-
-## Plot results of choice model
-```{r, out.width='100%'}
-# Cut down data frame for plotting
-data_plot = data_model[,1:11]
-data_plot = melt(data_plot, id.vars=c('sub_id',
-                                      'trial',
-                                      'stim_1',
-                                      'stim_2',
-                                      'reward_stim_1',
-                                      'reward_stim_2',
-                                      'choice',
-                                      'comp_number'))
-
-# Average over all subjects
-data_plot = ddply(data_plot,
-                  .(trial, variable),
-                  summarize,
-                  mean_value = mean(value),
-                  sd_value = sd (value))
-
-# Plot model values
-p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
-  geom_line(size=1, alpha=0.8) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
-       x='Trial',
-       y='Estimated outcome',
-       color='Stimulus')
-p = ggplotly(p)
-
-p
 ```
 
 ## Average over only chosen option over all participants
@@ -964,7 +1070,6 @@ bias we would know its due to the position and maybe the undersampling.
 
 ## Plot results of choice model
 ```{r, out.width='100%'}
-# Cut down data frame for plotting
 data_plot = data_model[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'trial',
@@ -974,6 +1079,18 @@ data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'reward_stim_2',
                                       'choice',
                                       'comp_number'))
+# Select only choices of stim 1 to calculate mean value (leaving out plateaus)
+data_1 = subset(data_plot, choice == 1 & variable == 'v_stim_1')
+# Calculate mean value of dist 1 WHEN CHOSEN
+mean_1 = mean(data_1$value, na.rm = TRUE)
+
+# Same for 2
+data_2 = subset(data_plot, choice == 2 & variable == 'v_stim_2')
+mean_2 = mean(data_2$value, na.rm = TRUE)
+
+# Same for 3
+data_3 = subset(data_plot, choice == 3 & variable == 'v_stim_3')
+mean_3 = mean(data_3$value, na.rm = TRUE)
 
 # Average over all subjects
 data_plot = ddply(data_plot,
@@ -985,9 +1102,9 @@ data_plot = ddply(data_plot,
 # Plot model values
 p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
   geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_hline(yintercept=c(mean_1,
+                          mean_2,
+                          mean_3)) +
   geom_line(size=1, alpha=0.8) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
