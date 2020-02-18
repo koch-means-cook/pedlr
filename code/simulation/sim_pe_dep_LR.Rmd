@@ -1,13 +1,34 @@
 ---
-title: "Simulation PE dependent LR"
+title: "Simulation - PEDLR"
 output:
   html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
     df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
 ---
 
 # Pre set-up
 
-### Import libraries
+- Import libraries
+
 ```{r message=FALSE}
 library(reshape2)
 library(ggplot2)
@@ -21,7 +42,8 @@ library(knitr)
 library(viridis)
 ```
 
-### Import own functions
+- Import own functions
+
 ```{r}
 # Get path current script is in
 #source_path = file.path(here(), 'simulation', 'final_sim', fsep=.Platform$file.sep)
@@ -43,9 +65,18 @@ source(file.path(source_path, 'PE_dep_LR_single_model.R', fsep = .Platform$file.
 
 ```
 
+- Set color scheme
+
+```{r}
+color = data.frame(matrix(NA, 1, 3))
+colnames(color) = c('gaussian', 'loss', 'gain')
+color[1,] = c('#ffed76', '#ff7698', '#76bfff')
+```
+
+
 # Parameter set-up
 
-### Set up reward space
+- Set up reward space
 ```{r}
 # Reward lower and upper boundary
 reward_space_lb = 1
@@ -58,7 +89,7 @@ reward_space = seq(reward_space_lb,
                    length=reward_space_length)
 ```
 
-### Gaussian parameters and distribution
+- Gaussian parameters and distribution
 ```{r}
 # Parameters
 gaussian_mean = (100 * 1/6) * 3
@@ -70,7 +101,7 @@ gaussian_densities = dnorm(reward_space, gaussian_mean, gaussian_sd)
 gaussian_densities = scale(gaussian_densities) - min(scale(gaussian_densities))
 ```
 
-### Beta parameters and distributions
+- Beta parameters and distributions
 ```{r}
 # Set up "skewdness" parameter for easier change of slope
 beta_skewedness = 5
@@ -87,13 +118,13 @@ beta_densities_le = scale(beta_densities_le) - min(scale(beta_densities_le))
 beta_densities_ue = scale(beta_densities_ue) - min(scale(beta_densities_le))
 ```
 
-### Set rare event threshold
+- Set rare event threshold
 ```{r}
 # Set rare events to be 20% of the sampled data
 rare_lim = 0.2
 ```
 
-### Set up model parameters
+- Set up model parameters
 ```{r}
 alpha0 = 0.3
 #alpha1 = 0.5
@@ -105,7 +136,7 @@ temperature = 7
 
 # Control plots
 
-### Plot distributions
+- Plot distributions
 ```{r out.width='100%', warning=FALSE}
 # Form data frame from density values
 data_densities = data.frame(reward_space, 
@@ -120,7 +151,7 @@ data_densities = melt(data_densities, id.vars='reward_space')
 p_dist = ggplot(data=data_densities, aes(x=reward_space, y=value, group=as.factor(variable),
                                          color=as.factor(variable))) +
   geom_line(size=1) +
-  scale_color_brewer(palette='Accent') +
+  scale_color_manual(values = c(color$gaussian, color$gain, color$loss)) +
   scale_x_continuous(limits = c(1,100)) +
   #stat_summary(fun.data = 'mean', geom = 'vline') +
   geom_vline(xintercept=c(1/3, 1/2, 2/3)*100, linetype='dashed', alpha=0.5, size=0.1) +
@@ -136,11 +167,13 @@ p_dist
 ```
 
 
-### Save plot to .pdf
+- Save plot to .pdf
 ```{r}
 file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/distributions.pdf'
 ggsave(file, plot = p_dist, height=11, width=20, unit='cm')
 ```
+
+- Single distribution plots
 
 ```{r}
 # Disribution plot
@@ -182,8 +215,8 @@ file = file.path(source_path, 'figures', 'distributions_bc.pdf', fsep = .Platfor
 ggsave(file, plot = p_dist_bc, height=11, width=20, unit='cm')
 ```
 
+- Test sampling with histograms
 
-### Test sampling with histograms
 ```{r out.width='100%', warning=FALSE}
 # Define parameters
 n_samples = 500
@@ -201,12 +234,14 @@ data_sampling = melt(data_sampling, id.vars='Sample')
 
 # Plot histograms
 p_sampling = ggplot(data=data_sampling, aes(x=value, fill=variable)) +
-  scale_fill_brewer(palette = 'Accent') +
+  scale_fill_manual(values=c(color$gain, color$gaussian, color$loss)) +
   geom_histogram(binwidth = 1) +
   facet_wrap(~variable)
 
 ggplotly(p_sampling)
 ```
+
+---
 
 # Simulating data for the choice model
 
@@ -270,9 +305,10 @@ colnames(data_model_2b) = c('sub_id', 'trial', 'stim_1', 'stim_2',
 data_model_2b = data_model_2b[order(data_model_2b$sub_id),]
 ```
 
-### Plot results of choice model
+## Plot results of choice model
 
-##### All choices
+- All choices
+
 ```{r warning=FALSE}
 # Cut down data frame for plotting
 data_plot = data_model_2b[,1:11]
@@ -297,8 +333,10 @@ p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, col
   geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
   geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
                           mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value)),
+             color = c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -306,7 +344,7 @@ p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, col
 ggplotly(p_choice)
 ```
 
-## Average over only chosen option over all participants
+- Average over only chosen option over all participants
 
 ```{r}
 data_plot = data_model_2b[,1:11]
@@ -343,8 +381,10 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
   geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
   geom_hline(yintercept=c(mean_1,
                           mean_2,
-                          mean_3)) +
+                          mean_3),
+             color=c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -354,9 +394,7 @@ p = ggplotly(p)
 p
 ```
 
----
-
-### Print single participant
+- Single participant
 
 ```{r, warning=FALSE, message=FALSE}
 # Cut down data frame for plotting
@@ -370,42 +408,46 @@ data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'choice',
                                       'comp_number'))
 
-# Average over all subjects
-# data_plot = ddply(data_plot,
-#                   .(trial, variable),
-#                   summarize,
-#                   mean_value = mean(value),
-#                   sd_value = sd (value))
-
-data_plot = subset(data_plot, sub_id == 1)
-data_plot = subset(data_plot, variable == 'v_stim_2' | variable == 'v_stim_3')
+# Select single subject
+#data_plot = subset(data_plot, sub_id == 1)
 
 # Plot model values
 p_choice = ggplot(data=data_plot, aes(x=trial, y=value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(50, 2/3*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
-  geom_line(size=1, alpha=0.8) +
-  scale_color_viridis(option='D', discrete = TRUE) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+  theme_bw() +
+  geom_hline(yintercept=c(1/3 *100, 50, 2/3*100), linetype='dashed',
+             size=0.1) +
+  # geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
+  #                         mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
+  #                         mean(subset(data_plot, variable == 'v_stim_3')$mean_value)),
+  #            color = c(color$gain, color$gaussian, color$loss)) +
+  geom_line(size=0.1, alpha=0.8) +
+  scale_color_manual(values=c(color$gain, color$gaussian, color$loss)) +
+  labs(title=paste('Choice model performance (alpha0=', alpha0, ', alpha1=', alpha1, ', temp=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
        color='Stimulus') +
-theme(legend.position = 'none')
+  facet_wrap( ~ sub_id, ncol = 8) +
+  theme(legend.position = 'none',
+        axis.text = element_text(size=5),
+        strip.text = element_text(size=5),
+        panel.grid = element_blank())
 ggplotly(p_choice)
 ```
 
-
 ```{r, warning=FALSE, message=FALSE}
-file = '/Volumes/MPRG-Neurocode/Users/christoph/PE_dependent_LR/simulation/figure/choice_bc.pdf'
+file = '/Volumes/MPRG-Neurocode/Users/christoph/pedlr/code/simulation/figures/choice_bc.pdf'
 ggsave(file, plot = p_choice, height=11, width=20, unit='cm')
 ```
+
 
 ---
 
 # Single model
 
-## Use single model on gain beta rewards from design
+## Gain beta
+
+- Use single model on gain beta rewards from design
+
 ```{r}
 # Set up matrix to store data in (to append subjects)
 data_model_single_gain = data.frame(matrix(0,0,6))
@@ -454,7 +496,8 @@ for(sub_count in subjects){
 data_model_single_gain = data_model_single_gain[order(data_model_single_gain$sub_id),]
 ```
 
-## Plot model performing on single gain beta extracted from task design
+- Plot model performing on single gain beta extracted from task design
+
 ```{r}
 # Prepare data frame for plotting
 data_plot = data_model_single_gain[1:4]
@@ -471,10 +514,12 @@ data_plot = ddply(data_plot,
                   sd_value = sd (value))
 
 # Plot model values
-p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_line(size=1, alpha=0.8) +
+p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable)) +
+  geom_line(size=1, alpha=0.8,
+            color=color$gain) +
   geom_hline(yintercept=1/3*100, linetype='dashed') +
-  geom_hline(aes(yintercept=mean(mean_value))) +
+  geom_hline(aes(yintercept=mean(mean_value)),
+             color=color$gain) +
   labs(title=paste('Single model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -484,7 +529,9 @@ ggplotly(p_choice)
 
 ```
 
-## Single model on loss beta
+## Loss beta
+
+- Use single model on loss beta rewards from design
 
 ```{r}
 # Set up matrix to store data in (to append subjects)
@@ -534,7 +581,8 @@ for(sub_count in subjects){
 data_model_single_loss = data_model_single_loss[order(data_model_single_loss$sub_id),]
 ```
 
-## Plot model performing on single loss beta extracted from task design
+- Plot model performing on single loss beta extracted from task design
+
 ```{r}
 # Prepare data frame for plotting
 data_plot = data_model_single_loss[1:4]
@@ -552,9 +600,11 @@ data_plot = ddply(data_plot,
 
 # Plot model values
 p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_line(size=1, alpha=0.8) +
+  geom_line(size=1, alpha=0.8,
+            color=color$loss) +
   geom_hline(yintercept=2/3*100, linetype='dashed') +
-  geom_hline(aes(yintercept=mean(mean_value))) +
+  geom_hline(aes(yintercept=mean(mean_value)),
+             color=color$loss) +
   labs(title=paste('Single model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -564,17 +614,14 @@ ggplotly(p_choice)
 
 ```
 
-Why is the bias way stronger in the choice model than in the single model?
-
-- Probably softmax?
-
 ---
 
-# Using the alternative model
+# Choice model policy switch
 
 Alternative model which can switch between greedy and softmax (and can use a variable reward space).
 
 ## Softmax choice
+
 ```{r}
 # Set up matrix to store data in (to append subjects)
 data_model = data.frame(matrix(0,0,17))
@@ -625,45 +672,9 @@ colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
 data_model = data_model[order(data_model$sub_id),]
 ```
 
-## Plot results of choice model
+- Plot results of choice model
+
 ```{r, out.width='100%'}
-# Cut down data frame for plotting
-data_plot = data_model[,1:11]
-data_plot = melt(data_plot, id.vars=c('sub_id',
-                                      'trial',
-                                      'stim_1',
-                                      'stim_2',
-                                      'reward_stim_1',
-                                      'reward_stim_2',
-                                      'choice',
-                                      'comp_number'))
-
-# Average over all subjects
-data_plot = ddply(data_plot,
-                  .(trial, variable),
-                  summarize,
-                  mean_value = mean(value),
-                  sd_value = sd (value))
-
-# Plot model values
-p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
-  geom_line(size=1, alpha=0.8) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
-       x='Trial',
-       y='Estimated outcome',
-       color='Stimulus')
-p = ggplotly(p)
-
-p
-```
-
-## Average over only chosen option over all participants
-
-```{r}
 data_plot = data_model[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'trial',
@@ -698,8 +709,10 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
   geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
   geom_hline(yintercept=c(mean_1,
                           mean_2,
-                          mean_3)) +
+                          mean_3),
+             color=c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -761,45 +774,9 @@ colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
 data_model = data_model[order(data_model$sub_id),]
 ```
 
-## Plot results of choice model
+- Plot results of choice model
+
 ```{r, out.width='100%'}
-# Cut down data frame for plotting
-data_plot = data_model[,1:11]
-data_plot = melt(data_plot, id.vars=c('sub_id',
-                                      'trial',
-                                      'stim_1',
-                                      'stim_2',
-                                      'reward_stim_1',
-                                      'reward_stim_2',
-                                      'choice',
-                                      'comp_number'))
-
-# Average over all subjects
-data_plot = ddply(data_plot,
-                  .(trial, variable),
-                  summarize,
-                  mean_value = mean(value),
-                  sd_value = sd (value))
-
-# Plot model values
-p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
-  geom_line(size=1, alpha=0.8) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
-       x='Trial',
-       y='Estimated outcome',
-       color='Stimulus')
-p = ggplotly(p)
-
-p
-```
-
-## Average over only chosen option over all participants
-
-```{r}
 data_plot = data_model[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'trial',
@@ -834,8 +811,10 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
   geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
   geom_hline(yintercept=c(mean_1,
                           mean_2,
-                          mean_3)) +
+                          mean_3),
+             color=c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -847,14 +826,14 @@ p
 
 ---
 
-# Interdependet a0 and a1 model
+# a0 and a1 decoupled model
 
-For now we fix the parameter to 0.5 (equal influence)
+Additional parameter handely contribution of different LR components. For now we fix the parameter to 0.5 
+(equal influence).
 
 ```{r}
 interdep = 0.5
 ```
-
 
 ## Softmax choice
 
@@ -914,9 +893,9 @@ colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
 data_model = data_model[order(data_model$sub_id),]
 ```
 
-## Average over only chosen option over all participants
+- Plot results of choice model
 
-```{r}
+```{r, out.width='100%'}
 data_plot = data_model[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'trial',
@@ -951,8 +930,10 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
   geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
   geom_hline(yintercept=c(mean_1,
                           mean_2,
-                          mean_3)) +
+                          mean_3),
+             color=c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -962,13 +943,11 @@ p = ggplotly(p)
 p
 ```
 
-
 ---
 
+# Beta position swap
 
-# What happens if there is an assymetric distribution gaining on the upper bound in the multi-dist case?
-
-## Swap position of betas
+- Swap position of betas
 
 ```{r}
 # Set up matrix to store data in (to append subjects)
@@ -1035,7 +1014,8 @@ colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
 data_model = data_model[order(data_model$sub_id),]
 ```
 
-## Histograms of switched gain/loss betas
+- Histograms of switched gain/loss betas
+
 ```{r out.width='100%', message=FALSE}
 gain_samples = c(subset(data_model, 'stim_1' != 'stim_2')$reward_stim_1[subset(data_model, 'stim_1' != 'stim_2')$stim_1 == 1],
                  subset(data_model, 'stim_1' != 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' != 'stim_2')$stim_2 == 1],
@@ -1058,7 +1038,7 @@ data_sampling = melt(data_sampling)
 
 # Plot histograms
 p_sampling = ggplot(data=data_sampling, aes(x=value, fill=variable)) +
-  scale_fill_brewer(palette = 'Accent') +
+  scale_fill_manual(values = c(color$gain, color$gaussian, color$loss)) +
   geom_histogram(binwidth = 1) +
   facet_wrap(~variable)
 
@@ -1068,7 +1048,8 @@ ggplotly(p_sampling)
 The gain and loss beta distributions are now on the swapped ends of the reward space. If this would switch the
 bias we would know its due to the position and maybe the undersampling.
 
-## Plot results of choice model
+- Plot results
+
 ```{r, out.width='100%'}
 data_plot = data_model[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
@@ -1104,8 +1085,10 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
   geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
   geom_hline(yintercept=c(mean_1,
                           mean_2,
-                          mean_3)) +
+                          mean_3),
+             color=c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -1118,7 +1101,10 @@ p
 The stimuli changed position but the bias pattern stayed the same. The bias does not swap for the loss beta,
 even if it is posted to the lower end. Same for the gain beta.
 
-# What happens in the case of three Gaussian distributions?
+# Three Gaussians
+
+- Simulate data
+
 ```{r}
 # Set up matrix to store data in (to append subjects)
 data_model = matrix(0,0,17)
@@ -1221,7 +1207,8 @@ colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
 data_model = data_model[order(data_model$sub_id),]
 ```
 
-## Histograms of switched gain/loss betas
+- Histogram
+
 ```{r out.width='100%', message=FALSE}
 gain_samples = c(subset(data_model, 'stim_1' != 'stim_2')$reward_stim_1[subset(data_model, 'stim_1' != 'stim_2')$stim_1 == 1],
                  subset(data_model, 'stim_1' != 'stim_2')$reward_stim_2[subset(data_model, 'stim_1' != 'stim_2')$stim_2 == 1],
@@ -1251,9 +1238,9 @@ p_sampling = ggplot(data=data_sampling, aes(x=value, fill=variable)) +
 ggplotly(p_sampling)
 ```
 
-## Plot results of choice model
+- Plot results
+
 ```{r, out.width='100%'}
-# Cut down data frame for plotting
 data_plot = data_model[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'trial',
@@ -1263,6 +1250,18 @@ data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'reward_stim_2',
                                       'choice',
                                       'comp_number'))
+# Select only choices of stim 1 to calculate mean value (leaving out plateaus)
+data_1 = subset(data_plot, choice == 1 & variable == 'v_stim_1')
+# Calculate mean value of dist 1 WHEN CHOSEN
+mean_1 = mean(data_1$value, na.rm = TRUE)
+
+# Same for 2
+data_2 = subset(data_plot, choice == 2 & variable == 'v_stim_2')
+mean_2 = mean(data_2$value, na.rm = TRUE)
+
+# Same for 3
+data_3 = subset(data_plot, choice == 3 & variable == 'v_stim_3')
+mean_3 = mean(data_3$value, na.rm = TRUE)
 
 # Average over all subjects
 data_plot = ddply(data_plot,
@@ -1274,10 +1273,12 @@ data_plot = ddply(data_plot,
 # Plot model values
 p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
   geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(subset(data_plot, variable == 'v_stim_1')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_2')$mean_value),
-                          mean(subset(data_plot, variable == 'v_stim_3')$mean_value))) +
+  geom_hline(yintercept=c(mean_1,
+                          mean_2,
+                          mean_3),
+             color=c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -1291,16 +1292,13 @@ Bias disappears for Gaussian distributions
 
 ---
 
-# What happens if we have a single beta
+# Single beta
 
 ## Gain beta
+
+- Simulate data
+
 ```{r echo=FALSE}
-
-# Define simulation parameters
-n_subjects = 40
-subjects = c(1:n_subjects)
-n_miniblocks = 25
-
 # Set up matrix to store data in (to append subjects)
 data_model = matrix(0,0,17)
 
@@ -1350,45 +1348,9 @@ colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
 data_model = data_model[order(data_model$sub_id),]
 ```
 
-### Plot results of choice model
+- Plot results of choice model
 
-##### All choices
-```{r warning=FALSE}
-# Cut down data frame for plotting
-data_plot = data_model[,1:11]
-data_plot = melt(data_plot, id.vars=c('sub_id',
-                                      'trial',
-                                      'stim_1',
-                                      'stim_2',
-                                      'reward_stim_1',
-                                      'reward_stim_2',
-                                      'choice',
-                                      'comp_number'))
-
-# Average over all subjects
-data_plot = ddply(data_plot,
-                  .(trial, variable),
-                  summarize,
-                  mean_value = mean(value),
-                  sd_value = sd (value))
-
-# Plot model values
-p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(1/6*100, 2/6*100, 3/6*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(unique(subset(data_plot, variable == 'v_stim_1')$mean_value)),
-                          mean(unique(subset(data_plot, variable == 'v_stim_2')$mean_value)),
-                          mean(unique(subset(data_plot, variable == 'v_stim_3')$mean_value)))) +
-  geom_line(size=1, alpha=0.8) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
-       x='Trial',
-       y='Estimated outcome',
-       color='Stimulus')
-ggplotly(p_choice)
-```
-
-### Interdependet model
-
-```{r}
+```{r, out.width='100%'}
 data_plot = data_model[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'trial',
@@ -1420,11 +1382,13 @@ data_plot = ddply(data_plot,
 
 # Plot model values
 p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(1/3*100, 50, 2/3*100), linetype='dashed') +
+  geom_hline(yintercept=c(1/6*100, 2/6*100, 50), linetype='dashed') +
   geom_hline(yintercept=c(mean_1,
                           mean_2,
-                          mean_3)) +
+                          mean_3),
+             color=c(color$gaussian, color$gain, color$gaussian)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gaussian, color$gain, color$gaussian)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
@@ -1434,8 +1398,10 @@ p = ggplotly(p)
 p
 ```
 
-
 ## Loss beta
+
+- Simulate data
+
 ```{r echo=FALSE}
 # Define simulation parameters
 n_subjects = 40
@@ -1491,11 +1457,9 @@ colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
 data_model = data_model[order(data_model$sub_id),]
 ```
 
-### Plot results of choice model
+- Plot results
 
-##### All choices
-```{r warning=FALSE}
-# Cut down data frame for plotting
+```{r, out.width='100%'}
 data_plot = data_model[,1:11]
 data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'trial',
@@ -1505,6 +1469,18 @@ data_plot = melt(data_plot, id.vars=c('sub_id',
                                       'reward_stim_2',
                                       'choice',
                                       'comp_number'))
+# Select only choices of stim 1 to calculate mean value (leaving out plateaus)
+data_1 = subset(data_plot, choice == 1 & variable == 'v_stim_1')
+# Calculate mean value of dist 1 WHEN CHOSEN
+mean_1 = mean(data_1$value, na.rm = TRUE)
+
+# Same for 2
+data_2 = subset(data_plot, choice == 2 & variable == 'v_stim_2')
+mean_2 = mean(data_2$value, na.rm = TRUE)
+
+# Same for 3
+data_3 = subset(data_plot, choice == 3 & variable == 'v_stim_3')
+mean_3 = mean(data_3$value, na.rm = TRUE)
 
 # Average over all subjects
 data_plot = ddply(data_plot,
@@ -1514,22 +1490,29 @@ data_plot = ddply(data_plot,
                   sd_value = sd (value))
 
 # Plot model values
-p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(3/6*100, 4/6*100, 5/6*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(unique(subset(data_plot, variable == 'v_stim_1')$mean_value)),
-                          mean(unique(subset(data_plot, variable == 'v_stim_2')$mean_value)),
-                          mean(unique(subset(data_plot, variable == 'v_stim_3')$mean_value)))) +
+p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
+  geom_hline(yintercept=c(50, 4/6*100, 5/6*100), linetype='dashed') +
+  geom_hline(yintercept=c(mean_1,
+                          mean_2,
+                          mean_3),
+             color=c(color$gaussian, color$loss, color$gaussian)) +
   geom_line(size=1, alpha=0.8) +
+  scale_color_manual(values = c(color$gaussian, color$loss, color$gaussian)) +
   labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
        x='Trial',
        y='Estimated outcome',
        color='Stimulus')
-ggplotly(p_choice)
+p = ggplotly(p)
+
+p
 ```
+
+---
 
 # Anaysis of PE
 
 ## Gain beta
+
 ```{r}
 # Number of samples for mean pe
 i = 10
@@ -1600,6 +1583,7 @@ mean(pe_mean_gain)
 Negative average PE in Gain beta
 
 ## Loss beta
+
 ```{r}
 # Number of samples for mean pe
 i = 10
@@ -1669,200 +1653,6 @@ mean(pe_mean_loss)
 ```
 
 Positive average PE in Loss beta
-
-## Greedy choice
-
-
-
----
-
-# Mean only considering choices
-
-### Gain beta
-```{r echo=FALSE}
-
-# Define simulation parameters
-n_subjects = 40
-subjects = c(1:n_subjects)
-n_miniblocks = 25
-
-# Set up matrix to store data in (to append subjects)
-data_model = data.frame(matrix(0,0,17))
-
-# Loop over each subject
-for(sub_count in subjects){
-  
-  set.seed(sub_count)
-  
-  # Simulate data for subject
-  design = Create_design(25,
-                         1/6*100, gaussian_sd,
-                         beta_a_le, beta_b_le, 
-                         3/6*100, gaussian_sd,
-                         two_betas = FALSE,
-                         reward_space_lb, reward_space_ub)
-
-  # Create matrix to store data for each subject
-  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
-  results[,1] = subjects[sub_count]
-  results[,2] = c(1:nrow(design))
-  results[,3] = design$option_left
-  results[,4] = design$option_right
-  results[,5] = design$reward_stim_1
-  results[,6] = design$reward_stim_2
-  results[,7] = design$comp_number
-
-  # Run model over simulated data
-  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'greedy')
-  # Save model values, PE and fPE for ech trial and subject into matrix
-  results[,8] = sim$choices
-  results[,9:11] = sim$values
-  results[,12:14] = sim$PE
-  results[,15:17] = sim$fPE
-
-  # Append all subjects
-  data_model = rbind(data_model, results)
-}
-
-# Convert to data frame (How our data will look like in the study)
-data_model = data.frame(data_model)
-colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
-                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
-                         'v_stim_1', 'v_stim_2', 'v_stim_3',
-                         'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
-                         'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
-# Sort after participants
-data_model = data_model[order(data_model$sub_id),]
-
-```
-
-### Plot results of choice model
-
-##### All choices
-```{r warning=FALSE}
-# Cut down data frame for plotting
-data_plot = data_model[,1:11]
-data_plot = melt(data_plot, id.vars=c('sub_id',
-                                      'trial',
-                                      'stim_1',
-                                      'stim_2',
-                                      'reward_stim_1',
-                                      'reward_stim_2',
-                                      'choice',
-                                      'comp_number'))
-
-# Average over all subjects
-data_plot = ddply(data_plot,
-                  .(trial, variable),
-                  summarize,
-                  mean_value = mean(value),
-                  sd_value = sd (value))
-
-# Plot model values
-p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(1/6*100, 2/6*100, 3/6*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(unique(subset(data_plot, variable == 'v_stim_1')$mean_value)),
-                          mean(unique(subset(data_plot, variable == 'v_stim_2')$mean_value)),
-                          mean(unique(subset(data_plot, variable == 'v_stim_3')$mean_value)))) +
-  geom_line(size=1, alpha=0.8) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
-       x='Trial',
-       y='Estimated outcome',
-       color='Stimulus')
-ggplotly(p_choice)
-```
-
-### Loss beta
-```{r echo=FALSE}
-# Define simulation parameters
-n_subjects = 40
-subjects = c(1:n_subjects)
-n_miniblocks = 25
-
-# Set up matrix to store data in (to append subjects)
-data_model = matrix(0,0,17)
-
-# Loop over each subject
-for(sub_count in subjects){
-  
-  set.seed(sub_count)
-  
-  # Simulate data for subject
-  design = Create_design(25,
-                         3/6*100, gaussian_sd,
-                         beta_a_ue, beta_b_ue, 
-                         5/6*100, gaussian_sd,
-                         two_betas = FALSE,
-                         reward_space_lb, reward_space_ub)
-
-  # Create matrix to store data for each subject
-  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
-  results[,1] = subjects[sub_count]
-  results[,2] = c(1:nrow(design))
-  results[,3] = design$option_left
-  results[,4] = design$option_right
-  results[,5] = design$reward_stim_1
-  results[,6] = design$reward_stim_2
-  results[,7] = design$comp_number
-
-  # Run model over simulated data
-  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'greedy')
-  # Save model values, PE and fPE for ech trial and subject into matrix
-  results[,8] = sim$choices
-  results[,9:11] = sim$values
-  results[,12:14] = sim$PE
-  results[,15:17] = sim$fPE
-
-  # Append all subjects
-  data_model = rbind(data_model, results)
-}
-
-# Convert to data frame (How our data will look like in the study)
-data_model = data.frame(data_model)
-colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
-                         'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
-                        'v_stim_1', 'v_stim_2', 'v_stim_3',
-                        'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
-                        'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
-# Sort after participants
-data_model = data_model[order(data_model$sub_id),]
-```
-
-### Plot results of choice model
-
-##### All choices
-```{r warning=FALSE}
-# Cut down data frame for plotting
-data_plot = data_model[,1:11]
-data_plot = melt(data_plot, id.vars=c('sub_id',
-                                      'trial',
-                                      'stim_1',
-                                      'stim_2',
-                                      'reward_stim_1',
-                                      'reward_stim_2',
-                                      'choice',
-                                      'comp_number'))
-
-# Average over all subjects
-data_plot = ddply(data_plot,
-                  .(trial, variable),
-                  summarize,
-                  mean_value = mean(value),
-                  sd_value = sd (value))
-
-# Plot model values
-p_choice = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=variable)) +
-  geom_hline(yintercept=c(3/6*100, 4/6*100, 5/6*100), linetype='dashed') +
-  geom_hline(yintercept=c(mean(unique(subset(data_plot, variable == 'v_stim_1')$mean_value)),
-                          mean(unique(subset(data_plot, variable == 'v_stim_2')$mean_value)),
-                          mean(unique(subset(data_plot, variable == 'v_stim_3')$mean_value)))) +
-  geom_line(size=1, alpha=0.8) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
-       x='Trial',
-       y='Estimated outcome',
-       color='Stimulus')
-ggplotly(p_choice)
-```
 
 ---
 
