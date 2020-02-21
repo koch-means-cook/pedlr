@@ -934,7 +934,16 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
              color=c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
   scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+  labs(title=paste('Choice model performance (α0=',
+                   alpha0,
+                   ', α1=',
+                   alpha1,
+                   ', τ=',
+                   temperature,
+                   ', π=',
+                   interdep,
+                   ')',
+                   sep=''),
        x='Trial',
        y='Estimated outcome',
        color='Stimulus')
@@ -951,7 +960,7 @@ p
 
 ```{r}
 # Set up matrix to store data in (to append subjects)
-data_model = matrix(0,0,17)
+data_model = data.frame(matrix(0,0,17))
 
 # Loop over each subject
 for(sub_count in subjects){
@@ -982,7 +991,7 @@ for(sub_count in subjects){
   design$reward_stim_2[which(design$reward_stim_2 <= 1)] = 1
 
   # Create matrix to store data for each subject
-  results = matrix(0,nrow(design),ncol(data_model))
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
   results[,1] = subjects[sub_count]
   results[,2] = c(1:nrow(design))
   results[,3] = design$option_left
@@ -992,12 +1001,18 @@ for(sub_count in subjects){
   results[,7] = design$comp_number
 
   # Run model over simulated data
-  sim = PE_dep_LR_choice_model(design, alpha0, alpha1, temperature)
+  sim = PE_dep_LR_choice_model_interdep(design,
+                                        alpha0,
+                                        alpha1,
+                                        interdep,
+                                        temperature,
+                                        reward_space_ub,
+                                        'softmax')
   # Save model values, PE and fPE for ech trial and subject into matrix
-  results[,8] = sim$choice$choice
-  results[,9:11] = as.matrix(sim$values)
-  results[,12:14] = as.matrix(sim$PE)
-  results[,15:17] = as.matrix(sim$fPE)
+  results[,8] = sim$choices
+  results[,9:11] = sim$values
+  results[,12:14] = sim$PE
+  results[,15:17] = sim$fPE
 
   # Append all subjects
   data_model = rbind(data_model, results)
@@ -1107,7 +1122,7 @@ even if it is posted to the lower end. Same for the gain beta.
 
 ```{r}
 # Set up matrix to store data in (to append subjects)
-data_model = matrix(0,0,17)
+data_model = data.frame(matrix(0,0,17))
 
 # Loop over each subject
 for(sub_count in subjects){
@@ -1175,7 +1190,7 @@ for(sub_count in subjects){
   design$reward_stim_2[reward_index_forced] = design$reward_stim_1[reward_index_forced]
 
   # Create matrix to store data for each subject
-  results = matrix(0,nrow(design),ncol(data_model))
+  results = data.frame(matrix(0,nrow(design),ncol(data_model)))
   results[,1] = subjects[sub_count]
   results[,2] = c(1:nrow(design))
   results[,3] = design$option_left
@@ -1185,9 +1200,15 @@ for(sub_count in subjects){
   results[,7] = design$comp_number
 
   # Run model over simulated data
-  sim = PE_dep_LR_choice_model(design, alpha0, alpha1, temperature)
+  sim = PE_dep_LR_choice_model_interdep(design,
+                                        alpha0,
+                                        alpha1,
+                                        interdep,
+                                        temperature,
+                                        reward_space_ub,
+                                        'softmax')
   # Save model values, PE and fPE for ech trial and subject into matrix
-  results[,8] = sim$choice$choice
+  results[,8] = sim$choices
   results[,9:11] = as.matrix(sim$values)
   results[,12:14] = as.matrix(sim$PE)
   results[,15:17] = as.matrix(sim$fPE)
@@ -1279,7 +1300,16 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
              color=c(color$gain, color$gaussian, color$loss)) +
   geom_line(size=1, alpha=0.8) +
   scale_color_manual(values = c(color$gain, color$gaussian, color$loss)) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+  labs(title=paste('Choice model performance (α0=',
+                   alpha0,
+                   ', α1=',
+                   alpha1,
+                   ', τ=',
+                   temperature,
+                   ', π=',
+                   interdep,
+                   ')',
+                   sep=''),
        x='Trial',
        y='Estimated outcome',
        color='Stimulus')
@@ -1300,7 +1330,7 @@ Bias disappears for Gaussian distributions
 
 ```{r echo=FALSE}
 # Set up matrix to store data in (to append subjects)
-data_model = matrix(0,0,17)
+data_model = data.frame(matrix(0,0,17))
 
 # Loop over each subject
 for(sub_count in subjects){
@@ -1326,7 +1356,13 @@ for(sub_count in subjects){
   results[,7] = design$comp_number
 
   # Run model over simulated data
-  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+  sim = PE_dep_LR_choice_model_interdep(design,
+                                        alpha0,
+                                        alpha1,
+                                        interdep,
+                                        temperature,
+                                        reward_space_ub,
+                                        'softmax')
   # Save model values, PE and fPE for ech trial and subject into matrix
   results[,8] = sim$choices
   results[,9:11] = sim$values
@@ -1389,7 +1425,16 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
              color=c(color$gaussian, color$gain, color$gaussian)) +
   geom_line(size=1, alpha=0.8) +
   scale_color_manual(values = c(color$gaussian, color$gain, color$gaussian)) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+  labs(title=paste('Choice model performance (α0=',
+                   alpha0,
+                   ', α1=',
+                   alpha1,
+                   ', τ=',
+                   temperature,
+                   ', π=',
+                   interdep,
+                   ')',
+                   sep=''),
        x='Trial',
        y='Estimated outcome',
        color='Stimulus')
@@ -1409,7 +1454,7 @@ subjects = c(1:n_subjects)
 n_miniblocks = 25
 
 # Set up matrix to store data in (to append subjects)
-data_model = matrix(0,0,17)
+data_model = data.frame(matrix(0,0,17))
 
 # Loop over each subject
 for(sub_count in subjects){
@@ -1435,7 +1480,13 @@ for(sub_count in subjects){
   results[,7] = design$comp_number
 
   # Run model over simulated data
-  sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+  sim = PE_dep_LR_choice_model_interdep(design,
+                                        alpha0,
+                                        alpha1,
+                                        interdep,
+                                        temperature,
+                                        reward_space_ub,
+                                        'softmax')
   # Save model values, PE and fPE for ech trial and subject into matrix
   results[,8] = sim$choices
   results[,9:11] = sim$values
@@ -1498,7 +1549,16 @@ p = ggplot(data=data_plot, aes(x=trial, y=mean_value, group=variable, color=vari
              color=c(color$gaussian, color$loss, color$gaussian)) +
   geom_line(size=1, alpha=0.8) +
   scale_color_manual(values = c(color$gaussian, color$loss, color$gaussian)) +
-  labs(title=paste('Choice model performance (α0=', alpha0, ', α1=', alpha1, ', τ=', temperature, ')', sep=''),
+  labs(title=paste('Choice model performance (α0=',
+                   alpha0,
+                   ', α1=',
+                   alpha1,
+                   ', τ=',
+                   temperature,
+                   ', π=',
+                   interdep,
+                   ')',
+                   sep=''),
        x='Trial',
        y='Estimated outcome',
        color='Stimulus')
@@ -1513,6 +1573,8 @@ p
 
 ## Gain beta
 
+- No seed is set for this analysis, otherwise all samples had the same outcome.
+
 ```{r}
 # Number of samples for mean pe
 i = 10
@@ -1525,12 +1587,10 @@ for(i in 1:10){
   n_miniblocks = 25
   
   # Set up matrix to store data in (to append subjects)
-  data_model = matrix(0,0,17)
+  data_model = data.frame(matrix(0,0,17))
   
   # Loop over each subject
   for(sub_count in subjects){
-    
-    set.seed(sub_count)
     
     # Simulate data for subject
     design = Create_design(25,
@@ -1551,7 +1611,13 @@ for(i in 1:10){
     results[,7] = design$comp_number
     
     # Run model over simulated data
-    sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+    sim = PE_dep_LR_choice_model_interdep(design,
+                                        alpha0,
+                                        alpha1,
+                                        interdep,
+                                        temperature,
+                                        reward_space_ub,
+                                        'softmax')
     # Save model values, PE and fPE for ech trial and subject into matrix
     results[,8] = sim$choices
     results[,9:11] = sim$values
@@ -1584,6 +1650,8 @@ Negative average PE in Gain beta
 
 ## Loss beta
 
+- No seed is set for this analysis, otherwise all samples had the same outcome.
+
 ```{r}
 # Number of samples for mean pe
 i = 10
@@ -1600,8 +1668,6 @@ for(i in 1:10){
   
   # Loop over each subject
   for(sub_count in subjects){
-    
-    set.seed(sub_count)
     
     # Simulate data for subject
     design = Create_design(25,
@@ -1622,7 +1688,13 @@ for(i in 1:10){
     results[,7] = design$comp_number
     
     # Run model over simulated data
-    sim = PE_dep_LR_choice_model_alt(design, alpha0, alpha1, temperature, reward_space_ub, 'softmax')
+    sim = PE_dep_LR_choice_model_interdep(design,
+                                        alpha0,
+                                        alpha1,
+                                        interdep,
+                                        temperature,
+                                        reward_space_ub,
+                                        'softmax')
     # Save model values, PE and fPE for ech trial and subject into matrix
     results[,8] = sim$choices
     results[,9:11] = sim$values
@@ -1656,15 +1728,149 @@ Positive average PE in Loss beta
 
 ---
 
-# Tryout
-```{r}
-pe_stim1 = subset(data_model, pe_stim_1 !=0)
-update_stim1 = pe_stim1$pe_stim_1 * pe_stim1$fpe_stim_1
-mean(update_stim1)
-pe_stim3 = subset(data_model, pe_stim_3 !=0)
-update_stim3 = pe_stim3$pe_stim_3 * pe_stim3$fpe_stim_3
-mean(update_stim3)
+# Parameter influence on bias
 
-mean_value_at_choice_s1 = mean(pe_stim1$v_stim_1)
-mean_value_at_choice_s3 = mean(pe_stim3$v_stim_3)
+- Function to simulate number of participants with model and get bias
+
+```{r}
+bias_extraction = function(n_subjects,
+                           n_miniblocks,
+                           two_betas,
+                           param1.le, param2.le,
+                           param1.mid, param2.mid,
+                           param1.ue, param2.ue,
+                           reward_space_lb, reward_space_ub,
+                           alpha0, alpha1, interdep, temperature, policy){
+  
+  # Form vector from number of participants
+  subjects = c(1:n_subjects)
+  
+  # Set up matrix to store data in (to append subjects)
+  data_model = data.frame(matrix(0,0,17))
+  # Loop over each subject
+  for(sub_count in subjects){
+    
+    set.seed(sub_count)
+    
+    # Simulate data for subject
+    design = Create_design(n_miniblocks,
+                           param1.le, param2.le,
+                           param1.mid, param2.mid,
+                           param1.ue, param2.ue,
+                           two_betas = two_betas,
+                           reward_space_lb, reward_space_ub)
+    
+    # Create matrix to store data for each subject
+    results = data.frame(matrix(0,nrow(design),ncol(data_model)))
+    results[,1] = subjects[sub_count]
+    results[,2] = c(1:nrow(design))
+    results[,3] = design$option_left
+    results[,4] = design$option_right
+    results[,5] = design$reward_stim_1
+    results[,6] = design$reward_stim_2
+    results[,7] = design$comp_number
+    
+    # Run model over simulated data
+    sim = PE_dep_LR_choice_model_interdep(design,
+                                          alpha0,
+                                          alpha1,
+                                          interdep,
+                                          temperature,
+                                          reward_space_ub,
+                                          policy)
+    
+    # Save model values, PE and fPE for ech trial and subject into matrix
+    results[,8] = sim$choices
+    results[,9:11] = sim$values
+    results[,12:14] = sim$PE
+    results[,15:17] = sim$fPE
+    
+    # Append all subjects
+    data_model = rbind(data_model, results)
+  }
+  
+  # Convert to data frame (How our data will look like in the study)
+  data_model = data.frame(data_model)
+  colnames(data_model) = c('sub_id', 'trial', 'stim_1', 'stim_2',
+                           'reward_stim_1', 'reward_stim_2', 'comp_number', 'choice',
+                           'v_stim_1', 'v_stim_2', 'v_stim_3',
+                           'pe_stim_1', 'pe_stim_2', 'pe_stim_3',
+                           'fpe_stim_1', 'fpe_stim_2', 'fpe_stim_3')
+  # Sort after participants
+  data_model = data_model[order(data_model$sub_id),]
+  
+  # Add columns specifying parameters
+  data_model$alpha0 = alpha0
+  data_model$alpha1 = alpha1
+  data_model$interdep = interdep
+  data_model$temperature = temperature
+  data_model$policy = policy
+  
+  return(data_model)
+}
 ```
+
+- Loop over LRs, extract data, and save into .tsv-file
+
+```{r}
+# Set standard parameters
+n_subjects=40
+n_miniblocks=25
+two_betas=TRUE
+param1.le=beta_a_le
+param2.le=beta_b_le
+param1.mid=gaussian_mean
+param2.mid=gaussian_sd
+param1.ue=beta_a_ue
+param2.ue=beta_b_ue
+reward_space_lb=1
+reward_space_ub=100
+interdep=0.5
+temperature=7
+policy='softmax'
+
+# Create template of function output for appending outcome data frames
+temp = bias_extraction(n_subjects=1,
+                       n_miniblocks=1,
+                       two_betas=two_betas,
+                       param1.le=param1.le, param2.le=param2.le,
+                       param1.mid=param1.mid, param2.mid=param2.mid,
+                       param1.ue=param1.ue, param2.ue=param2.ue,
+                       reward_space_lb=reward_space_lb, reward_space_ub=reward_space_ub,
+                       alpha0=alpha0, alpha1=alpha1, interdep=interdep, temperature=temperature, policy=policy)
+df_bias = data.frame(matrix(NA,0,ncol(temp)))
+colnames(df_bias) = colnames(temp)
+
+# Loop over free parameters
+for(alpha0 in seq(0,1,by=0.1)){
+  for(alpha1 in seq(0,1,by=0.1)){
+    
+    # Run function to get data for bias calculation
+    df_bias = rbind(df_bias, 
+                    bias_extraction(n_subjects=n_subjects,
+                                    n_miniblocks=n_miniblocks,
+                                    two_betas=two_betas,
+                                    param1.le=param1.le, param2.le=param2.le,
+                                    param1.mid=param1.mid, param2.mid=param2.mid,
+                                    param1.ue=param1.ue, param2.ue=param2.ue,
+                                    reward_space_lb=reward_space_lb, reward_space_ub=reward_space_ub,
+                                    alpha0=alpha0, alpha1=alpha1, interdep=interdep,
+                                    temperature=temperature, policy=policy)
+                    )
+    
+  }
+}
+
+
+
+```
+
+
+--- 
+
+# Parameter recovery
+
+```{r}
+
+```
+

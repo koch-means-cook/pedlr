@@ -1,5 +1,12 @@
 # Ignore all data files
 raw_data/
 
+# Ignore all derivative files
+derivatives/
+
+# Ignore temporary R files
+*.Rhistory
+*.RData
+
 # Ignore MacOS junk
 .DS_Store
