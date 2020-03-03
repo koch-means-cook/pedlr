@@ -19,7 +19,8 @@ PE_dep_LR_choice_model_interdep = function(design,
   params.ndist = max(c(design$option_left, design$option_right))
   
   # Data frames to store choices, model values, prediction errors, and updating
-  df_choices = data.frame(matrix(NA, params.ntrials, 1))
+  df_choices = data.frame(matrix(NA, params.ntrials, 2))
+  colnames(df_choices) = c('choice', 'choice_prob')
   # Initialize values with 50
   df_values = data.frame(matrix(50, params.ntrials, params.ndist))
   # Initialize prediction errors and updates with NA
@@ -41,11 +42,13 @@ PE_dep_LR_choice_model_interdep = function(design,
     # Softmax
     if(choice_policy == 'softmax'){
       # Make softmax choice based on model values (returns index of choice in 2 entry vector)
-      choice = Softmax_choice(comp_value[1], comp_value[2], params.temperature)
+      choice = Softmax_choice(comp_value[1], comp_value[2], params.temperature)$choice
+      choice_prob = Softmax_choice(comp_value[1], comp_value[2], params.temperature)$choice_prob
     # Greedy
     } else if(choice_policy == 'greedy'){
       # Make greedy choice
       choice = which(comp_value == max(comp_value))
+      choice_prob = 1
       # In case of same value take random choice
       if(length(choice) > 1){
         choice = choice[sample(choice)[1]]
@@ -67,7 +70,8 @@ PE_dep_LR_choice_model_interdep = function(design,
     
     # Update entries
     # choice, pe, and fpe are updated in current trial
-    df_choices[trial_count, 1] = choice_stim
+    df_choices$choice[trial_count] = choice_stim
+    df_choices$choice_prob[trial_count] = choice_prob
     df_pe[trial_count, choice_stim] = pe
     df_fpe[trial_count, choice_stim] = fpe
     # Value is updated for all following trials
