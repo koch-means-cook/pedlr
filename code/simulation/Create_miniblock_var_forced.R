@@ -30,7 +30,7 @@ Create_miniblock_var_forced = function(blocknumber, perc_forced){
   free$pic_left = apply(combs, 1, function(x) paste('stimuli/s', as.character(x[1]), '.png', sep=''))
   free$pic_right = apply(combs, 1, function(x) paste('stimuli/s', as.character(x[2]), '.png', sep=''))
   # Set trial type
-  free$trial_type = 'free'
+  free$trial_type = 'choice'
   free$free_choice = 1
   free$forced_left = free$forced_right = 0
 
@@ -75,7 +75,7 @@ Create_miniblock_var_forced = function(blocknumber, perc_forced){
   # Add rating blocks (at least 10 trials apart) with amount of 20 % of total trial count
   # 120 trials, 120*0.2 = 24, 3 trials a rating block ==> 24/3 = 8 rating blocks
   mini_block$with_rating = 0
-  # Get one rating trial each 15 trials (mean) and randomly sift them back by 0-5 steps (assures at least 10
+  # Get one rating trial each 15 trials (mean) and randomly shift them back by 0-5 steps (assures at least 10
   # steps between rating trials but randomizes them to some degree)
   rating_index = 15*c(1:8) - sample(0:5, 8, replace=TRUE)
   # Add rating logical to rating trials
