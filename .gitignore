@@ -4,6 +4,9 @@ raw_data/
 # Ignore all derivative files
 derivatives/
 
+# Ignore data folder inside code/task folder
+code/task/data/
+
 # Ignore temporary R files
 *.Rhistory
 *.RData
