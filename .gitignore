@@ -7,9 +7,10 @@ derivatives/
 # Ignore data folder inside code/task folder
 code/task/data/
 
-# Ignore temporary R files
+# Ignore temporary R & matlab files
 *.Rhistory
 *.RData
+*.mat 
 
 # Ignore MacOS junk
 .DS_Store
