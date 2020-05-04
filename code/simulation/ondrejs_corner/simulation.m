@@ -1,6 +1,6 @@
 clear all
 close all
-iter = 50;
+iter = 10;
 domain = 0; % 0 = positive domain; -1 = negative domain   
 ncues = 3;
 for t = 1:iter
