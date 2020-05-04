@@ -13,3 +13,7 @@ code/task/data/
 
 # Ignore MacOS junk
 .DS_Store
+
+# Ignore task directory
+task
+

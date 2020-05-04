@@ -5,15 +5,42 @@
 
 Create_miniblock_var_forced = function(blocknumber, perc_forced){
   
-  mini_block = data.frame(matrix(NA, 0, 18))
-  colnames(mini_block) =  c('option_left', 'option_right',
-                            'pic_left', 'pic_right',
-                            'rating_pic1', 'rating_pic2', 'rating_pic3',
-                            'reward_stim_1', 'reward_stim_2',
+  mini_block = data.frame(matrix(NA, 0, 17))
+  # colnames(mini_block) =  c('option_left',
+  #                           'option_right',
+  #                           'pic_left',
+  #                           'pic_right',
+  #                           'rating_pic1',
+  #                           'rating_pic2',
+  #                           'rating_pic3',
+  #                           'reward_stim_1',
+  #                           'reward_stim_2',
+  #                           'comp_number',
+  #                           'trial_type',
+  #                           'free_choice',
+  #                           'forced_left',
+  #                           'forced_right',
+  #                           'with_rating',
+  #                           'rating_durat',
+  #                           'rt_fix_durat',
+  #                           'n_miniblock')
+  colnames(mini_block) =  c('option_left',
+                            'option_right',
+                            'pic_left',
+                            'pic_right',
+                            'reward_stim_1',
+                            'reward_stim_2',
                             'comp_number',
-                            'trial_type', 'free_choice', 'forced_left', 'forced_right',
-                            'with_rating', 'rating_durat', 'rt_fix_durat',
-                            'n_miniblock')
+                            'trial_type',
+                            'free_choice',
+                            'forced_left',
+                            'forced_right',
+                            'with_rating',
+                            'rt_fix_durat',
+                            'with_block_break',
+                            'with_new_instr',
+                            'task_version',
+                            'block_n')
   
   # Create free choice data frame
   # Get all combinations for three stimuli
@@ -21,7 +48,7 @@ Create_miniblock_var_forced = function(blocknumber, perc_forced){
   # Get mirrors to have equal amounts of right and left presentations
   combs = rbind(combs, combs[,c(2,1)])
   # Create data frame to hold free choices
-  free = data.frame(matrix(NA, nrow(combs), 18))
+  free = data.frame(matrix(NA, nrow(combs), 17))
   colnames(free) = colnames(mini_block)
   # Enter free choice combinations into free choice df
   free$option_left = combs[,1]
@@ -40,7 +67,7 @@ Create_miniblock_var_forced = function(blocknumber, perc_forced){
   # Repeat forced choices so cueing can be done equally for left and right
   forced_combs = rbind(forced_combs,forced_combs)
   # Create data frame to hold forced choices
-  forced = data.frame(matrix(NA, nrow(forced_combs), 18))
+  forced = data.frame(matrix(NA, nrow(forced_combs), 17))
   colnames(forced) = colnames(mini_block)
   # Enter forced choice combinations into free choice df
   forced$option_left = forced_combs[,1]
@@ -81,22 +108,38 @@ Create_miniblock_var_forced = function(blocknumber, perc_forced){
   # Add rating logical to rating trials
   mini_block$with_rating[rating_index] = 1
   # Define presented stimulus during rating in randomized order and replace it with stimulus path
-  rating_stims = data.frame(do.call('rbind', lapply(1:8, function(x) sample(1:3,3))))
-  rating_stims[] = lapply(rating_stims, function(x) paste('stimuli/s', as.character(x), sep=''))
-  colnames(rating_stims) = c('rating_pic1', 'rating_pic2','rating_pic3')
+  #rating_stims = data.frame(do.call('rbind', lapply(1:8, function(x) sample(1:3,3))))
+  #rating_stims[] = lapply(rating_stims, function(x) paste('stimuli/s', as.character(x), sep=''))
+  #colnames(rating_stims) = c('rating_pic1', 'rating_pic2','rating_pic3')
   # Fill different rating orders with stimuli
-  mini_block$rating_pic1[rating_index] = rating_stims$rating_pic1
-  mini_block$rating_pic2[rating_index] = rating_stims$rating_pic2
-  mini_block$rating_pic3[rating_index] = rating_stims$rating_pic3
+  #mini_block$rating_pic1[rating_index] = rating_stims$rating_pic1
+  #mini_block$rating_pic2[rating_index] = rating_stims$rating_pic2
+  #mini_block$rating_pic3[rating_index] = rating_stims$rating_pic3
 
-  # Set timings and ITIs in rating trials
-  mini_block$rating_durat = 0
-  mini_block$rating_durat[rating_index] = 20
+  # Set ITIs in rating trials
   mini_block$rt_fix_durat = 0
   mini_block$rt_fix_durat[rating_index] = 0.5
   
   # Set block_count
-  mini_block$n_miniblock = blocknumber
+  mini_block$block_n = blocknumber
+  
+  # with block break
+  mini_block$with_block_break = 0
+  # Set block break to TRUE on first entry of block if it is not the first block
+  if(blocknumber!=1){
+    mini_block$with_block_break[1] = 1
+  }
+  
+  # Task version (loss/gain)
+   mini_block$task_version = 1
+  
+  # With new instructions
+  mini_block$with_new_instr = 0
+  # In case the task version changed, set new instructions to TRUE on first trial of new version
+  if(mini_block$task_version[1] != 1){
+    mini_block$with_new_instr[1] = 1
+  }
+  
   
   # Return complete mini_block
   return(mini_block)
