@@ -4,6 +4,23 @@ Create_plan <- function(n_blocks,
                           blocks_per_task,
                           dist_list){
   
+  # Check inputs
+  if(length(dist_list)/3 != n_blocks/blocks_per_task){
+    stop(paste("Number of provided distributions: ",
+               length(dist_list),
+               " (",
+               length(dist_list)/3,
+               " tasks).\n",
+               "With three distributions per block and ",
+               blocks_per_task,
+               " blocks per task the number of blocks can only be ",
+               length(dist_list)/3*blocks_per_task,
+               " (and not ",
+               n_blocks,
+               ").",
+               sep=''))
+  }
+  
   # Number of specified distributions
   n_dist = length(dist_list)
   # Number of task versions (one per three distributions, since three dists in one task version)
@@ -58,6 +75,13 @@ Create_plan <- function(n_blocks,
       plan$arg_5[plan$dist_nr == dist_count] = dist_vec[6]
     }
   }
+  
+  # Set data types for arguments
+  plan$arg_1 = as.numeric(plan$arg_1)
+  plan$arg_2 = as.numeric(plan$arg_2)
+  plan$arg_3 = as.numeric(plan$arg_3)
+  plan$arg_4 = as.numeric(plan$arg_4)
+  plan$arg_5 = as.numeric(plan$arg_5)
   
   # Return plan
   return(plan)
