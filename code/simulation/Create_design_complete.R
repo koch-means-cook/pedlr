@@ -27,8 +27,14 @@ Create_design <- function(n_blocks,
   reward_space_lb = 1
   reward_space_ub = 100
   
-  # Create design template
-  design = Create_block(0,perc_forced)
+  # Create design template (parameters for block creation do not make sense on purpose)
+  design = Create_block(0,
+                        perc_forced,
+                        task_version = 1,
+                        stim_1 = 1,
+                        stim_2 = 1,
+                        stim_3 = 1)
+  # Take only column structure for design template (to append blocks to design)
   design = design[0,]
   
   # For each block
@@ -37,7 +43,12 @@ Create_design <- function(n_blocks,
     # Get plan for specific block
     plan_sub = plan[plan$block == block_count,]
     # Create block structure
-    block = Create_block(block_count, perc_forced)
+    block = Create_block(blocknumber = block_count,
+                         perc_forced = perc_forced,
+                         task_version = unique(plan_sub$version),
+                         stim_1 = plan$stimuli[1],
+                         stim_2 = plan$stimuli[2],
+                         stim_3 = plan$stimuli[3])
     # Get number of rewards to sample from block structure
     n_sample = nrow(subset(block, block$option_left == 1 | block$option_right == 1))
     
@@ -100,14 +111,15 @@ Create_design <- function(n_blocks,
       # Right rewards
       index = block$option_right == dist_count
       block$reward_stim_2[index] = reward$outcome[(length(block$reward_stim_2[index])+1):nrow(reward)]
-      
-      
-      
-      
     }
     
-    # Set task version according to set of distributions used
-    block$task_version = dist_nr / 3
+    # In case this is not the first block (because there cannot be 'new' instructions on the first block) AND
+    # in case the task version changed, set new instructions to TRUE on first trial of block with new version
+    if(nrow(design) != 0){
+      if(design$task_version[nrow(design)] != block$task_version[1]){
+        block$with_new_instr[1] = 1
+      }
+    }
     
     # Concatenate blocks to create design
     design = rbind(design, block)
@@ -119,18 +131,27 @@ Create_design <- function(n_blocks,
 }
 
 # Provide standard values
-n_blocks = 9
+n_blocks = 6
 perc_forced = 20
-blocks_per_task = 3
-dist_list = list(c('gaussian', 33, 10),
+blocks_per_task = 2
+dist_list = list(c('gaussian', 100/3, 30),
+                 c('beta', 3, 2),
+                 c('gaussian', 2*100/3, 30),
+                 c('beta', 3, 2),
                  c('uniform', 1, 100),
-                 c('gaussian', 66, 10),
-                 c('gaussian', 33, 10),
+                 c('beta', 2, 3),
                  c('uniform', 1, 100),
-                 c('gaussian', 66, 10),
-                 c('gaussian', 33, 10),
                  c('uniform', 1, 100),
                  c('gaussian', 66, 10))
+# dist_list = list(c('gaussian', 100/3, 50),
+#                  c('gaussian', 100/3, 50),
+#                  c('gaussian', 100/3, 50),
+#                  c('gaussian', 100/3, 50),
+#                  c('gaussian', 100/3, 50),
+#                  c('gaussian', 100/3, 50),
+#                  c('gaussian', 100/3, 50),
+#                  c('gaussian', 100/3, 50),
+#                  c('gaussian', 100/3, 50))
 
 # Testrun plan
 plan = Create_plan(n_blocks,

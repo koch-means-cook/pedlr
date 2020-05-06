@@ -37,14 +37,22 @@ Bimodal_pseudo_sim = function(n_sim,
     add_samples = data.frame(cbind(main.samples, second.samples))
     colnames(add_samples) = c('main.samples', 'second.samples')
     # Chose randomly from which distribution to add the sample to the outcome based on relative proportion
-    samples = apply(add_samples, 1, function(x) sample(c(x[1], x[2]), 1, prob=c((1-relative_proportion), relative_proportion)))
+    samples = apply(add_samples,
+                    1,
+                    function(x) sample(c(x[1], x[2]),
+                                       1,
+                                       prob=c((1-relative_proportion), relative_proportion)))
     # Resample in case the sampling does not fulfill boundary requirements
     while(any(samples < reward_space_lb | samples > reward_space_ub)){
       main.samples = round(rnorm(missing_samples, main.mean, main.sd))
       second.samples = round(rnorm(missing_samples, second.mean, second.sd))
       add_samples = data.frame(cbind(main.samples, second.samples))
       colnames(add_samples) = c('main.samples', 'second.samples')
-      samples = apply(add_samples, 1, function(x) sample(c(x[1], x[2]), 1, prob=c((1-relative_proportion), relative_proportion)))
+      samples = apply(add_samples,
+                      1,
+                      function(x) sample(c(x[1], x[2]),
+                                         1,
+                                         prob=c((1-relative_proportion), relative_proportion)))
     }
     # Go thourgh all amples individually in case one digit was sampled multiple times (which prohibits
     # one-liners)

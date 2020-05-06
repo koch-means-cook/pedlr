@@ -7,19 +7,22 @@ Gaussian_pseudo_sim = function(n_sim, mean, sd, dist_name, reward_space_lb, rewa
   # Set up data frame holding value and distribution value was sampled from
   data_sim = data.frame(matrix(0,nrow=n_sim,ncol=2))
   colnames(data_sim) = c('outcome', 'dist')
+  
   # Get how often each number would be sampled given the distribution and n_sim trials
   # Get probability to sample each value over reward space given the distribution
   outcome = dnorm(seq(from=reward_space_lb,to=reward_space_ub), mean, sd)
   outcome = outcome/sum(outcome)
   outcome = round(outcome*n_sim)
+  
   # If samples are missing, add newly sampled values
   missing_samples = n_sim - sum(outcome)
   # If there are too few samples add the missing ones to the outcome
   if(missing_samples > 0){
     samples = round(rnorm(missing_samples, mean, sd))
+    samples < reward_space_lb | samples > reward_space_ub
     # Resample in case the sampling does not fulfill boundary requirements
     while(any(samples < reward_space_lb | samples > reward_space_ub)){
-      samples = round(rnorm(abs(missing_samples), mean, sd)*reward_space_ub)
+      samples = round(rnorm(abs(missing_samples), mean, sd))
     }
     # Go thourgh all amples individually in case one digit was sampled multiple times (which prohibits
     # one-liners)
@@ -38,7 +41,7 @@ Gaussian_pseudo_sim = function(n_sim, mean, sd, dist_name, reward_space_lb, rewa
   outcome = sample(outcome)
   
   # If there are too many samples, delete the same amount of samples randomly from distribution while
-  # orienting the probability of a sample being delited similar to distribution
+  # orienting the probability of a sample being deleted similar to distribution
   if(missing_samples < 0){
     outcome = outcome[-sample(c(1:length(outcome)),abs(missing_samples), replace=FALSE)]
   }

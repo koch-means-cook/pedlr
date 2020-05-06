@@ -3,7 +3,12 @@
 # By building the whole design out of mini blocks we make sure that in each mini block we have the same amount
 # of forced and choice trials as well as rating trials as soon as one miniblock is finished
 
-Create_block = function(blocknumber, perc_forced){
+Create_block = function(blocknumber,
+                        perc_forced,
+                        task_version,
+                        stim_1,
+                        stim_2,
+                        stim_3){
   
   block = data.frame(matrix(NA, 0, 17))
   # colnames(block) =  c('option_left',
@@ -53,9 +58,16 @@ Create_block = function(blocknumber, perc_forced){
   # Enter free choice combinations into free choice df
   free$option_left = combs[,1]
   free$option_right = combs[,2]
+  
   # Stimlus pictures
-  free$pic_left = apply(combs, 1, function(x) paste('stimuli/s', as.character(x[1]), '.png', sep=''))
-  free$pic_right = apply(combs, 1, function(x) paste('stimuli/s', as.character(x[2]), '.png', sep=''))
+  stimuli = c(stim_1, stim_2, stim_3)
+  free$pic_left = apply(combs,
+                        1,
+                        function(x) paste('stimuli/s', as.character(stimuli[x[1]]), '.png', sep=''))
+  free$pic_right = apply(combs,
+                         1,
+                         function(x) paste('stimuli/s', as.character(stimuli[x[2]]), '.png', sep=''))
+  
   # Set trial type
   free$trial_type = 'choice'
   free$free_choice = 1
@@ -72,11 +84,15 @@ Create_block = function(blocknumber, perc_forced){
   # Enter forced choice combinations into free choice df
   forced$option_left = forced_combs[,1]
   forced$option_right = forced_combs[,2]
+  
   # Stimlus pictures
-  forced$pic_left = apply(forced_combs, 1,
-                          function(x) paste('stimuli/s', as.character(x[1]), '.png', sep=''))
-  forced$pic_right = apply(forced_combs, 1,
-                           function(x) paste('stimuli/s', as.character(x[2]), '.png', sep=''))
+  forced$pic_left = apply(forced_combs,
+                          1,
+                          function(x) paste('stimuli/s', as.character(stimuli[x[1]]), '.png', sep=''))
+  forced$pic_right = apply(forced_combs,
+                           1,
+                           function(x) paste('stimuli/s', as.character(stimuli[x[2]]), '.png', sep=''))
+  
   # Set trial type
   forced$trial_type = 'forced'
   forced$free_choice = 0
@@ -162,15 +178,11 @@ Create_block = function(blocknumber, perc_forced){
     block$with_block_break[1] = 1
   }
   
-  # Task version (loss/gain)
-   block$task_version = 1
+  # Task version (for different distributions)
+  block$task_version = task_version
   
-  # With new instructions
+  # With new instructions (gets changed during design creation)
   block$with_new_instr = 0
-  # In case the task version changed, set new instructions to TRUE on first trial of new version
-  if(block$task_version[1] != 1){
-    block$with_new_instr[1] = 1
-  }
   
   
   # Return complete block

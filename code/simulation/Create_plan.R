@@ -52,19 +52,13 @@ Create_plan <- function(n_blocks,
     plan$dist_name[plan$dist_nr == dist_count] = dist_type
     
     # Depending on dist type, fill arguments in plan
-    if(dist_type == 'gaussian'){
-      # Read mean parameter
+    if(dist_type == 'beta'){
+      # Read out alpha parameter
       plan$arg_1[plan$dist_nr == dist_count] = dist_vec[2]
-      # Read SD parameter
+      # Read out beta parameter
       plan$arg_2[plan$dist_nr == dist_count] = dist_vec[3]
     }
-    else if(dist_type == 'uniform'){
-      # Read out min parameter
-      plan$arg_1[plan$dist_nr == dist_count] = dist_vec[2]
-      # Read out max parameter
-      plan$arg_2[plan$dist_nr == dist_count] = dist_vec[3]
-    }
-    else if(dist_type == 'bimodal'){
+    if(dist_type == 'bimodal'){
       # Read out parameters of first distribution (mean, sd)
       plan$arg_1[plan$dist_nr == dist_count] = dist_vec[2]
       plan$arg_2[plan$dist_nr == dist_count] = dist_vec[3]
@@ -74,7 +68,23 @@ Create_plan <- function(n_blocks,
       # Read out proportion of distributions
       plan$arg_5[plan$dist_nr == dist_count] = dist_vec[6]
     }
+    if(dist_type == 'gaussian'){
+      # Read mean parameter
+      plan$arg_1[plan$dist_nr == dist_count] = dist_vec[2]
+      # Read SD parameter
+      plan$arg_2[plan$dist_nr == dist_count] = dist_vec[3]
+    }
+    if(dist_type == 'uniform'){
+      # Read out min parameter
+      plan$arg_1[plan$dist_nr == dist_count] = dist_vec[2]
+      # Read out max parameter
+      plan$arg_2[plan$dist_nr == dist_count] = dist_vec[3]
+    }
   }
+  
+  # Assign random stimuli to distributions for each task version
+  stimuli = sample(seq(n_dist))
+  plan$stimuli = unlist(lapply(plan$dist_nr, function(x) stimuli[x]))
   
   # Set data types for arguments
   plan$arg_1 = as.numeric(plan$arg_1)
@@ -82,6 +92,7 @@ Create_plan <- function(n_blocks,
   plan$arg_3 = as.numeric(plan$arg_3)
   plan$arg_4 = as.numeric(plan$arg_4)
   plan$arg_5 = as.numeric(plan$arg_5)
+  plan$stimuli = as.numeric(plan$stimuli)
   
   # Return plan
   return(plan)
