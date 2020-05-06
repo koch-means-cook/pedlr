@@ -16,5 +16,5 @@ code/task/data/
 .DS_Store
 
 # Ignore task directory
-task
+task/
 
