@@ -70,6 +70,12 @@ Bimodal_pseudo_sim = function(n_sim,
   # Randomize sample
   outcome = sample(outcome)
   
+  # If there are too many samples, delete the same amount of samples randomly from distribution while
+  # orienting the probability of a sample being deleted similar to distribution
+  if(missing_samples < 0){
+    outcome = outcome[-sample(c(1:length(outcome)),abs(missing_samples), replace=FALSE)]
+  }
+  
   # Fill output with results
   data_sim$outcome = outcome
   data_sim$dist = dist_name
