@@ -4,13 +4,14 @@
 # - Updating of values only for chosen option
 # - Choice policy based on softmax
 
-PE_dep_LR_choice_model_interdep = function(design,
-                                           params.alpha0,
-                                           params.alpha1,
-                                           params.interdep,
-                                           params.temperature,
-                                           params.reward_space_ub,
-                                           choice_policy){
+Pedlr_interdep = function(design,
+                          params.alpha0,
+                          params.alpha1,
+                          params.interdep,
+                          params.temperature,
+                          params.reward_space_ub,
+                          choice_policy,
+                          init_values = c(50,50,50)){
   
   # Get other parameters from design
   # Number of trials
@@ -22,7 +23,7 @@ PE_dep_LR_choice_model_interdep = function(design,
   df_choices = data.frame(matrix(NA, params.ntrials, 2))
   colnames(df_choices) = c('choice', 'choice_prob')
   # Initialize values with 50
-  df_values = data.frame(matrix(50, params.ntrials, params.ndist))
+  df_values = data.frame(matrix(rep(init_values, each = params.ntrials), params.ntrials, params.ndist))
   # Initialize prediction errors and updates with NA
   df_pe = df_fpe = data.frame(matrix(NA, params.ntrials, params.ndist))
   # Set colnames for each stimulus
