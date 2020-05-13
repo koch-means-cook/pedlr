@@ -39,21 +39,42 @@ Pedlr_interdep = function(design,
     comp_value = c(df_values[trial_count, comp_stim[1]], df_values[trial_count, comp_stim[2]])
     comp_reward = c(design$reward_stim_1[trial_count], design$reward_stim_2[trial_count])
     
-    # Select between softmax and greedy choice based on input
-    # Softmax
-    if(choice_policy == 'softmax'){
-      # Make softmax choice based on model values (returns index of choice in 2 entry vector)
-      choice = Softmax_choice(comp_value[1], comp_value[2], params.temperature)$choice
-      choice_prob = Softmax_choice(comp_value[1], comp_value[2], params.temperature)$choice_prob
-    # Greedy
-    } else if(choice_policy == 'greedy'){
-      # Make greedy choice
-      choice = which(comp_value == max(comp_value))
-      choice_prob = 1
-      # In case of same value take random choice
-      if(length(choice) > 1){
-        choice = choice[sample(choice)[1]]
+    # In case of free choice trial
+    if(design$forced_left[trial_count] == 0 & design$forced_right[trial_count] == 0){
+      # Not a forced choice trial
+      forced_choice = 0
+      # Select between softmax and greedy choice based on input
+      # Softmax
+      if(choice_policy == 'softmax'){
+        # Make softmax choice based on model values (returns index of choice in 2 entry vector)
+        choice = Softmax_choice(comp_value[1], comp_value[2], params.temperature)$choice
+        choice_prob = Softmax_choice(comp_value[1], comp_value[2], params.temperature)$choice_prob
+        # Greedy
+      } else if(choice_policy == 'greedy'){
+        # Make greedy choice
+        choice = which(comp_value == max(comp_value))
+        choice_prob = 1
+        # In case of same value take random choice
+        if(length(choice) > 1){
+          choice = choice[sample(choice)[1]]
+        }
       }
+      # In case of forced choice left, chose left with 100% probability
+    } else if(design$forced_left[trial_count] == 1){
+      choice = 1
+      choice_prob = 1
+      forced_choice = 1
+      # In case of forced choice right, chose right with 100% probability
+    } else if(design$forced_right[trial_count] == 1){
+      choice = 2
+      choice_prob = 1
+      forced_choice = 1
+      # In case forced choice of both alternatives, raise error (broken design)
+    } else if(design$forced_left[trial_count] == 1 & design$forced_right[trial_count] == 1){
+      stop(paste("Simultaneous forced choice of left and right option in trial ",
+                 trial_count,
+                 ".",
+                 sep=''))
     }
     
     # Get chosen stimulus, value, and reward
@@ -73,6 +94,7 @@ Pedlr_interdep = function(design,
     # choice, pe, and fpe are updated in current trial
     df_choices$choice[trial_count] = choice_stim
     df_choices$choice_prob[trial_count] = choice_prob
+    df_choices$forced_choice[trial_count] = forced_choice
     df_pe[trial_count, choice_stim] = pe
     df_fpe[trial_count, choice_stim] = fpe
     # Value is updated for all following trials

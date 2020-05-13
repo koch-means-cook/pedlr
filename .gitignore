@@ -18,3 +18,6 @@ code/task/data/
 # Ignore task directory
 task/
 
+# Ignore knitted notbooks
+*.html
+

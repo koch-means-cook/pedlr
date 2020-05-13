@@ -45,7 +45,7 @@ Apply_model = function(design,
   
   
   # Create matrix to store model data
-  data_model = matrix(NA,0,18)
+  data_model = matrix(NA,0,19)
   # Convert to data frame
   data_model = data.frame(data_model)
   colnames(data_model) = c('trial',
@@ -56,6 +56,7 @@ Apply_model = function(design,
                            'comp_number',
                            'choice',
                            'choice_prob',
+                           'forced_choice',
                            'v_stim_1',
                            'v_stim_2',
                            'v_stim_3',
@@ -73,7 +74,7 @@ Apply_model = function(design,
     # Restrict data to specific task version
     design_version = subset(design, task_version == version_count)
     
-    data = data.frame(matrix(NA,nrow(design_version),18))
+    data = data.frame(matrix(NA,nrow(design_version),19))
     colnames(data) = colnames(data_model)
     
     # Add data important for model behavior
@@ -107,6 +108,7 @@ Apply_model = function(design,
     # Save model values, PE and fPE for ech trial and subject
     data$choice = sim$choices$choice
     data$choice_prob = sim$choices$choice_prob
+    data$forced_choice = sim$choices$forced_choice
     data$v_stim_1 = sim$values$stim_1
     data$v_stim_2 = sim$values$stim_2
     data$v_stim_3 = sim$values$stim_3
