@@ -1,18 +1,16 @@
 
-Plot_value = function(results,
-                      last_perc_of_trials,
-                      average_subjects,
-                      mean_value_calculation){
-  
-  
+Model_results = function(results,
+                         last_perc_of_trials,
+                         average_subjects,
+                         mean_value_calculation){
   
   # Arguments
   #   results: data frame of model output (result from 'Apply_model' function)
   #   last_perc_of_trials: Last percentage of trials that should be taken into account
   #           - e.g.: 20, only last 20 percent of trials will be used to form the mean over the
   #                   estimated value of a stimulus
-  #   average_subjects: TRUE/FALSE, Determines if plot should be averaged over all subjects or each
-  #                     subjects should be plotted individually.
+  #   average_subjects: TRUE/FALSE, Determines if results are averaged over all subjects or given for each
+  #                     subject individually.
   #   mean_value_calculation: Determines calculation of mean value for each stimulus. Available options:
   #           - 'all_trials': Calculating the average value for a stimulus uses all trials, even the value
   #                           estimates in wich this stimulus was not chosen and is not updated ('value 
@@ -73,6 +71,7 @@ Plot_value = function(results,
   levels(data_sampling$variable) = paste("v_stim_", levels(data_sampling$variable), sep='')
   data_sampling$samples = as.numeric(data_sampling$samples)
   
+  # Plot sampling histogram
   plot_sampling = ggplot(data = data_sampling,
                          aes(x = samples,
                              fill = variable,
@@ -114,12 +113,13 @@ Plot_value = function(results,
   trial_cutoff = round(max(results$trial) / 100 * (100 - last_perc_of_trials))
   data_mean_value = subset(results, trial >= trial_cutoff)
   # Count number of trials for each stimulus in specified upper percentage of data
-  counts = data.frame(ddply(data_mean_value,
+  counts = data.table(ddply(data_mean_value,
                             .(task_version, sub_id),
                             function(data_mean_value) table(data_mean_value$variable)))
+  counts = melt(counts, id.vars = c('sub_id', 'task_version'))
   # Raise error in case there were less than 5 trials of at least one option
   # in the upper percentage of trials
-  if(any(select(counts, -task_version, -sub_id) < 5)){
+  if(any(counts$value < 5)){
     stop(paste("There are less than 5 trials in the upper ",
                last_perc_of_trials,
                "% of trials (not sufficient to construct a mean).",
@@ -135,17 +135,16 @@ Plot_value = function(results,
     # Get only trials in which specific stimulus was chosen and updated
     data_mean_value = subset(data_mean_value, choice == as.numeric(substr(variable, 8,8)))
     # Count number of chosen trials for each stimulus in specified upper percentage of data
-    counts = data.frame(ddply(data_mean_value,
+    counts = data.table(ddply(data_mean_value,
                               .(task_version, sub_id),
                               function(data_mean_value) table(data_mean_value$variable)))
+    counts = melt(counts, id.vars = c('sub_id', 'task_version'))
     # Raise error in case one option was not chosen in the upper percentage of trials
-    if(any(select(counts, -task_version, -sub_id) < 1)){
+    if(any(counts$value < 3)){
       stop(paste("At least one stimulus in the upper ",
                  last_perc_of_trials,
-                 "% of trials was chosen not chosen a single time in at least one subject ",
+                 "% of trials was chosen chosen less than three times in at least one subject ",
                  "and at least one task version (insufficient to construct mean).\n",
-                 "Participants for which this is the case:\n ",
-                 print(counts),
                  sep=''))
     }
     data_mean_value = ddply(data_mean_value,
@@ -170,7 +169,11 @@ Plot_value = function(results,
                             .(task_version, variable),
                             summarize,
                             mean_value = mean(mean_value))
-    
+    counts = ddply(counts,
+                   .(task_version, variable),
+                   summarize,
+                   mean_count = mean(value))
+  
     # Plot average value for each trial
     plot_value = ggplot(data_plot,
                         aes(x = trial,
@@ -226,6 +229,10 @@ Plot_value = function(results,
                      ncol = 1,
                      rel_heights = c(1,2))
     
+    # Combine results
+    data_results = data_mean_sampling
+    data_results$mean_value = data_mean_value$mean_value
+    data_results$n_values_used = counts$mean_count
     
     # In case of plot for each subject
   } else if(average_subjects == FALSE){
@@ -278,9 +285,22 @@ Plot_value = function(results,
                      plot_value,
                      ncol = 1,
                      rel_heights = c(1,length(unique(data_mean_sampling$sub_id))))
+    
+    # Combine results
+    data_results = data_mean_sampling
+    data_results$mean_value = data_mean_value$mean_value
+    # Sort counts so structure is the same as in other results
+    setorder(counts, sub_id, task_version)
+    data_results$n_values_used = counts$value
   }
   
-  return(plot)
+  # Add bias column between sampling mean and estimated mean value
+  data_results$bias = data_results$mean_value - data_results$sampling_mean
+  
+  # Form list to return plot and result
+  output = list('bias' = data_results, 'plot' = plot)
+  
+  return(output)
   
 }
 
