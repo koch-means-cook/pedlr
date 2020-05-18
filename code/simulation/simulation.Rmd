@@ -68,6 +68,9 @@ source(file.path(source_path, 'Softmax_choice.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'PE_dep_LR_single_model.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Apply_model.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Model_results.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Model_bias_value.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Model_perc_correct.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Model_bias_correct.R', fsep = .Platform$file.sep))
 ```
 
 ---
@@ -402,11 +405,16 @@ for(version_count in unique(design$task_version)){
 # Prepare for plotting
 data_plot$stimulus = as.factor(data_plot$stimulus)
 # Plot sampling for each task version and stimulus
-p_sampling = ggplot(data = data_plot, aes(x = samples, fill = stimulus)) +
-  geom_histogram(binwidth = 1) +
+p_sampling = ggplot(data = data_plot,
+                    aes(x = samples,
+                        fill = stimulus,
+                        group = stimulus)) +
+  geom_histogram(binwidth = 1,
+                 position = 'identity',
+                 alpha = 0.7) +
   # facet_grid(rows = vars(task_version),
   #            cols = vars(stimulus))
-  facet_wrap(~ task_version + stimulus)
+  facet_wrap(~ task_version)
 
 # Display plot
 p_sampling
@@ -562,47 +570,196 @@ average_subjects = TRUE
 mean_value_calculation = 'chosen_trials'
 ```
 
+- Assess bias for different parameters
 
 ```{r}
-data = cbind(data_bias[0,], parameters[0,])
-
-for(run_count in seq(nrow(parameters))){
-  # Apply model with different parameters to subjects
-  data_model = ddply(data_sim,
-                     "sub_id",
-                     Apply_model,
-                     model = 'Pedlr',
-                     parameters = parameters[run_count,],
-                     init_values = init_values)
-  # Get bias for specific parameters
-  results = Model_results(results = data_model,
-                          last_perc_of_trials = last_perc_of_trials,
-                          average_subjects = average_subjects,
-                          mean_value_calculation = mean_value_calculation)
-  data_bias = cbind(results$bias,
-                    do.call("rbind",
-                            replicate(nrow(data_bias),
-                                      parameters[run_count,],
-                                      simplify = FALSE)))
+# See if bias assessment was already done
+file = file.path(derivatives_path, 'bias_simulation.tsv')
+# If yes, load output
+if(file.exists(file)){
+  data_bias = read.table(file, sep = '\t', header = TRUE)
   
-  data = rbind(data, data_bias)
+  # Only run bias assessmentin case not present already
+} else if(!file.exists(file)){
+  
+  # Create template
+  data_bias = Model_results(results = data_model,
+                            last_perc_of_trials = last_perc_of_trials,
+                            average_subjects = average_subjects,
+                            mean_value_calculation = mean_value_calculation)$bias
+  data_bias = cbind(data_bias[0,], parameters[0,])
+  
+  # Loop over all parameter combinations
+  for(run_count in seq(nrow(parameters))){
+    # Apply model with different parameters to subjects
+    data_model = ddply(data_sim,
+                       "sub_id",
+                       Apply_model,
+                       model = 'Pedlr',
+                       parameters = parameters[run_count,],
+                       init_values = init_values)
+    # Get bias for specific parameters
+    results = Model_results(results = data_model,
+                            last_perc_of_trials = last_perc_of_trials,
+                            average_subjects = average_subjects,
+                            mean_value_calculation = mean_value_calculation)
+    data = cbind(results$bias,
+                 do.call("rbind",
+                         replicate(nrow(data),
+                                   parameters[run_count,],
+                                   simplify = FALSE)))
+    # Append results for parameters
+    data_bias = rbind(data_bias, data)
+  }
+  
+  # Add model variables to data
+  data_bias$last_perc_of_trials = last_perc_of_trials
+  data_bias$average_subjects = as.numeric(average_subjects)
+  data_bias$mean_value_calculation = mean_value_calculation
+  
+  # Save bias simulation
+  write.table(data_bias, file, sep='\t', row.names = FALSE)
 }
 
-# Add model variables to data
-data$last_perc_of_trials = last_perc_of_trials
-data$average_subjects = as.numeric(average_subjects)
-data$mean_value_calculation = mean_value_calculation
+```
 
-# Save bias simulation
+- Plot bias
+
+```{r}
+n_subjects = 40
+set_seed = TRUE
+n_blocks = n_blocks
+perc_forced = perc_forced
+blocks_per_task = blocks_per_task
+dist_list = dist_list
+model = 'Pedlr'
+parameters = parameters
+init_values = init_values
+last_perc_of_trials = last_perc_of_trials
+average_subjects = average_subjects
+mean_value_calculation = mean_value_calculation
 file = file.path(derivatives_path, 'bias_simulation.tsv')
-write.table(data, file, sep='\t', row.names = FALSE)
+save_data = FALSE
+save_file = file
+load_data = TRUE
+load_file = file
+
+# Assess bias (if load data is true it will load .tsv of data_bias)
+bias = Model_bias_value(n_subjects = n_subjects,
+                  set_seed = TRUE,
+                  n_blocks = n_blocks,
+                  perc_forced = perc_forced,
+                  blocks_per_task = blocks_per_task,
+                  dist_list = dist_list,
+                  model = model,
+                  parameters = parameters,
+                  init_values = init_values,
+                  last_perc_of_trials = last_perc_of_trials,
+                  average_subjects = average_subjects,
+                  mean_value_calculation = mean_value_calculation,
+                  save_data = save_data,
+                  save_file = save_file,
+                  load_data = load_data,
+                  load_file = load_file)
+
+data_bias = bias$bias
+bias$plot_softmax
+bias$plot_greedy
+```
+
+---
+
+# False choices
+
+## Pedlr
+
+**Annotation:** This only holds in case the sampling means are hierarchical (reward_stim_1 < reward_stim_2 < reward_stim_3).
+
+```{r}
+perc_correct = Model_perc_correct(data_model)
+
+data_choice = perc_correct$perc_correct
+perc_correct$plot
+```
+
+### Influence of distribution distance on correct choices
+
+**Annotation:** Here we will use a gain and a loss beta for simplicity.
+
+```{r}
+# Steps in which to loop over each parameter
+steps_alpha0 = seq(from = 0, to = 1, length.out = 3)
+steps_alpha1 = seq(from = 0, to = 1, length.out = 3)
+steps_temperature = 1
+steps_policy = 'softmax'
+
+# Get all combinations of parameters
+parameters = data.table(expand.grid(steps_alpha0,
+                                    steps_alpha1,
+                                    steps_temperature,
+                                    steps_policy))
+colnames(parameters) = c('alpha0', 'alpha1', 'temperature', 'choice_policy')
+
+# Add constant parameters
+parameters$reward_space_ub = reward_space_ub
 ```
 
 
+```{r}
+n_subjects = 10
+set_seed = TRUE
+n_blocks = 6
+perc_forced = 20
+blocks_per_task = 3
+dist_list = dist_list = list(c('gaussian', (100/6) * 1, gaussian_sd),
+                 c('beta', 5/3, (2*5)/3),
+                 c('gaussian', (100/6) * 3, gaussian_sd),
+                 c('gaussian', (100/6) * 3, gaussian_sd),
+                 c('beta', (2*5)/3, 5/3),
+                 c('gaussian', (100/6) * 5, gaussian_sd))
+model = 'Pedlr'
+parameters = parameters
+init_values = list(c(50,50,50),
+                   c(50,50,50))
+shrink_distance_vec = seq(3)
+file = file.path(derivatives_path, 'bias_correct_simulation.tsv')
+save_data = FALSE
+save_file = file
+load_data = FALSE
+load_file = file
 
+data_bias_correct = Model_bias_correct(n_subjects = n_subjects,
+                                       set_seed = set_seed,
+                                       n_blocks = n_blocks,
+                                       perc_forced = perc_forced,
+                                       blocks_per_task = blocks_per_task,
+                                       dist_list = dist_list,
+                                       model = model,
+                                       parameters = parameters,
+                                       init_values = init_values,
+                                       shrink_distance_vec = shrink_distance_vec,
+                                       save_data = save_data,
+                                       save_file = save_file,
+                                       load_data = load_data,
+                                       load_file = load_file)
+```
 
+```{r}
+data_plot = subset(data_bias_correct, alpha0 == 0.5)
+data_plot = ddply(data_plot,
+                  .(task_version, comp, distance_shrinkage, alpha0, alpha1, temperature, choice_policy),
+                  summarize,
+                  perc_correct = mean(perc_correct))
 
-
+ggplot(data_plot, aes(x = comp,
+                      y = perc_correct,
+                      group = distance_shrinkage,
+                      color = distance_shrinkage)) +
+  geom_line() + 
+  scale_color_viridis(option='D') +
+  scale_y_continuous(limits=c(0,1)) +
+  facet_wrap(~task_version + alpha1)
+```
 
 
 <!-- ## Plot results of choice model -->
