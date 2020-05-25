@@ -96,11 +96,11 @@ Create_design <- function(n_blocks,
       # Bimodal distribution
       if(dist == 'bimodal'){
         reward = Bimodal_pseudo_sim(n_sample,
-                                    main.mean = plan_dist$arg_1,
-                                    main.sd = plan_dist$arg_2,
-                                    second.mean = plan_dist$arg_3,
-                                    second.sd = plan_dist$arg_4,
-                                    relative_proportion = plan_dist$arg_5,
+                                    mean = plan_dist$arg_1,
+                                    rel_proportion = plan_dist$arg_2,
+                                    distance = plan_dist$arg_3,
+                                    main.sd = plan_dist$arg_4,
+                                    second.sd = plan_dist$arg_5,
                                     dist_name = dist,
                                     reward_space_lb = reward_space_lb,
                                     reward_space_ub = reward_space_ub)
@@ -143,29 +143,29 @@ Create_design <- function(n_blocks,
   return(design)
   
 }
-
-# Provide standard values
-n_blocks = 6
-perc_forced = 20
-blocks_per_task = 2
-dist_list = list(c('bimodal', 30, 30, 80, 10, 0.2),
-                 c('beta', 3, 2),
-                 c('gaussian', 2*100/3, 30),
-                 c('beta', 3, 2),
-                 c('bimodal', 30, 30, 80, 10, 0.2),
-                 c('beta', 2, 3),
-                 c('uniform', 1, 100),
-                 c('uniform', 1, 100),
-                 c('gaussian', 66, 10))
-
-# Testrun plan
-plan = Create_plan(n_blocks,
-                   perc_forced,
-                   blocks_per_task,
-                   dist_list)
-
-# Testrun rewards
-design = Create_design(n_blocks,
-                       perc_forced,
-                       blocks_per_task,
-                       dist_list)
+# 
+# # Provide standard values
+# n_blocks = 6
+# perc_forced = 20
+# blocks_per_task = 2
+# dist_list = list(c('bimodal', 30, 30, 80, 10, 0.2),
+#                  c('beta', 3, 2),
+#                  c('gaussian', 2*100/3, 30),
+#                  c('beta', 3, 2),
+#                  c('bimodal', 30, 0.2, 40, 10, 10),
+#                  c('beta', 2, 3),
+#                  c('uniform', 1, 100),
+#                  c('uniform', 1, 100),
+#                  c('gaussian', 66, 10))
+# 
+# # Testrun plan
+# plan = Create_plan(n_blocks,
+#                    perc_forced,
+#                    blocks_per_task,
+#                    dist_list)
+# 
+# # Testrun rewards
+# design = Create_design(n_blocks,
+#                        perc_forced,
+#                        blocks_per_task,
+#                        dist_list)

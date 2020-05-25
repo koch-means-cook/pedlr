@@ -21,3 +21,8 @@ task/
 # Ignore knitted notbooks
 *.html
 
+# Ignore picture files
+*.png
+*.jpeg
+
+

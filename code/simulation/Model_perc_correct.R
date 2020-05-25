@@ -72,6 +72,8 @@ Model_perc_correct = function(results){
     theme(plot.title = element_text(face = 'bold', hjust = 0.5),
           axis.title.x = element_blank())
   
+  # Restrict data to choice trials (eliminating forced choices wrongly inflating "error rates")
+  results = subset(results, forced_choice == 0)
   
   # Assess percentage correct of choices for each comparison
   # Add correct choice to model data
@@ -94,7 +96,14 @@ Model_perc_correct = function(results){
                       summarize,
                       perc_correct = sum(as.numeric(correct))/length(correct))
   
-  # Plot choice percentages
+  # Set scale limits to c(0.5, 1) in all cases except when correctness goes below chance
+  scale_limit = c(0.5,1)
+  if(any(data_choice$perc_correct < 0.5)){
+    scale_limit = c(min(data_choice$perc_correct),1)
+  }
+  
+  
+  # Plot choice percentages (gives warning due to facet_wrap)
   data_plot = data_choice
   plot_choice = ggplot(data_plot,
                        aes(x = comp,
@@ -117,7 +126,7 @@ Model_perc_correct = function(results){
                  size = 3,
                  color = 'black',
                  stroke = 1) +
-    scale_y_continuous(limits = c(0,1)) +
+    scale_y_continuous(limits = scale_limit) +
     labs(title = 'Percentage of correct choices') +
     theme_bw() +
     theme(plot.title = element_text(face = 'bold', hjust = 0.5)) +

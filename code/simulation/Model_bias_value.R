@@ -54,6 +54,25 @@ Model_bias_value = function(n_subjects,
   #   load_data:  TRUE/FALSE, Determines if data should be loaded (only plots will run in case)
   #   load_file:  path, Path to load data from
   
+  # Adjust parameters for models to avoid (unneccessary) looping over irrelevant parameters
+  if(model == 'Pedlr'){
+    parameters = select(parameters,
+                        alpha0,
+                        alpha1,
+                        temperature,
+                        choice_policy,
+                        reward_space_ub)
+  }
+  if(model == 'Pedlr_interdep'){
+    parameters = select(parameters,
+                        alpha0,
+                        alpha1,
+                        temperature,
+                        choice_policy,
+                        reward_space_ub,
+                        interdep)
+  }
+  
   # Simulate designs for number of subjects
   data_sim = Sample_subjects(n_subjects = n_subjects,
                              set_seed = TRUE,

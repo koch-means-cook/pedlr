@@ -46,7 +46,8 @@ library(cowplot)
 - Set paths
 
 ```{r}
-base_path = file.path('/Volumes', 'MPRG-Neurocode', 'Users', 'christoph', 'pedlr')
+base_path = file.path('/Volumes', 'MPRG-Neurocode', 'Users', 'christoph',
+                      'pedlr')
 derivatives_path = file.path(base_path, 'derivatives', 'simulation')
 source_path = file.path(base_path, 'code', 'simulation')
 ```
@@ -56,21 +57,29 @@ source_path = file.path(base_path, 'code', 'simulation')
 ```{r}
 # Source functions required for this script
 source(file.path(source_path, 'Beta_pseudo_sim.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Gaussian_pseudo_sim.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Uniform_pseudo_sim.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Bimodal_pseudo_sim.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Create_design_complete.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Gaussian_pseudo_sim.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'Uniform_pseudo_sim.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'Bimodal_pseudo_sim.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'Create_design_complete.R',
+                 fsep = .Platform$file.sep))
 source(file.path(source_path, 'Sample_subjects.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'PE_dep_LR_choice_model.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'PE_dep_LR_choice_model.R',
+                 fsep = .Platform$file.sep))
 source(file.path(source_path, 'Pedlr.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Pedlr_interdep.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Softmax_choice.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'PE_dep_LR_single_model.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'PE_dep_LR_single_model.R',
+                 fsep = .Platform$file.sep))
 source(file.path(source_path, 'Apply_model.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Model_results.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'Model_bias_value.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Model_perc_correct.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Model_bias_correct.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'Model_perc_correct.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'Model_bias_correct.R',
+                 fsep = .Platform$file.sep))
 ```
 
 ---
@@ -135,8 +144,10 @@ beta_b_le = 2*beta_skewedness/3
 beta_a_ue = 2*beta_skewedness/3
 beta_b_ue = beta_skewedness/3
 # Create distributions
-beta_densities_le = dbeta(seq(0,1,length=reward_space_length), beta_a_le,beta_b_le)
-beta_densities_ue = dbeta(seq(0,1,length=reward_space_length), beta_a_ue,beta_b_ue)
+beta_densities_le = dbeta(seq(0,1,length=reward_space_length),
+                          beta_a_le,beta_b_le)
+beta_densities_ue = dbeta(seq(0,1,length=reward_space_length),
+                          beta_a_ue,beta_b_ue)
 # Normalize densities
 beta_densities_le = scale(beta_densities_le) - min(scale(beta_densities_le))
 beta_densities_ue = scale(beta_densities_ue) - min(scale(beta_densities_le))
@@ -159,26 +170,34 @@ uniform_densities = uniform_densities + 0.3
 
 ```{r}
 # Parameters
-## Main mount of bimodal distribution
-bimodal_main_mean = (100 * 1/6) * 2
-bimodal_main_sd = gaussian_sd
-## Second mount
-bimodal_second_mean = bimodal_main_mean + 40
-bimodal_second_sd = gaussian_sd
-## Relative proportion of sampling different mounts
+# Mean of whole distribution
+bimodal_mean = (100 * 1/6) * 2
+# Distance between mounts
+bimodal_distance = 40
+# Relative proportion of sampling different modes
 bimodal_rel_proportion = 0.2
+# Mean of both modes depending on mean of whole distribution
+bimodal_main_mean = (bimodal_mean - 
+                       ((bimodal_rel_proportion * bimodal_distance) / 
+                          (bimodal_rel_proportion + 1)))
+bimodal_second_mean = bimodal_main_mean + bimodal_distance
+# Sd of main and second mode
+bimodal_main_sd = gaussian_sd
+bimodal_second_sd = gaussian_sd
 
 # Distribution
 # Get probability to sample each value over reward space given main distribution
 bimodal_main_densities = dnorm(reward_space,
                                mean = bimodal_main_mean,
                                sd = bimodal_main_sd)
-# Get probability to sample each value over reward space given second distribution
+# Get probability to sample each value over reward space given second 
+# distribution
 bimodal_second_densities = dnorm(reward_space,
                                  mean = bimodal_second_mean,
                                  sd = bimodal_second_sd)
 # Fuse sample probabilities given relative ratio of second distribution
-bimodal_densities = bimodal_main_densities + bimodal_rel_proportion * bimodal_second_densities
+bimodal_densities = (bimodal_main_densities + 
+                       bimodal_rel_proportion * bimodal_second_densities)
 # Normalize densities
 bimodal_densities = scale(bimodal_densities) - min(scale(bimodal_densities))
 ```
@@ -199,19 +218,29 @@ data_densities = data.frame(reward_space,
                             beta_densities_ue,
                             uniform_densities,
                             bimodal_densities)
-colnames(data_densities) = c('reward_space', 'Gaussian', 'Beta (gain)', 'Beta (loss)', 'Uniform', 'Bimodal')
+colnames(data_densities) = c('reward_space',
+                             'Gaussian',
+                             'Beta (gain)',
+                             'Beta (loss)',
+                             'Uniform',
+                             'Bimodal')
 
 # Bring data frame into long format
 data_densities = melt(data_densities, id.vars='reward_space')
 
 # Disribution plot
-p_dist = ggplot(data=data_densities, aes(x=reward_space, y=value, group=as.factor(variable),
+p_dist = ggplot(data=data_densities, aes(x=reward_space,
+                                         y=value,
+                                         group=as.factor(variable),
                                          color=as.factor(variable))) +
   geom_line(size=1) +
   #scale_color_manual(values = c(color$gaussian, color$gain, color$loss)) +
   scale_x_continuous(limits = c(1,100)) +
   #stat_summary(fun.data = 'mean', geom = 'vline') +
-  geom_vline(xintercept=c(1/3, 1/2, 2/3)*100, linetype='dashed', alpha=0.5, size=0.1) +
+  geom_vline(xintercept=c(1/3, 1/2, 2/3)*100,
+             linetype='dashed',
+             alpha=0.5,
+             size=0.1) +
   labs(title='Density functions of used distributions',
        x='Outcome',
        y='Normalized density',
@@ -223,13 +252,16 @@ p_dist = ggplot(data=data_densities, aes(x=reward_space, y=value, group=as.facto
 p_dist
 ```
 
-**Annotation:** This plot does not correctly reflect the normalized density of the **uniform distribution**. 
-Because it's standard deviation is 0 it cannot be normalized. The uniform density was **artificially raised**
-to be visible in comparison to the other density functions.
+**Annotation:** This plot does not correctly reflect the normalized density of 
+the **uniform distribution**. 
+Because it's standard deviation is 0 it cannot be normalized. The uniform 
+density was **artificially raised** to be visible in comparison to the other 
+density functions.
 
 ## Sampling functions
 
-- Sample rewards from distributions (depending on how many blocks use the same distributions)
+- Sample rewards from distributions (depending on how many blocks use the same 
+distributions)
 
 ```{r out.width='100%', warning=FALSE}
 
@@ -249,38 +281,38 @@ for(block_count in seq(3)){
   
   # Fill data frame with samples
   data$beta_le = Beta_pseudo_sim(n_samples,
-                                          beta_a_le,
-                                          beta_b_le,
-                                          'b_le',
-                                          reward_space_lb,
-                                          reward_space_ub)$outcome
+                                 beta_a_le,
+                                 beta_b_le,
+                                 'b_le',
+                                 reward_space_lb,
+                                 reward_space_ub)$outcome
   data$gaussian = Gaussian_pseudo_sim(n_samples,
-                                               gaussian_mean,
-                                               gaussian_sd,
-                                               'g_an',
-                                               reward_space_lb,
-                                               reward_space_ub)$outcome
+                                      gaussian_mean,
+                                      gaussian_sd,
+                                      'g_an',
+                                      reward_space_lb,
+                                      reward_space_ub)$outcome
   data$beta_ue = Beta_pseudo_sim(n_samples,
-                                          beta_a_ue,
-                                          beta_b_ue,
-                                          'b_ue',
-                                          reward_space_lb,
-                                          reward_space_ub)$outcome
+                                 beta_a_ue,
+                                 beta_b_ue,
+                                 'b_ue',
+                                 reward_space_lb,
+                                 reward_space_ub)$outcome
   data$uniform = Uniform_pseudo_sim(n_samples,
-                                             uniform_min,
-                                             uniform_max,
-                                             'uniform',
-                                             reward_space_lb,
-                                             reward_space_ub)$outcome
+                                    uniform_min,
+                                    uniform_max,
+                                    'uniform',
+                                    reward_space_lb,
+                                    reward_space_ub)$outcome
   data$bimodal = Bimodal_pseudo_sim(n_samples,
-                                             main.mean = bimodal_main_mean,
-                                             main.sd = bimodal_main_sd,
-                                             second.mean = bimodal_second_mean,
-                                             second.sd = bimodal_second_sd,
-                                             relative_proportion = bimodal_rel_proportion,
-                                             dist_name = 'bimodal',
-                                             reward_space_lb,
-                                             reward_space_ub)$outcome
+                                    mean = bimodal_mean,
+                                    rel_proportion = bimodal_rel_proportion,
+                                    distance = bimodal_distance,
+                                    main.sd = bimodal_main_sd,
+                                    second.sd = bimodal_second_sd,
+                                    dist_name = 'bimodal',
+                                    reward_space_lb,
+                                    reward_space_ub)$outcome
   data = melt(data, id.vars=c('Sample', 'n_blocks'))
   
   data_sampling = rbind(data_sampling, data)
@@ -299,9 +331,10 @@ p_sampling = ggplot(data=data_sampling, aes(x=value, fill=variable)) +
 p_sampling
 ```
 
-**Annotation:** This plot illustates that **equal sampling of the whole space** is only possible if there are
-**enough events** for each distribution. Two blocks per task should be recommended so the sampled values are
-appropriately reflecting the distribution they come from. 
+**Annotation:** This plot illustates that **equal sampling of the whole space** 
+is only possible if there are **enough events** for each distribution. Two 
+blocks per task should be recommended so the sampled values are appropriately 
+reflecting the distribution they come from. 
 
 ---
 
@@ -342,14 +375,17 @@ uniform_min = reward_space_lb
 uniform_max = reward_space_ub
 
 # Bimodal
-## Main mount of bimodal distribution
-bimodal_main_mean = (100 * 1/6) * 2
-bimodal_main_sd = gaussian_sd
-## Second mount
-bimodal_second_mean = bimodal_main_mean + 40
-bimodal_second_sd = gaussian_sd
-## Relative proportion of sampling different mounts
+# Same sd for each mode
+bimodal_sd = gaussian_sd
+# Same relative proportion (between modes) for both bimodals
 bimodal_rel_proportion = 0.2
+## Overall mean bimodal distributions
+bimodal_mean_gain = (100 * 1/6) * 2
+bimodal_mean_loss = (100 * 1/6) * 4
+# Distance between modes in gain and loss bimodal
+bimodal_distance_gain = 40
+bimodal_distance_loss = -40
+
 ```
 
 - Set parameters for task design
@@ -361,14 +397,23 @@ n_blocks = 6
 blocks_per_task = 3
 # Percentage of forced choice trials
 perc_forced = 20
-# List of different distributions with parameters (three distributions for each task version)
+# List of different distributions with parameters (three distributions for each 
+# task version)
 dist_list = list(c('gaussian', gaussian_le_mean, gaussian_sd),
-                 c('bimodal', bimodal_main_mean, gaussian_sd,
-                   bimodal_second_mean, gaussian_sd,
-                   bimodal_rel_proportion),
+                 c('bimodal',
+                   bimodal_mean_gain,
+                   bimodal_rel_proportion,
+                   bimodal_distance_gain,
+                   bimodal_sd,
+                   bimodal_sd),
                  c('gaussian', gaussian_mid_mean, gaussian_sd),
                  c('gaussian', gaussian_mid_mean, gaussian_sd),
-                 c('uniform', uniform_min, uniform_max),
+                 c('bimodal',
+                   bimodal_mean_loss,
+                   bimodal_rel_proportion,
+                   bimodal_distance_loss,
+                   bimodal_sd,
+                   bimodal_sd),
                  c('gaussian', gaussian_ue_mean, gaussian_sd))
 ```
 
@@ -390,8 +435,8 @@ for(version_count in unique(design$task_version)){
   data = subset(design, task_version == version_count)
   # For each of the three distributions per task version
   for(stim_count in sort(unique(data$option_left))){
-    # Get data frame of rewards sampled for each stimulus (regardless if presented
-    # left or right) and task version
+    # Get data frame of rewards sampled for each stimulus (regardless if 
+    # presented left or right) and task version
     samples = data.frame(c(data$reward_stim_1[data$option_left == stim_count],
                 data$reward_stim_2[data$option_right == stim_count]))
     samples$task_version = version_count
@@ -538,9 +583,29 @@ plot
 
 # Bias analysis
 
-See how the bias between real (sampling) mean and estimated mean develops depending on model parameters.
+See how the bias between real (sampling) mean and estimated mean develops 
+depending on model parameters.
 
-### Pedlr
+
+- Set shared variables for different models
+
+```{r}
+# Number of subjects to simulate
+n_subjects = 40
+# Parameters for design creation
+set_seed = TRUE
+n_blocks = n_blocks
+perc_forced = perc_forced
+blocks_per_task = blocks_per_task
+dist_list = dist_list
+# Parameters for model running on designs (other model specific parameters vary 
+# for bias assessment)
+init_values = init_values
+# Parameters for bias assessment
+last_perc_of_trials = 35
+average_subjects = TRUE
+mean_value_calculation = 'chosen_trials'
+```
 
 - Create list of parameters to test
 
@@ -549,96 +614,35 @@ See how the bias between real (sampling) mean and estimated mean develops depend
 steps_alpha0 = seq(from = 0, to = 1, length.out = 6)
 steps_alpha1 = seq(from = 0, to = 1, length.out = 6)
 steps_temperature = seq(from = 1, to = 30, length.out = 6)
-steps_policy = c('softmax', 'greedy')
+steps_policy = c('softmax')
+steps_interdep = seq(from = 0.1, to = 0.9, length.out = 5)
 
 # Get all combinations of parameters
 parameters = data.table(expand.grid(steps_alpha0,
                                     steps_alpha1,
                                     steps_temperature,
-                                    steps_policy))
-colnames(parameters) = c('alpha0', 'alpha1', 'temperature', 'choice_policy')
+                                    steps_policy,
+                                    steps_interdep))
+colnames(parameters) = c('alpha0',
+                         'alpha1',
+                         'temperature',
+                         'choice_policy',
+                         'interdep')
 
 # Add constant parameters
 parameters$reward_space_ub = reward_space_ub
 ```
 
-- Set variables for model
-
-```{r}
-last_perc_of_trials = 35
-average_subjects = TRUE
-mean_value_calculation = 'chosen_trials'
-```
+### Pedlr
 
 - Assess bias for different parameters
 
 ```{r}
-# See if bias assessment was already done
-file = file.path(derivatives_path, 'bias_simulation.tsv')
-# If yes, load output
-if(file.exists(file)){
-  data_bias = read.table(file, sep = '\t', header = TRUE)
-  
-  # Only run bias assessmentin case not present already
-} else if(!file.exists(file)){
-  
-  # Create template
-  data_bias = Model_results(results = data_model,
-                            last_perc_of_trials = last_perc_of_trials,
-                            average_subjects = average_subjects,
-                            mean_value_calculation = mean_value_calculation)$bias
-  data_bias = cbind(data_bias[0,], parameters[0,])
-  
-  # Loop over all parameter combinations
-  for(run_count in seq(nrow(parameters))){
-    # Apply model with different parameters to subjects
-    data_model = ddply(data_sim,
-                       "sub_id",
-                       Apply_model,
-                       model = 'Pedlr',
-                       parameters = parameters[run_count,],
-                       init_values = init_values)
-    # Get bias for specific parameters
-    results = Model_results(results = data_model,
-                            last_perc_of_trials = last_perc_of_trials,
-                            average_subjects = average_subjects,
-                            mean_value_calculation = mean_value_calculation)
-    data = cbind(results$bias,
-                 do.call("rbind",
-                         replicate(nrow(data),
-                                   parameters[run_count,],
-                                   simplify = FALSE)))
-    # Append results for parameters
-    data_bias = rbind(data_bias, data)
-  }
-  
-  # Add model variables to data
-  data_bias$last_perc_of_trials = last_perc_of_trials
-  data_bias$average_subjects = as.numeric(average_subjects)
-  data_bias$mean_value_calculation = mean_value_calculation
-  
-  # Save bias simulation
-  write.table(data_bias, file, sep='\t', row.names = FALSE)
-}
-
-```
-
-- Plot bias
-
-```{r}
-n_subjects = 40
-set_seed = TRUE
-n_blocks = n_blocks
-perc_forced = perc_forced
-blocks_per_task = blocks_per_task
-dist_list = dist_list
+# Set model for simulation
 model = 'Pedlr'
-parameters = parameters
-init_values = init_values
-last_perc_of_trials = last_perc_of_trials
-average_subjects = average_subjects
-mean_value_calculation = mean_value_calculation
-file = file.path(derivatives_path, 'bias_simulation.tsv')
+
+# Parameters to save and loas data output
+file = file.path(derivatives_path, 'bias_simulation_pedlr.tsv')
 save_data = FALSE
 save_file = file
 load_data = TRUE
@@ -646,89 +650,164 @@ load_file = file
 
 # Assess bias (if load data is true it will load .tsv of data_bias)
 bias = Model_bias_value(n_subjects = n_subjects,
-                  set_seed = TRUE,
-                  n_blocks = n_blocks,
-                  perc_forced = perc_forced,
-                  blocks_per_task = blocks_per_task,
-                  dist_list = dist_list,
-                  model = model,
-                  parameters = parameters,
-                  init_values = init_values,
-                  last_perc_of_trials = last_perc_of_trials,
-                  average_subjects = average_subjects,
-                  mean_value_calculation = mean_value_calculation,
-                  save_data = save_data,
-                  save_file = save_file,
-                  load_data = load_data,
-                  load_file = load_file)
+                        set_seed = set_seed,
+                        n_blocks = n_blocks,
+                        perc_forced = perc_forced,
+                        blocks_per_task = blocks_per_task,
+                        dist_list = dist_list,
+                        model = model,
+                        parameters = parameters,
+                        init_values = init_values,
+                        last_perc_of_trials = last_perc_of_trials,
+                        average_subjects = average_subjects,
+                        mean_value_calculation = mean_value_calculation,
+                        save_data = save_data,
+                        save_file = save_file,
+                        load_data = load_data,
+                        load_file = load_file)
 
 data_bias = bias$bias
 bias$plot_softmax
-bias$plot_greedy
 ```
+
+
+### Pedlr_interdep
+
+```{r}
+# Set model for simulation
+model = 'Pedlr_interdep'
+
+# Parameters to save and load data output
+file = file.path(derivatives_path, 'bias_simulation_pedlr_interdep.tsv')
+save_data = FALSE
+save_file = file
+load_data = TRUE
+load_file = file
+
+# Assess bias (if load data is true it will load .tsv of data_bias)
+bias = Model_bias_value(n_subjects = n_subjects,
+                        set_seed = set_seed,
+                        n_blocks = n_blocks,
+                        perc_forced = perc_forced,
+                        blocks_per_task = blocks_per_task,
+                        dist_list = dist_list,
+                        model = model,
+                        parameters = parameters,
+                        init_values = init_values,
+                        last_perc_of_trials = last_perc_of_trials,
+                        average_subjects = average_subjects,
+                        mean_value_calculation = mean_value_calculation,
+                        save_data = save_data,
+                        save_file = save_file,
+                        load_data = load_data,
+                        load_file = load_file)
+
+data_bias = bias$bias
+```
+
 
 ---
 
 # False choices
 
-## Pedlr
+**Annotation:** This only holds in case the sampling means are hierarchical 
+(reward_stim_1 < reward_stim_2 < reward_stim_3).
 
-**Annotation:** This only holds in case the sampling means are hierarchical (reward_stim_1 < reward_stim_2 < reward_stim_3).
+- Set shared variables for different models
 
 ```{r}
-perc_correct = Model_perc_correct(data_model)
-
-data_choice = perc_correct$perc_correct
-perc_correct$plot
+# Number of subjects to simulate
+n_subjects = 10
+# Parameters for design creation
+set_seed = TRUE
+n_blocks = 6
+perc_forced = 20
+blocks_per_task = 3
+dist_list = dist_list
+# Parameters for model running on designs (other model specific parameters vary 
+# for bias assessment)
+init_values = list(c(50,50,50),
+                   c(50,50,50))
+# Parameters for bias assessment
+shrink_distance_vec = seq(0,3)
 ```
 
-### Influence of distribution distance on correct choices
-
-**Annotation:** Here we will use a gain and a loss beta for simplicity.
+- Create list of parameters to test
 
 ```{r}
 # Steps in which to loop over each parameter
-steps_alpha0 = seq(from = 0, to = 1, length.out = 3)
-steps_alpha1 = seq(from = 0, to = 1, length.out = 3)
-steps_temperature = 1
+steps_alpha0 = seq(from = 0.2, to = 1, length.out = 5)
+steps_alpha1 = seq(from = 0.2, to = 1, length.out = 5)
+steps_temperature = seq(from = 1, to = 30, length.out = 5)
 steps_policy = 'softmax'
+steps_interdep = seq(from = 0.1, to = 0.9, length.out = 5)
 
 # Get all combinations of parameters
 parameters = data.table(expand.grid(steps_alpha0,
                                     steps_alpha1,
                                     steps_temperature,
-                                    steps_policy))
-colnames(parameters) = c('alpha0', 'alpha1', 'temperature', 'choice_policy')
+                                    steps_policy,
+                                    steps_interdep))
+colnames(parameters) = c('alpha0',
+                         'alpha1',
+                         'temperature',
+                         'choice_policy',
+                         'interdep')
 
 # Add constant parameters
 parameters$reward_space_ub = reward_space_ub
 ```
 
+## Influence of distribution distance on correct choices
 
-```{r}
-n_subjects = 10
-set_seed = TRUE
-n_blocks = 6
-perc_forced = 20
-blocks_per_task = 3
-dist_list = dist_list = list(c('gaussian', (100/6) * 1, gaussian_sd),
-                 c('beta', 5/3, (2*5)/3),
-                 c('gaussian', (100/6) * 3, gaussian_sd),
-                 c('gaussian', (100/6) * 3, gaussian_sd),
-                 c('beta', (2*5)/3, 5/3),
-                 c('gaussian', (100/6) * 5, gaussian_sd))
+### Pedlr
+
+```{r, fig.width=6, fig.height=6}
+# Set model for simulation
 model = 'Pedlr'
-parameters = parameters
-init_values = list(c(50,50,50),
-                   c(50,50,50))
-shrink_distance_vec = seq(3)
-file = file.path(derivatives_path, 'bias_correct_simulation.tsv')
+
+# Parameters to save and load data output
+file = file.path(derivatives_path, 'bias_correct_simulation_pedlr.tsv')
 save_data = FALSE
 save_file = file
-load_data = FALSE
+load_data = TRUE
 load_file = file
 
-data_bias_correct = Model_bias_correct(n_subjects = n_subjects,
+# Assess bias (if load data is true it will load .tsv of data_bias)
+bias_correct = Model_bias_correct(n_subjects = n_subjects,
+                                  set_seed = set_seed,
+                                  n_blocks = n_blocks,
+                                  perc_forced = perc_forced,
+                                  blocks_per_task = blocks_per_task,
+                                  dist_list = dist_list,
+                                  model = model,
+                                  parameters = parameters,
+                                  init_values = init_values,
+                                  shrink_distance_vec = shrink_distance_vec,
+                                  save_data = save_data,
+                                  save_file = save_file,
+                                  load_data = load_data,
+                                  load_file = load_file)
+data_choice = bias_correct$data_bias_correct
+bias_correct$plot
+```
+
+
+# Pedlr_interdep
+
+```{r}
+# Set model for simulation
+model = 'Pedlr_interdep'
+
+# Parameters to save and load data output
+file = file.path(derivatives_path, 'bias_correct_simulation_pedlr_interdep.tsv')
+save_data = FALSE
+save_file = file
+load_data = TRUE
+load_file = file
+
+# Assess bias (if load data is true it will load .tsv of data_bias)
+bias_correct = Model_bias_correct(n_subjects = n_subjects,
                                        set_seed = set_seed,
                                        n_blocks = n_blocks,
                                        perc_forced = perc_forced,
@@ -742,23 +821,64 @@ data_bias_correct = Model_bias_correct(n_subjects = n_subjects,
                                        save_file = save_file,
                                        load_data = load_data,
                                        load_file = load_file)
+data_choice = bias_correct$data_bias_correct
+```
+
+
+```{r, fig.width=6, fig.height=6}
+#data_plot = subset(data_bias_correct, task_version == 1)
+# data_plot = data_bias_correct
+# data_plot = ddply(data_plot,
+#                   .(task_version, comp, distance_shrinkage, alpha0, alpha1, temperature, choice_policy),
+#                   summarize,
+#                   perc_correct = mean(perc_correct))
+# 
+# p_v1 = ggplot(data_plot, aes(x = comp,
+#                              y = perc_correct,
+#                              group = distance_shrinkage,
+#                              color = distance_shrinkage)) +
+#   geom_line() + 
+#   scale_color_viridis(option='D') +
+#   scale_y_continuous(limits=c(0.45,1)) +
+#   facet_grid(temperature + alpha0 ~ task_version + alpha1) +
+#   theme(legend.position = 'right')
+# 
+# p_v1
+
+# data_plot = subset(data_bias_correct, task_version == 2)
+# data_plot = ddply(data_plot,
+#                   .(task_version, comp, distance_shrinkage, alpha0, alpha1, temperature, choice_policy),
+#                   summarize,
+#                   perc_correct = mean(perc_correct))
+# 
+# p_v2 = ggplot(data_plot, aes(x = comp,
+#                              y = perc_correct,
+#                              group = distance_shrinkage,
+#                              color = distance_shrinkage)) +
+#   geom_line() + 
+#   scale_color_viridis(option='D') +
+#   scale_y_continuous(limits=c(0.45,1)) +
+#   facet_grid(alpha0 ~ task_version + temperature + alpha1) +
+#   theme(legend.position = 'right')
+# 
+# plot_grid(p_v1, p_v2,
+#           ncol = 1)
+
 ```
 
 ```{r}
-data_plot = subset(data_bias_correct, alpha0 == 0.5)
-data_plot = ddply(data_plot,
-                  .(task_version, comp, distance_shrinkage, alpha0, alpha1, temperature, choice_policy),
-                  summarize,
-                  perc_correct = mean(perc_correct))
 
-ggplot(data_plot, aes(x = comp,
-                      y = perc_correct,
-                      group = distance_shrinkage,
-                      color = distance_shrinkage)) +
-  geom_line() + 
-  scale_color_viridis(option='D') +
-  scale_y_continuous(limits=c(0,1)) +
-  facet_wrap(~task_version + alpha1)
+# bla = Bimodal_pseudo_sim(n_sim = 240,
+#                          mean = 100/6 * 2,
+#                          rel_proportion = 0.2,
+#                          distance = 70,
+#                          main.sd = 1,
+#                          second.sd = 1,
+#                          dist_name = 'bimodal',
+#                          reward_space_lb = 1,
+#                          reward_space_ub = 100)$outcome
+# sd(bla)
+# hist(bla, breaks = seq(1,100,1))
 ```
 
 
