@@ -172,13 +172,20 @@ Model_bias_correct = function(n_subjects,
                     summarize,
                     perc_correct = mean(perc_correct))
   
+  # Set limits according to lowest value (default c(0.45,1))
+  limits = c(0.45,1)
+  if(min(data_plot$perc_correct) < 0.45){
+    limits = c(min(data_plot$perc_correct), 1)
+  }
+  
   p_bias = ggplot(data_plot, aes(x = comp,
-                               y = perc_correct,
-                               group = distance_shrinkage,
-                               color = distance_shrinkage)) +
+                                 y = perc_correct,
+                                 group = distance_shrinkage,
+                                 color = distance_shrinkage)) +
+    geom_hline(yintercept = 0.5, linetype='dashed', alpha=0.5) +
     geom_line() + 
     scale_color_viridis(option='D') +
-    scale_y_continuous(limits=c(0.45,1)) +
+    scale_y_continuous(limits=limits) +
     facet_grid(temperature + alpha1 ~ task_version + alpha0) +
     labs(title = 'Changing perc_correct for different parameters\nand approaching distributions') +
     theme(legend.position = 'right',
