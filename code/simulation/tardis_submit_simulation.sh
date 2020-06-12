@@ -29,16 +29,16 @@ N_CPUS=2
 # maximum number of threads per process:
 N_THREADS=2
 # memory demand in *GB*
-MEM_MB=100
+MEM_GB=4
 
 # ===
 # Create lists of parameters
 # ===
-A0_LIST=$(seq -s ' ' 0 0.1 1)
-A1_LIST=$(seq -s ' ' 0 0.1 1)
-TEMPERATURE_LIST=$(seq -s ' ' 0 0.1 1)
+A0_LIST=$(seq -s ' ' 0 1 1)
+A1_LIST=$(seq -s ' ' 0 1 1)
+TEMPERATURE_LIST=$(seq -s ' ' 1 10 30)
 INTERDEP_LIST=0.5
-SHRINKAGE_LIST=$(seq -s ' ' 0 1 16)
+SHRINKAGE_LIST=$(seq -s ' ' 0 10 16)
 
 # ===
 # Initialize constant values for simulation
@@ -64,11 +64,11 @@ do
 	do
 		# Create job to submit
 		# name of the job
-		echo "#PBS -N ${MODEL}_sim_$A0_$A1" > job
+		echo "#PBS -N ${MODEL}_sim_${LOOP_COUNT}" > job
 		# set the expected maximum running time for the job:
-		echo "#PBS -l walltime=2:00:00" >> job
+		echo "#PBS -l walltime=4:00:00" >> job
 		# determine how much RAM your operation needs:
-		echo "#PBS -l mem=${MEM_MB}MB" >> job
+		echo "#PBS -l mem=${MEM_GB}GB" >> job
 		# email notification on abort/end, use 'n' for no notification:
 		echo "#PBS -m n" >> job
 		# write (output) log to log folder
@@ -88,18 +88,18 @@ do
 				# Loop over distance shrinkage
 				for SHRINKAGE in ${SHRINKAGE_LIST}
 				do
-					echo "Rscript ${PATH_FUNCTION} \
-					 --data_file ${DATA_FILE} \
-					 --model ${MODEL} \
+					echo "Rscript \"${PATH_FUNCTION}\" \
+					 --data_file \"${DATA_FILE}\" \
+					 --model \"${MODEL}\" \
 					 --alpha0 $A0 \
 					 --alpha1 $A1 \
 					 --temperature $TEMP \
 					 --reward_space_ub ${REWARD_SPACE} \
-					 --choice_policy ${POLICY} \
+					 --choice_policy \"${POLICY}\" \
 					 --interdep $INTERDEP \
-					 --init_values ${INIT_VALUES} \
+					 --init_values \"${INIT_VALUES}\" \
 					 --distance_shrinkage $SHRINKAGE \
-					 --out_file "${OUT_FILE}_${LOOP_COUNT}"" >> job
+					 --out_file \"${OUT_FILE}_${LOOP_COUNT}.tsv\"" >> job
 
 					 # Iterate loop counter
 					 (( LOOP_COUNT++ ))
@@ -109,7 +109,7 @@ do
 			 done
 		 done
 
-		 #qsub job
+		 qsub job
 		 rm -f job
 
 	 done

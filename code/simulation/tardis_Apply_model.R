@@ -143,7 +143,7 @@ Apply_model = function(data_file,
   data_model$choice_policy = parameters$choice_policy
   data_model$interdep = parameters$interdep
   data_model$distance_shrinkage = distance_shrinkage
-  data_model&model = model
+  data_model$model = model
   
   # Save data to output file
   write.table(data_model, out_file, sep = '\t', row.names = FALSE)

@@ -10,7 +10,8 @@ code/task/data/
 # Ignore temporary R & matlab files
 *.Rhistory
 *.RData
-*.mat 
+*.mat
+._* 
 
 # Ignore MacOS junk
 .DS_Store
