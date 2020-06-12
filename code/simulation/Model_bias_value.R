@@ -1,13 +1,33 @@
 
+library(reshape2)
+library(ggplot2)
+library(plotly)
+library(plyr)
+library(Rfast)
+library(data.table)
+library(knitr)
+#library(rstudioapi)
+#library(here)
+library(viridis)
+library(cowplot)
+library(here)
+library(optparse)
+
+
 # Source functions required for this script
-base_path = file.path('/Volumes', 'MPRG-Neurocode', 'Users', 'christoph', 'pedlr')
-derivatives_path = file.path(base_path, 'derivatives', 'simulation')
-source_path = file.path(base_path, 'code', 'simulation')
-source(file.path(source_path, 'Sample_subjects.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Pedlr.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Pedlr_interdep.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Apply_model.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Model_results.R', fsep = .Platform$file.sep))
+base_path = source_path = file.path(here::here(), fsep = .Platform$file.sep)
+derivatives_path = file.path(base_path, 'derivatives', 'simulation',
+                             fsep = .Platform$file.sep)
+source_path = file.path(base_path, 'code', fsep = .Platform$file.sep)
+source(file.path(source_path, 'simulation', 'Sample_subjects.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Pedlr.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Pedlr_interdep.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Apply_model.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Model_results.R',
+                 fsep = .Platform$file.sep))
 
 Model_bias_value = function(n_subjects,
                             set_seed,

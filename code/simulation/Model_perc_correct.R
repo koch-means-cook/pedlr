@@ -1,4 +1,20 @@
 
+library(reshape2)
+library(ggplot2)
+library(plotly)
+library(plyr)
+library(Rfast)
+library(data.table)
+library(knitr)
+#library(rstudioapi)
+#library(here)
+library(viridis)
+library(cowplot)
+library(here)
+library(optparse)
+
+
+
 Model_perc_correct = function(results){
   
   # Arguments

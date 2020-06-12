@@ -1,11 +1,13 @@
 
 # For knitting:
-source_path = '/Volumes/MPRG-Neurocode/Users/christoph/pedlr/code/simulation/'
+source_path = file.path(here::here(), 'code', fsep = .Platform$file.sep)
 
 # Source functions required for this script
-source(file.path(source_path, 'Create_design_complete.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'design', 'Create_design_complete.R',
+                 fsep = .Platform$file.sep))
 
-# Function to sample design for specific number of simulated participants. Option to set seed.
+# Function to sample design for specific number of simulated participants. 
+# Option to set seed.
 Sample_subjects = function(n_subjects,
                            set_seed,
                            n_blocks,

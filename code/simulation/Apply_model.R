@@ -1,10 +1,11 @@
 
 # For knitting:
-source_path = '/Volumes/MPRG-Neurocode/Users/christoph/pedlr/code/simulation/'
+source_path = file.path(here::here(), 'code', fsep = .Platform$file.sep)
 
 # Source functions required for this script
-source(file.path(source_path, 'Pedlr.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Pedlr_interdep.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Pedlr.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Pedlr_interdep.R',
+                 fsep = .Platform$file.sep))
 
 # Function to apply model to design
 Apply_model = function(design,

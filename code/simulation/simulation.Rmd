@@ -41,44 +41,47 @@ library(knitr)
 #library(here)
 library(viridis)
 library(cowplot)
+library(here)
+library(optparse)
 ```
+
 
 - Set paths
 
 ```{r}
-base_path = file.path('/Volumes', 'MPRG-Neurocode', 'Users', 'christoph',
-                      'pedlr')
-derivatives_path = file.path(base_path, 'derivatives', 'simulation')
-source_path = file.path(base_path, 'code', 'simulation')
+base_path = file.path(here::here(), fsep = .Platform$file.sep)
+derivatives_path = file.path(base_path, 'derivatives', 'simulation',
+                             fsep = .Platform$file.sep)
+source_path = file.path(base_path, 'code', fsep = .Platform$file.sep)
 ```
 
 - Import own functions
 
 ```{r}
 # Source functions required for this script
-source(file.path(source_path, 'Beta_pseudo_sim.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Gaussian_pseudo_sim.R',
+source(file.path(source_path, 'design', 'Beta_pseudo_sim.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'design', 'Gaussian_pseudo_sim.R',
                  fsep = .Platform$file.sep))
-source(file.path(source_path, 'Uniform_pseudo_sim.R',
+source(file.path(source_path, 'design', 'Uniform_pseudo_sim.R',
                  fsep = .Platform$file.sep))
-source(file.path(source_path, 'Bimodal_pseudo_sim.R',
+source(file.path(source_path, 'design', 'Bimodal_pseudo_sim.R',
                  fsep = .Platform$file.sep))
-source(file.path(source_path, 'Create_design_complete.R',
+source(file.path(source_path, 'design', 'Create_design_complete.R',
                  fsep = .Platform$file.sep))
-source(file.path(source_path, 'Sample_subjects.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'PE_dep_LR_choice_model.R',
+source(file.path(source_path, 'simulation', 'Sample_subjects.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Pedlr.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Pedlr_interdep.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Softmax_choice.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Apply_model.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Model_results.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Model_bias_value.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Model_perc_correct.R',
                  fsep = .Platform$file.sep))
-source(file.path(source_path, 'Pedlr.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Pedlr_interdep.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Softmax_choice.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'PE_dep_LR_single_model.R',
+source(file.path(source_path, 'simulation', 'Model_bias_correct.R',
                  fsep = .Platform$file.sep))
-source(file.path(source_path, 'Apply_model.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Model_results.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Model_bias_value.R', fsep = .Platform$file.sep))
-source(file.path(source_path, 'Model_perc_correct.R',
+source(file.path(source_path, 'simulation', 'Free_bimodal_modes.R',
                  fsep = .Platform$file.sep))
-source(file.path(source_path, 'Model_bias_correct.R',
+source(file.path(source_path, 'simulation', 'Free_bimodal_means.R',
                  fsep = .Platform$file.sep))
 ```
 
@@ -721,7 +724,7 @@ n_subjects = 10
 # Parameters for design creation
 set_seed = TRUE
 n_blocks = 6
-perc_forced = 20
+perc_forced = 30
 blocks_per_task = 3
 dist_list = dist_list
 # Parameters for model running on designs (other model specific parameters vary 
@@ -769,7 +772,7 @@ parameters$reward_space_ub = reward_space_ub
 model = 'Pedlr'
 
 # Parameters to save and load data output
-file = file.path(derivatives_path, 'bias_correct_simulation_pedlr.tsv')
+file = file.path(derivatives_path, 'bias_correct_simulation_pedlr_fc30.tsv')
 save_data = FALSE
 save_file = file
 load_data = TRUE
@@ -820,7 +823,7 @@ colnames(parameters) = c('alpha0',
 parameters$reward_space_ub = reward_space_ub
 
 # Parameters for bias assessment
-shrink_distance_vec = seq(0,100/6, length.out = 50)
+shrink_distance_vec = round(seq(0,100/6, length.out = 50), 2)
 ```
 
 ```{r}
@@ -828,7 +831,7 @@ shrink_distance_vec = seq(0,100/6, length.out = 50)
 model = 'Pedlr'
 
 # Parameters to save and load data output
-file = file.path(derivatives_path, 'shrinkage_simulation_pedlr.tsv')
+file = file.path(derivatives_path, 'shrinkage_simulation_pedlr_fc30.tsv')
 save_data = FALSE
 save_file = file
 load_data = TRUE
@@ -853,10 +856,7 @@ data_choice = bias_correct$data_bias_correct
 bias_correct$plot
 ```
 
-##### Look at gradient of 1v2/2v3 correctness in dependence of shrinkage
-
-Balance > 0: Higher dist higher correctness
-Balance < 0: Lower dist higher correctness
+#### Prepare data for plotting
 
 ```{r}
 data_balance = subset(data_choice, comp == '1v2')
@@ -866,7 +866,7 @@ data_balance$corr_2v3 = subset(data_choice, comp == '2v3')$perc_correct
 data_balance$corr_1v3 = subset(data_choice, comp == '1v3')$perc_correct
 data_balance$balance = data_balance$corr_2v3 - data_balance$corr_1v2
 # Balanced normalized with average correctness
-data_balance$rel_balance = data_balance$balance / data_balance$corr_1v3 - 0.5
+data_balance$rel_balance = data_balance$balance / (data_balance$corr_1v3 - 0.5)
 
 data_plot = data_balance
 data_plot = ddply(data_plot, 
@@ -877,30 +877,262 @@ data_plot = ddply(data_plot,
                    mean_corr_1v3 = mean(corr_1v3),
                    mean_balance = mean(balance),
                    mean_rel_balance = mean(rel_balance))
+data_plot$distance_shrinkage = as.factor(data_plot$distance_shrinkage)
+data_plot$task_version = as.factor(data_plot$task_version)
+```
+
+
+##### Look at gradient of 1v2/2v3 correctness in dependence of shrinkage
+
+Balance > 0: Higher dist higher correctness
+Balance < 0: Lower dist higher correctness
+
+```{r}
 p = ggplot(data_plot, aes(x = distance_shrinkage, y = mean_balance)) +
   geom_point(size=0.5) +
   #stat_summary(fun = 'mean', geom = 'point', size = 1, color = 'red') +
-  geom_vline(xintercept = 100/6, linetype='dashed', color='red') +
+  geom_vline(xintercept = as.factor(100/6), linetype='dashed', color='red') +
   facet_wrap(~task_version)
 
 p
 ```
 
+##### Look at gradient of 1v2/2v3 correctness in dependence of shrinkage with penalty
 
+Value escalates the closer 1v3 gets to chance level (0.5)
+
+```{r}
+p = ggplot(data_plot, aes(x = distance_shrinkage, y = mean_rel_balance)) +
+  geom_point(size=0.5) +
+  #stat_summary(fun = 'mean', geom = 'point', size = 1, color = 'red') +
+  scale_x_discrete(breaks=shrink_distance_vec[seq(1, length(seq(0,100/6, length.out=50)), by=5)]) +
+  geom_vline(xintercept = as.factor(100/6), linetype='dashed', color='red') +
+  facet_wrap(~task_version)
+
+p
+```
+
+#### Adjust mode distance in bimodal distribution to counter sampling bias
+
+```{r}
+# Steps in which to loop over each parameter
+steps_alpha0 = 0.3
+steps_alpha1 = 0.7
+steps_temperature = 7
+steps_policy = 'softmax'
+steps_interdep = 0.5
+
+# Get all combinations of parameters
+parameters = data.table(expand.grid(steps_alpha0,
+                                    steps_alpha1,
+                                    steps_temperature,
+                                    steps_policy,
+                                    steps_interdep))
+colnames(parameters) = c('alpha0',
+                         'alpha1',
+                         'temperature',
+                         'choice_policy',
+                         'interdep')
+
+# Add constant parameters
+parameters$reward_space_ub = reward_space_ub
+
+# Parameters for bias assessment
+shrink_distance_vec = round(seq(0,100/6, length.out = 11), 2)
+bimodal_distance_vec = seq(from = 0, to = 30, length.out = 11)
+```
+
+```{r}
+# Set model for simulation
+model = 'Pedlr'
+
+# Parameters to save and load data output
+file = file.path(derivatives_path, 'free_modes_pedlr_fc30.tsv')
+save_data = TRUE
+save_file = file
+load_data = FALSE
+load_file = file
+
+outcome = Free_bimodal_modes(n_subjects = 100,
+                             set_seed = set_seed,
+                             n_blocks = n_blocks,
+                             perc_forced = perc_forced,
+                             blocks_per_task = blocks_per_task,
+                             dist_list = dist_list,
+                             model = model,
+                             parameters = parameters,
+                             init_values = init_values,
+                             shrink_distance_vec = shrink_distance_vec,
+                             save_data = save_data,
+                             save_file = save_file,
+                             load_data = load_data,
+                             load_file = load_file,
+                             distance_change_vec = bimodal_distance_vec)
+```
+
+```{r}
+data_plot = outcome
+data_plot = ddply(data_plot,
+                  .(task_version,
+                    comp,
+                    alpha0,
+                    alpha1,
+                    temperature,
+                    choice_policy,
+                    reward_space_ub,
+                    distance_shrinkage,
+                    bimodal_distance_change),
+                  summarize,
+                  mean_perc_correct = mean(perc_correct))
+
+data_balance = subset(data_plot, comp == '1v2')
+data_balance = select(data_balance, -c(comp, mean_perc_correct))
+data_balance$corr_1v2 = subset(data_plot, comp == '1v2')$mean_perc_correct
+data_balance$corr_2v3 = subset(data_plot, comp == '2v3')$mean_perc_correct
+data_balance$corr_1v3 = subset(data_plot, comp == '1v3')$mean_perc_correct
+data_balance$balance = data_balance$corr_2v3 - data_balance$corr_1v2
+
+
+ggplot(data = data_balance, aes(x = bimodal_distance_change,
+                             y = balance,
+                             color = distance_shrinkage)) +
+  geom_line() +
+  scale_color_viridis(option='D') +
+  facet_wrap(~task_version)
+```
+
+
+---
+
+#### Free bimodal means
+
+```{r}
+# Steps in which to loop over each parameter
+steps_alpha0 = 0.3
+steps_alpha1 = 0.7
+steps_temperature = 7
+steps_policy = 'softmax'
+steps_interdep = 0.5
+
+# Get all combinations of parameters
+parameters = data.table(expand.grid(steps_alpha0,
+                                    steps_alpha1,
+                                    steps_temperature,
+                                    steps_policy,
+                                    steps_interdep))
+colnames(parameters) = c('alpha0',
+                         'alpha1',
+                         'temperature',
+                         'choice_policy',
+                         'interdep')
+
+# Add constant parameters
+parameters$reward_space_ub = reward_space_ub
+
+# Parameters for bias assessment
+shrink_distance_vec = round(seq(0,100/6, length.out = 11), 2)
+bimodal_mean_vec = round(seq(0,100/6, length.out = 11), 2)
+
+# Set model for simulation
+model = 'Pedlr'
+
+# Parameters to save and load data output
+file = file.path(derivatives_path, 'free_means_pedlr_fc30.tsv')
+save_data = TRUE
+save_file = file
+load_data = FALSE
+load_file = file
+
+outcome = Free_bimodal_modes(n_subjects = 100,
+                             set_seed = set_seed,
+                             n_blocks = n_blocks,
+                             perc_forced = perc_forced,
+                             blocks_per_task = blocks_per_task,
+                             dist_list = dist_list,
+                             model = model,
+                             parameters = parameters,
+                             init_values = init_values,
+                             shrink_distance_vec = shrink_distance_vec,
+                             save_data = save_data,
+                             save_file = save_file,
+                             load_data = load_data,
+                             load_file = load_file,
+                             mean_change_vec = bimodal_mean_vec)
+```
+
+```{r}
+data_plot = outcome
+data_plot = ddply(data_plot,
+                  .(task_version,
+                    comp,
+                    alpha0,
+                    alpha1,
+                    temperature,
+                    choice_policy,
+                    reward_space_ub,
+                    distance_shrinkage,
+                    bimodal_mean_change),
+                  summarize,
+                  mean_perc_correct = mean(perc_correct))
+
+data_balance = subset(data_plot, comp == '1v2')
+data_balance = select(data_balance, -c(comp, mean_perc_correct))
+data_balance$corr_1v2 = subset(data_plot, comp == '1v2')$mean_perc_correct
+data_balance$corr_2v3 = subset(data_plot, comp == '2v3')$mean_perc_correct
+data_balance$corr_1v3 = subset(data_plot, comp == '1v3')$mean_perc_correct
+data_balance$balance = data_balance$corr_2v3 - data_balance$corr_1v2
+
+
+ggplot(data = data_balance, aes(x = bimodal_mean_change,
+                             y = balance,
+                             color = distance_shrinkage)) +
+  geom_line() +
+  scale_color_viridis(option='D') +
+  facet_wrap(~task_version)
+```
+
+
+---
 
 ### Pedlr_interdep
 
 #### All parameters
+
+- Create list of parameters to test
+
+```{r}
+# Steps in which to loop over each parameter
+steps_alpha0 = seq(from = 0.2, to = 1, length.out = 5)
+steps_alpha1 = seq(from = 0.2, to = 1, length.out = 5)
+steps_temperature = seq(from = 1, to = 30, length.out = 5)
+steps_policy = 'softmax'
+steps_interdep = 0.5
+
+# Get all combinations of parameters
+parameters = data.table(expand.grid(steps_alpha0,
+                                    steps_alpha1,
+                                    steps_temperature,
+                                    steps_policy,
+                                    steps_interdep))
+colnames(parameters) = c('alpha0',
+                         'alpha1',
+                         'temperature',
+                         'choice_policy',
+                         'interdep')
+
+# Add constant parameters
+parameters$reward_space_ub = reward_space_ub
+```
 
 ```{r}
 # Set model for simulation
 model = 'Pedlr_interdep'
 
 # Parameters to save and load data output
-file = file.path(derivatives_path, 'bias_correct_simulation_pedlr_interdep.tsv')
-save_data = FALSE
+file = file.path(derivatives_path, 'bias_correct_simulation_pedlr_interdep_fc30.tsv')
+save_data = TRUE
 save_file = file
-load_data = TRUE
+load_data = FALSE
 load_file = file
 
 # Assess bias (if load data is true it will load .tsv of data_bias)
@@ -920,7 +1152,6 @@ bias_correct = Model_bias_correct(n_subjects = n_subjects,
                                        load_file = load_file)
 data_choice = bias_correct$data_bias_correct
 ```
-
 
 #### Fixed parameters
 
@@ -948,7 +1179,7 @@ colnames(parameters) = c('alpha0',
 parameters$reward_space_ub = reward_space_ub
 
 # Parameters for bias assessment
-shrink_distance_vec = seq(0,32)
+shrink_distance_vec = round(seq(0,100/6, length.out = 50), 2)
 ```
 
 ```{r}
@@ -956,14 +1187,14 @@ shrink_distance_vec = seq(0,32)
 model = 'Pedlr_interdep'
 
 # Parameters to save and load data output
-file = file.path(derivatives_path, 'shrinkage_simulation_pedlr_interdep.tsv')
+file = file.path(derivatives_path, 'shrinkage_simulation_pedlr_fc30.tsv')
 save_data = TRUE
 save_file = file
 load_data = FALSE
 load_file = file
 
 # Assess bias (if load data is true it will load .tsv of data_bias)
-bias_correct = Model_bias_correct(n_subjects = n_subjects,
+bias_correct = Model_bias_correct(n_subjects = 100,
                                   set_seed = set_seed,
                                   n_blocks = n_blocks,
                                   perc_forced = perc_forced,
@@ -979,4 +1210,60 @@ bias_correct = Model_bias_correct(n_subjects = n_subjects,
                                   load_file = load_file)
 data_choice = bias_correct$data_bias_correct
 bias_correct$plot
+```
+
+#### Prepare data for plotting
+
+```{r}
+data_balance = subset(data_choice, comp == '1v2')
+data_balance = select(data_balance, -c(comp, perc_correct))
+data_balance$corr_1v2 = subset(data_choice, comp == '1v2')$perc_correct
+data_balance$corr_2v3 = subset(data_choice, comp == '2v3')$perc_correct
+data_balance$corr_1v3 = subset(data_choice, comp == '1v3')$perc_correct
+data_balance$balance = data_balance$corr_2v3 - data_balance$corr_1v2
+# Balanced normalized with average correctness
+data_balance$rel_balance = data_balance$balance / (data_balance$corr_1v3 - 0.5)
+
+data_plot = data_balance
+data_plot = ddply(data_plot, 
+                   .(task_version, distance_shrinkage),
+                   summarize,
+                   mean_corr_1v2 = mean(corr_1v2),
+                   mean_corr_2v3 = mean(corr_2v3),
+                   mean_corr_1v3 = mean(corr_1v3),
+                   mean_balance = mean(balance),
+                   mean_rel_balance = mean(rel_balance))
+data_plot$distance_shrinkage = as.factor(data_plot$distance_shrinkage)
+data_plot$task_version = as.factor(data_plot$task_version)
+```
+
+
+##### Look at gradient of 1v2/2v3 correctness in dependence of shrinkage
+
+Balance > 0: Higher dist higher correctness
+Balance < 0: Lower dist higher correctness
+
+```{r}
+p = ggplot(data_plot, aes(x = distance_shrinkage, y = mean_balance)) +
+  geom_point(size=0.5) +
+  #stat_summary(fun = 'mean', geom = 'point', size = 1, color = 'red') +
+  geom_vline(xintercept = as.factor(100/6), linetype='dashed', color='red') +
+  facet_wrap(~task_version)
+
+p
+```
+
+##### Look at gradient of 1v2/2v3 correctness in dependence of shrinkage with penalty
+
+Value escalates the closer 1v3 gets to chance level (0.5)
+
+```{r}
+p = ggplot(data_plot, aes(x = distance_shrinkage, y = mean_rel_balance)) +
+  geom_point(size=0.5) +
+  #stat_summary(fun = 'mean', geom = 'point', size = 1, color = 'red') +
+  scale_x_discrete(breaks=shrink_distance_vec[seq(1, length(seq(0,100/6, length.out=50)), by=5)]) +
+  geom_vline(xintercept = as.factor(100/6), linetype='dashed', color='red') +
+  facet_wrap(~task_version)
+
+p
 ```
