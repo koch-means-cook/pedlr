@@ -19,6 +19,9 @@ code/task/data/
 # Ignore task directory
 task/
 
+# Ignore logs
+logs/
+
 # Ignore knitted notbooks
 *.html
 
