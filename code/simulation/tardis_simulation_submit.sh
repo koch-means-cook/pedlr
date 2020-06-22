@@ -34,11 +34,11 @@ MEM_GB=4
 # ===
 # Create lists of parameters
 # ===
-A0_LIST=$(seq -s ' ' 0 1 1)
-A1_LIST=$(seq -s ' ' 0 1 1)
-TEMPERATURE_LIST=$(seq -s ' ' 1 10 30)
+A0_LIST=$(seq -s ' ' 0 0.2 1)
+A1_LIST=$(seq -s ' ' 0 0.2 1)
+TEMPERATURE_LIST=$(seq -s ' ' 1 6 30)
 INTERDEP_LIST=0.5
-SHRINKAGE_LIST=$(seq -s ' ' 0 10 16)
+SHRINKAGE_LIST=$(seq -s ' ' 0 2 16)
 
 # ===
 # Initialize constant values for simulation
@@ -48,7 +48,7 @@ REWARD_SPACE=100
 MODEL="Pedlr"
 INIT_VALUES="50 50 50 50 50 50"
 DATA_FILE="${PATH_DERIVATIVES}/simulated_participants.tsv"
-OUT_FILE="${PATH_DERIVATIVES}/simulation_${MODEL}"
+OUT_FILE="${PATH_DERIVATIVES}/sim_${MODEL}"
 
 
 # ===
@@ -62,9 +62,12 @@ do
 	# Loop over alpha1
 	for A1 in ${A1_LIST}
 	do
+		# Zero padding for loop counter
+		printf -v COUNT "%06d" ${LOOP_COUNT}
+
 		# Create job to submit
 		# name of the job
-		echo "#PBS -N ${MODEL}_sim_${LOOP_COUNT}" > job
+		echo "#PBS -N ${MODEL}_sim_${COUNT}" > job
 		# set the expected maximum running time for the job:
 		echo "#PBS -l walltime=4:00:00" >> job
 		# determine how much RAM your operation needs:
@@ -79,6 +82,8 @@ do
 		echo "#PBS -l nodes=1:ppn=${N_CPUS}" >> job
 
 		# inside same job:
+		# cd to home directory (for here package)
+		echo "cd ${PATH_BASE}" >> job
 		# Load R version
 		echo "module unload R" >> job
 		echo "module load R/4.0.0" >> job
@@ -92,6 +97,7 @@ do
 				# Loop over distance shrinkage
 				for SHRINKAGE in ${SHRINKAGE_LIST}
 				do
+
 					# Zero padding for loop counter
 					printf -v COUNT "%06d" ${LOOP_COUNT}
 
