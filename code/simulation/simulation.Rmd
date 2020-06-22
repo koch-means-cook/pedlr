@@ -27,6 +27,24 @@ email: koch@mpib-berlin.mpg.de
 
 # Paths and libraries
 
+- Install packages if necessary
+
+```{r}
+# install.packages(c('reshape2',
+#                    'ggplot2',
+#                    'plotly',
+#                    'plyr',
+#                    'Rfast',
+#                    'data.table',
+#                    'knitr',
+#                    'viridis',
+#                    'cowplot',
+#                    'here',
+#                    'optparse'),
+#                  repos='http://ftp5.gwdg.de/pub/misc/cran/')
+```
+
+
 - Import libraries
 
 ```{r message=FALSE}

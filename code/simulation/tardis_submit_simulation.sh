@@ -79,6 +79,9 @@ do
 		echo "#PBS -l nodes=1:ppn=${N_CPUS}" >> job
 
 		# inside same job:
+		# Load R version
+		echo "module load R/4.0.0" >> job
+		
 		# Loop over temperature
 		for TEMP in ${TEMPERATURE_LIST}
 		do
