@@ -1,0 +1,110 @@
+---
+title: "PEDLR - Simulation"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+# Paths and libraries
+
+- Import libraries
+
+```{r message=FALSE}
+library(reshape2)
+library(ggplot2)
+library(plotly)
+library(plyr)
+library(Rfast)
+library(data.table)
+library(knitr)
+#library(rstudioapi)
+#library(here)
+library(viridis)
+library(cowplot)
+library(here)
+library(optparse)
+```
+
+
+- Set paths
+
+```{r}
+base_path = file.path(here::here(), fsep = .Platform$file.sep)
+derivatives_path = file.path(base_path, 'derivatives', 'simulation',
+                             fsep = .Platform$file.sep)
+source_path = file.path(base_path, 'code', fsep = .Platform$file.sep)
+```
+
+- Import own functions
+
+```{r}
+# Source functions required for this script
+source(file.path(source_path, 'design', 'Beta_pseudo_sim.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'design', 'Gaussian_pseudo_sim.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'design', 'Uniform_pseudo_sim.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'design', 'Bimodal_pseudo_sim.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'design', 'Create_design_complete.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Sample_subjects.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Pedlr.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Pedlr_interdep.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Softmax_choice.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Apply_model.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Model_results.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Model_bias_value.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Model_perc_correct.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Model_bias_correct.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Free_bimodal_modes.R',
+                 fsep = .Platform$file.sep))
+source(file.path(source_path, 'simulation', 'Free_bimodal_means.R',
+                 fsep = .Platform$file.sep))
+```
+
+---
+
+# 1. Errors on side with rare outcomes increase with alpha 1
+
+
+
+---
+
+# 2. Moving means of distributions closer to center causes more errors
+
+---
+
+# 3. Balance between side-specific errors is influenced by alpha 1 (vs. only alpha 0 baseline)
+
+---
+
+# 4. Systematic mean-value bias gets stronger with alpha 1
+
+---
+
+# 5. Increasing distance between modes in bimodal distribution strengthens the effect
+
+---
