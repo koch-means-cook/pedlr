@@ -80,8 +80,9 @@ do
 
 		# inside same job:
 		# Load R version
+		echo "module unload R" >> job
 		echo "module load R/4.0.0" >> job
-		
+
 		# Loop over temperature
 		for TEMP in ${TEMPERATURE_LIST}
 		do
@@ -91,6 +92,9 @@ do
 				# Loop over distance shrinkage
 				for SHRINKAGE in ${SHRINKAGE_LIST}
 				do
+					# Zero padding for loop counter
+					printf -v COUNT "%06d" ${LOOP_COUNT}
+
 					echo "Rscript \"${PATH_FUNCTION}\" \
 					 --data_file \"${DATA_FILE}\" \
 					 --model \"${MODEL}\" \
@@ -102,7 +106,7 @@ do
 					 --interdep $INTERDEP \
 					 --init_values \"${INIT_VALUES}\" \
 					 --distance_shrinkage $SHRINKAGE \
-					 --out_file \"${OUT_FILE}_${LOOP_COUNT}.tsv\"" >> job
+					 --out_file \"${OUT_FILE}_${COUNT}.tsv\"" >> job
 
 					 # Iterate loop counter
 					 (( LOOP_COUNT++ ))
