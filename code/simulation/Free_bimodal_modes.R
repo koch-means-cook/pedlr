@@ -33,8 +33,7 @@ source(file.path(source_path, 'simulation', 'Model_results.R',
                  fsep = .Platform$file.sep))
 
 # Start function
-Free_bimodal_modes = function(distance_change_vec,
-                              n_subjects,
+Free_bimodal_modes = function(n_subjects,
                               set_seed,
                               n_blocks,
                               perc_forced,
@@ -47,63 +46,82 @@ Free_bimodal_modes = function(distance_change_vec,
                               save_data,
                               save_file,
                               load_data,
-                              load_file){
+                              load_file,
+                              mode_distance_change_vec){
   
-  for(change_count in seq(length(distance_change_vec))){
-    
-    # Get distance change between both modes of bimodal distribution for each 
-    # iteration
-    distance_change = distance_change_vec[change_count]
-    adjusted_dist_list = dist_list
-    
-    # Apply distance change to bimodal distributions
-    for(i in seq(length(adjusted_dist_list))){
-      if(adjusted_dist_list[[i]][1] == 'bimodal'){
-        # Strengthen/Weaken rare events when sampling bias works against/in favor 
-        # of effect
-        adjusted_dist_list[[i]][4] = as.numeric(adjusted_dist_list[[i]][4]) + distance_change
-      }
-    }
-    
-    # In first iteration create template to append data to
-    if(change_count == 1){
-      # Assess bias in correct choices for specific distance of modes
-      outcome = Model_bias_correct(n_subjects,
-                                   set_seed,
-                                   n_blocks,
-                                   perc_forced,
-                                   blocks_per_task,
-                                   adjusted_dist_list,
-                                   model,
-                                   parameters,
-                                   init_values,
-                                   shrink_distance_vec,
-                                   save_data,
-                                   save_file,
-                                   load_data,
-                                   load_file)$data_bias_correct
-      
-      # Add column stating mode distance change
-      outcome$bimodal_distance_change = distance_change
-    }
-
-    data = Model_bias_correct(n_subjects,
-                              set_seed,
-                              n_blocks,
-                              perc_forced,
-                              blocks_per_task,
-                              adjusted_dist_list,
-                              model,
-                              parameters,
-                              init_values,
-                              shrink_distance_vec,
-                              save_data,
-                              save_file,
-                              load_data,
-                              load_file)$data_bias_correct
-    data$bimodal_distance_change = distance_change
-    outcome = rbind(outcome, data)
+  # In case data should be loaded, just read table of saved outcome
+  if(load_data){
+    outcome = setDT(read.table(load_file, header = TRUE, sep = '\t'))
   }
+  
+  
+  # In case data should not be loaded, calculate outcome
+  if(!load_data){
+    
+    
+    for(change_count in seq(length(mode_distance_change_vec))){
+      
+      # Get distance change between both modes of bimodal distribution for each 
+      # iteration
+      distance_change = mode_distance_change_vec[change_count]
+      adjusted_dist_list = dist_list
+      
+      # Apply distance change to bimodal distributions
+      for(i in seq(length(adjusted_dist_list))){
+        if(adjusted_dist_list[[i]][1] == 'bimodal'){
+          # Strengthen/Weaken rare events when sampling bias works against/in favor 
+          # of effect
+          adjusted_dist_list[[i]][4] = as.numeric(adjusted_dist_list[[i]][4]) + distance_change
+        }
+      }
+      
+      # In first iteration create template to append data to
+      if(change_count == 1){
+        # Assess bias in correct choices for specific distance of modes
+        outcome = Model_bias_correct(n_subjects,
+                                     set_seed,
+                                     n_blocks,
+                                     perc_forced,
+                                     blocks_per_task,
+                                     adjusted_dist_list,
+                                     model,
+                                     parameters,
+                                     init_values,
+                                     shrink_distance_vec,
+                                     save_data,
+                                     save_file,
+                                     load_data,
+                                     load_file)$data_bias_correct
+        
+        # Add column stating mode distance change
+        outcome$bimodal_distance_change = distance_change
+      }
+      
+      data = Model_bias_correct(n_subjects,
+                                set_seed,
+                                n_blocks,
+                                perc_forced,
+                                blocks_per_task,
+                                adjusted_dist_list,
+                                model,
+                                parameters,
+                                init_values,
+                                shrink_distance_vec,
+                                save_data,
+                                save_file,
+                                load_data,
+                                load_file)$data_bias_correct
+      data$bimodal_distance_change = distance_change
+      outcome = rbind(outcome, data)
+    }
+    
+  }
+  
+  # If specified save outcome
+  if(save_data){
+    write.table(outcome, save_file, sep='\t', row.names = FALSE)
+  }
+  
   
   return(outcome)
   

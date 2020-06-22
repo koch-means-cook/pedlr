@@ -33,8 +33,7 @@ source(file.path(source_path, 'simulation', 'Model_results.R',
                  fsep = .Platform$file.sep))
 
 # Start function
-Free_bimodal_modes = function(mean_change_vec,
-                              n_subjects,
+Free_bimodal_means = function(n_subjects,
                               set_seed,
                               n_blocks,
                               perc_forced,
@@ -47,7 +46,8 @@ Free_bimodal_modes = function(mean_change_vec,
                               save_data,
                               save_file,
                               load_data,
-                              load_file){
+                              load_file,
+                              mean_change_vec){
   
   for(change_count in seq(length(mean_change_vec))){
     
