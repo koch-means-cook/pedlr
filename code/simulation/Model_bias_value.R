@@ -95,7 +95,7 @@ Model_bias_value = function(n_subjects,
   
   # Simulate designs for number of subjects
   data_sim = Sample_subjects(n_subjects = n_subjects,
-                             set_seed = TRUE,
+                             set_seed = set_seed,
                              n_blocks = n_blocks,
                              perc_forced = perc_forced,
                              blocks_per_task = blocks_per_task,
