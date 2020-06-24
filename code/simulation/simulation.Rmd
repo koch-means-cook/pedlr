@@ -536,6 +536,7 @@ data_model = ddply(data_sim,
                    init_values = init_values)
 ```
 
+
 #### Results
 
 ```{r, out.width="100%"}
