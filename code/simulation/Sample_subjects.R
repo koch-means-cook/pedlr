@@ -3,7 +3,7 @@
 source_path = file.path(here::here(), 'code', fsep = .Platform$file.sep)
 
 # Source functions required for this script
-source(file.path(source_path, 'design', 'Create_design_complete.R',
+source(file.path(source_path, 'design', 'Create_design.R',
                  fsep = .Platform$file.sep))
 
 # Function to sample design for specific number of simulated participants. 

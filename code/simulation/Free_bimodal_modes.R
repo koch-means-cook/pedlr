@@ -69,9 +69,12 @@ Free_bimodal_modes = function(n_subjects,
       # Apply distance change to bimodal distributions
       for(i in seq(length(adjusted_dist_list))){
         if(adjusted_dist_list[[i]][1] == 'bimodal'){
-          # Strengthen/Weaken rare events when sampling bias works against/in favor 
-          # of effect
-          adjusted_dist_list[[i]][4] = as.numeric(adjusted_dist_list[[i]][4]) + distance_change
+          # Enhance distance between modes of bimoadl dist
+          adjusted_dist_list[[i]][4] = (
+            (abs(as.numeric(adjusted_dist_list[[i]][4])) + distance_change) * 
+            ((as.numeric(as.numeric(adjusted_dist_list[[i]][4]) > 0) * 2) - 1)
+            )
+          #print(adjusted_dist_list[[i]][4])
         }
       }
       

@@ -89,21 +89,21 @@ Apply_model = function(design,
     # Apply specified model to data
     if(model == 'Pedlr'){
       sim = Pedlr(design = design_version,
-                                       params.alpha0 = parameters$alpha0,
-                                       params.alpha1 = parameters$alpha1,
-                                       params.temperature = parameters$temperature,
-                                       params.reward_space_ub = parameters$reward_space_ub,
-                                       choice_policy = parameters$choice_policy,
-                                       init_values = init_values[[version_count]])
+                  params.alpha0 = parameters$alpha0,
+                  params.alpha1 = parameters$alpha1,
+                  params.temperature = parameters$temperature,
+                  params.reward_space_ub = parameters$reward_space_ub,
+                  choice_policy = parameters$choice_policy,
+                  init_values = init_values[[version_count]])
     } else if(model == 'Pedlr_interdep'){
       sim = Pedlr_interdep(design = design_version,
-                                            params.alpha0 = parameters$alpha0,
-                                            params.alpha1 = parameters$alpha1,
-                                            params.interdep = parameters$interdep,
-                                            params.temperature = parameters$temperature,
-                                            params.reward_space_ub = parameters$reward_space_ub,
-                                            choice_policy = parameters$choice_policy,
-                                            init_values = init_values[[version_count]])
+                           params.alpha0 = parameters$alpha0,
+                           params.alpha1 = parameters$alpha1,
+                           params.interdep = parameters$interdep,
+                           params.temperature = parameters$temperature,
+                           params.reward_space_ub = parameters$reward_space_ub,
+                           choice_policy = parameters$choice_policy,
+                           init_values = init_values[[version_count]])
     }
     
     # Save model values, PE and fPE for ech trial and subject

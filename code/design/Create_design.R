@@ -1,4 +1,7 @@
 
+# Load libraries
+library(optparse)
+
 # For knitting:
 source_path = file.path(here::here(), 'code', fsep = .Platform$file.sep)
 
@@ -137,11 +140,15 @@ Create_design <- function(n_blocks,
     
   }
   
+  # - Present reward estimates after critical forced choice trial
+  # - Ideally rating should also be done before (too suspicious?)
+  
   # Let function return complete design
   return(design)
   
 }
-# 
+
+
 # # Provide standard values
 # n_blocks = 6
 # perc_forced = 20
@@ -167,3 +174,26 @@ Create_design <- function(n_blocks,
 #                        perc_forced,
 #                        blocks_per_task,
 #                        dist_list)
+
+# Provide standard values
+n_blocks = 4
+perc_forced = 20
+blocks_per_task = 2
+dist_list = list(c('bimodal', 30, 30, 80, 10, 0.2),
+                 c('beta', 3, 2),
+                 c('gaussian', 2*100/3, 30),
+                 c('beta', 3, 2),
+                 c('bimodal', 30, 0.2, 40, 10, 10),
+                 c('beta', 2, 3))
+
+# Testrun plan
+plan = Create_plan(n_blocks,
+                   perc_forced,
+                   blocks_per_task,
+                   dist_list)
+
+# Testrun rewards
+design = Create_design(n_blocks,
+                       perc_forced,
+                       blocks_per_task,
+                       dist_list)

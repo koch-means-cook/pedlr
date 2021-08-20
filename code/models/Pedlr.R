@@ -82,7 +82,7 @@ Pedlr = function(design,
     choice_reward = comp_reward[choice]
     
     
-    # Calculate updating acording to model
+    # Calculate updating according to model
     pe = choice_reward - choice_value
     fpe = params.alpha0 + (1 - params.alpha0) * params.alpha1 * (abs(pe)/params.reward_space_ub)
     updated_value = choice_value + fpe * pe

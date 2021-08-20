@@ -95,6 +95,7 @@ Model_bias_correct = function(n_subjects,
     data_choice = Model_perc_correct(data_model)
     data_choice = data_choice$perc_correct
     data_choice$distance_shrinkage = NA
+    # Delete all rows to make template
     data_choice = data_choice[0,]
     data_choice = cbind(data_choice, parameters[0,])
     
