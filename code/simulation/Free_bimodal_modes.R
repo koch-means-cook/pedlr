@@ -98,6 +98,9 @@ Free_bimodal_modes = function(n_subjects,
         
         # Add column stating mode distance change
         outcome$bimodal_distance_change = distance_change
+        
+        # Reduce to template (delete al rows)
+        outcome = outcome[0,]
       }
       
       data = Model_bias_correct(n_subjects,

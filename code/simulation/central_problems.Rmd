@@ -916,7 +916,7 @@ ggplot(data=data_plot, aes(x=comp, y=mean_perc_correct, color=bimodal_distance_c
 
 ---
 
-# Create loss paradigm where standard RW has balanced errors
+# 5. Create loss paradigm where standard RW has balanced errors
 
 ```{r}
 # Design
@@ -950,14 +950,14 @@ samples = data.table(option = c(sim$option_left, sim$option_right),
 ggplot(data = samples, aes(x = reward, fill = as.character(option))) +
   geom_histogram(binwidth = 1,
                  color = NA,
-                 alpha = 0.8) +
-  facet_grid(task_version~option)
+                 alpha = 0.8,
+                 position = 'identity')
 ```
 
 ```{r}
 # Steps in which to loop over each parameter
 steps_alpha0 = 0.2
-steps_alpha1 = 0
+steps_alpha1 = c(0, 0.3, 0.7)
 steps_temperature = 7
 steps_policy = c('softmax')
 steps_interdep = 0.5
@@ -974,52 +974,111 @@ colnames(parameters) = c('alpha0',
                          'interdep')
 # Add constant parameters
 parameters$reward_space_ub = reward_space_ub
+shrink_distance_vec = c(0,5)
+mode_distance_change_vec = c(-10, -5, 0, 5)
+init_values = list(c(50,50,50))
+```
+
+Sampling with lowered mode distance
+
+```{r}
+Plot_hist_with_mode_change = function(dist_list,
+                                      mode_distance_change){
+  dist_list_hist = dist_list
+  dist_list_hist[[2]][4] = (
+    (abs(as.numeric(dist_list_hist[[2]][4])) + mode_distance_change) * 
+      ((as.numeric(as.numeric(dist_list_hist[[2]][4]) > 0) * 2) - 1)
+  )
+  
+  # Simulate single design to display samples
+  sim = Create_design(n_blocks = n_blocks,
+                      blocks_per_task = blocks_per_task,
+                      perc_forced = perc_forced,
+                      dist_list = dist_list_hist)
+  # Get sampled rewards from both options
+  samples = data.table(option = c(sim$option_left, sim$option_right),
+                       reward = c(sim$reward_stim_1, sim$reward_stim_2),
+                       task_version = c(sim$task_version, sim$task_version))
+  # Plot samples for each option
+  ggplot(data = samples, aes(x = reward, fill = as.character(option))) +
+    geom_histogram(binwidth = 1,
+                   color = NA,
+                   alpha = 0.7,
+                   position = 'identity') +
+    labs(title = paste('Mode distance change: ', as.character(mode_distance_change), sep = ''))
+}
+
+Plot_hist_with_mode_change(dist_list = dist_list,
+                           mode_distance_change = -10)
+Plot_hist_with_mode_change(dist_list = dist_list,
+                           mode_distance_change = -5)
+
 ```
 
 ```{r}
 # Set model for simulation
 model = 'Pedlr'
 
-# Assess bias (if load data is true it will load .tsv of data_bias)
-bias_correct = Model_bias_correct(n_subjects = n_subjects,
-                                  set_seed = set_seed,
-                                  n_blocks = n_blocks,
-                                  perc_forced = perc_forced,
-                                  blocks_per_task = blocks_per_task,
-                                  dist_list = dist_list,
-                                  model = model,
-                                  parameters = parameters,
-                                  init_values = list(c(50,50,50)),
-                                  shrink_distance_vec = 0,
-                                  save_data = FALSE,
-                                  save_file = NA,
-                                  load_data = FALSE,
-                                  load_file = NA)
+# Parameters to save and load data output
+file = file.path(derivatives_path, 'central_prob_sim_5_pedlr.tsv')
+save_data = FALSE
+save_file = file
+load_data = TRUE
+load_file = file
+
+# Asses accuracy to see if RW has equal amount of errors for lower and upper
+# Gaussian under which circumstances
+outcome = Free_bimodal_modes(n_subjects = n_subjects,
+                             set_seed = set_seed,
+                             n_blocks = n_blocks,
+                             perc_forced = perc_forced,
+                             blocks_per_task = blocks_per_task,
+                             dist_list = dist_list,
+                             model = model,
+                             parameters = parameters,
+                             init_values = init_values,
+                             shrink_distance_vec = shrink_distance_vec,
+                             save_data = save_data,
+                             save_file = save_file,
+                             load_data = load_data,
+                             load_file = load_file,
+                             mode_distance_change_vec = mode_distance_change_vec)
 ```
+
 
 ```{r}
 # Plot data
-data_plot = data.table(bias_correct$data_bias_correct) %>%
-  # Adjust column values
-  .[, ':='(alpha1 = round(alpha1, 3),
-           perc_correct = perc_correct * 100) ] %>%
-  # Get mean and sd of percentage of correct answers for each parameter
-  # combination
+data_plot = data.table(outcome) %>%
+  .[, ':='(comp = paste('perc_correct_', comp, sep = ''))] %>%
+  data.table::dcast(sub_id +
+                      task_version +
+                      alpha0 +
+                      alpha1 +
+                      temperature +
+                      choice_policy +
+                      reward_space_ub +
+                      distance_shrinkage +
+                      bimodal_distance_change ~ comp,
+                    value.var = 'perc_correct',
+                    sep = '_') %>%
+  .[, ':='(balance = perc_correct_2v3 - perc_correct_1v2)] %>%
   .[, keyby = .(task_version,
-                comp,
                 alpha0,
                 alpha1,
                 temperature,
                 choice_policy,
                 reward_space_ub,
-                distance_shrinkage),
-    .(mean_perc_correct = mean(perc_correct),
-      sd_perc_correct = sd(perc_correct))]
+                distance_shrinkage,
+                bimodal_distance_change),
+    .(mean_balance = mean(balance),
+      sd_balance = sd(balance))]
 
-ggplot(data=data_plot, aes(x=comp, y=mean_perc_correct, color=distance_shrinkage, group=distance_shrinkage)) +
+ggplot(data=data_plot, aes(x=bimodal_distance_change, y=mean_balance, color=distance_shrinkage, group=distance_shrinkage)) +
   geom_line() +
   scale_color_viridis(option = 'D') +
-  facet_grid(alpha0 + temperature ~ task_version) +
-  labs(title = 'Influence of alpha1 on correct choices')
+  facet_wrap(~alpha1) +
+  labs(title = 'Influence of alpha1 and correct choices')
 ```
 
+Putting main mode and second mode of bimodal dist closer together balances false choices between both Gaussians in the loss case.
+Higher alpha1 causes more errors on the intended side.
