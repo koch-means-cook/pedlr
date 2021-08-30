@@ -17,10 +17,10 @@ code/task/data/
 .DS_Store
 
 # Ignore task directory
-task/
+/task
 
 # Ignore logs
-logs/
+/logs
 
 # Ignore knitted notbooks
 *.html
