@@ -925,7 +925,7 @@ n_blocks = 3
 # Number of blocks dedicated to each task version
 blocks_per_task = 3
 # Percentage of forced choice trials
-perc_forced = 30
+perc_forced = 20
 # List of different distributions with parameters (three distributions for each 
 # task version)
 dist_list = list(c('gaussian', gaussian_mid_mean, gaussian_sd),
@@ -975,7 +975,7 @@ colnames(parameters) = c('alpha0',
 # Add constant parameters
 parameters$reward_space_ub = reward_space_ub
 shrink_distance_vec = c(0,5)
-mode_distance_change_vec = c(-10, -5, 0, 5)
+mode_distance_change_vec = c(-10, -7, -6, -5, -4, 0, 5)
 init_values = list(c(50,50,50))
 ```
 
