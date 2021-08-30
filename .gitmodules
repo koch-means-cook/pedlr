@@ -1,0 +1,3 @@
+[submodule "pedlr-task"]
+	path = pedlr-task
+	url = https://git.mpib-berlin.mpg.de/koch/pedlr-task.git
