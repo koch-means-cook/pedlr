@@ -4,6 +4,9 @@ raw_data/
 # Ignore all derivative files
 derivatives/
 
+# Ignore logs
+logs/simulation/*
+
 # Ignore data folder inside code/task folder
 code/task/data/
 
