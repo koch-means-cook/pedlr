@@ -16,7 +16,8 @@ source(file.path(source_path, 'design', 'Create_block.R', fsep = .Platform$file.
 Create_design <- function(n_blocks,
                           perc_forced,
                           blocks_per_task,
-                          dist_list){
+                          dist_list,
+                          prop_rare = 0.2){
   
   # Build plan mapping blocks, versions, distributions, and parameters
   plan = Create_plan(n_blocks,
@@ -70,6 +71,9 @@ Create_design <- function(n_blocks,
     # Get number of rewards to sample over all blocks in task version
     n_sample = nrow(subset(version, option_left == 1 | option_right == 1))
     
+    # Add column indicating rare event
+    version$is_rare = 0
+    
     # Sample and insert rewards for each distribution in task version (do this for each task version rather
     # than block to maximize number of samples drawn for each distribution because a low number of samples
     # cannot represent the whole distribution in our Pseudo_sampling)
@@ -84,6 +88,12 @@ Create_design <- function(n_blocks,
       # Get current distribution
       dist = plan_dist$dist_name
       
+      # See if current distribution relies on rare events
+      needs_rare = FALSE
+      if(dist %in% c('beta', 'bimodal')){
+        needs_rare = TRUE
+      }
+
       # Sample rewards according to distributions
       # Beta distribution
       if(dist == 'beta'){
@@ -125,15 +135,58 @@ Create_design <- function(n_blocks,
                                     reward_space_ub = reward_space_ub)
       }
       
+      # If desired relocate rare events
+      if(needs_rare){
+        # Mode
+        counts = table(reward$outcome)
+        sample_mode = as.numeric(names(counts)[which(counts == max(counts))])[1]
+        # Mean
+        sample_mean = mean(reward$outcome)
+        # Get number of rare events (according to proportion rate)
+        prop = round(length(reward$outcome) * prop_rare)
+        # If skewed to left
+        if(sample_mean < sample_mode){
+          # Find lowest x entries (rare entries) 
+          rare_pool = sort(reward$outcome)[seq(prop)]
+        } else { # If skewed to right
+          # Find highest x entries (rare entries) 
+          rare_pool = sort(reward$outcome)[seq(length(reward$outcome) - (prop - 1), length(reward$outcome))]
+        }
+        # Find location of rare events
+        is_rare = as.numeric(reward$outcome %in% rare_pool)
+      }
+      
       # Insert rewards into task_version
       # Left rewards
       index = version$option_left == dist_count
       version$reward_stim_1[index] = reward$outcome[1:length(version$reward_stim_1[index])]
+      if(needs_rare){
+        version$is_rare[index] = version$is_rare[index] + is_rare[1:length(version$reward_stim_1[index])] 
+      }
       # Right rewards
       index = version$option_right == dist_count
       version$reward_stim_2[index] = reward$outcome[(length(version$reward_stim_2[index])+1):nrow(reward)]
+      if(needs_rare){
+        version$is_rare[index] = version$is_rare[index] + is_rare[(length(version$reward_stim_2[index])+1):nrow(reward)] 
+      }
+      
+      # Find rare events which are in the wrong forced choices (wouldnt get selected)
+      bad_forced_left = as.numeric(version$forced_left & version$option_right == dist_count)
+      bad_forced_right = as.numeric(version$forced_right & version$option_left == dist_count)
+      bad_forced = involved_forced_left + involved_forced_right
+      
+      # - Swap bad forced choices with random reward from same option
+      # - Put some estimates to after forced choice rare event
+      # - Add more of the rare events to the (good) forced choice trials
+      
+      version$bad_forced = bad_forced
+      
+      
+      bla = version[version$is_rare == 1 & bad_forced == 1, ]
+      
       
     }
+    
     
     # Concatenate task_versions to create design
     design = rbind(design, version)

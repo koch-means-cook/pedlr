@@ -11,6 +11,17 @@ Bimodal_pseudo_sim = function(n_sim,
                               reward_space_lb,
                               reward_space_ub){
 
+  # default values
+  # n_sim = 240
+  # mean = 100 * 2/6
+  # rel_proportion = 0.2
+  # distance = 40
+  # main.sd = (100 * 1/6) / 3
+  # second.sd = (100 * 1/6) / 3
+  # dist_name = 'bimodal'
+  # reward_space_lb = 1
+  # reward_space_ub = 100
+  
   # Calculate mean of distributions to combine if we want the specified mean 
   # (needs distance and relative proportion of samples)
   main.mean = mean - ((rel_proportion * distance) / (rel_proportion + 1))
@@ -84,6 +95,64 @@ Bimodal_pseudo_sim = function(n_sim,
   }
   # Create outcomes based on how often each reward was sampled
   outcome = unlist(mapply(function(x,y) rep(x,y), seq(from=reward_space_lb,to=reward_space_ub), outcome))
+  
+  # Check for relative proportion in sample
+  # If there is any detectable gap between modes
+  if(max(diff(sort(outcome))) >= 3){
+    boundary = sort(outcome)[diff(sort(outcome)) == max(diff(sort(outcome)))]
+    # If smaller mode is to the left
+    if(distance < 0){
+      # Find proportion of "rare" outcomes in sample
+      n_rare = sum(outcome <= boundary)
+      n_normal = sum(outcome > boundary)
+      # Find what proportion should be
+      target_prop = (n_rare + n_normal) * rel_proportion
+      # If proportion of rare too low
+      if(n_rare < target_prop){
+        # Get how many rare outcomes need to be added
+        n_new_samples = target_prop - n_rare
+        # Sample from "rare" mode
+        new_samples = round(rnorm(n_new_samples, second.mean, second.sd))
+        # Get random samples from 'normal' mode to replace
+        index_resample = sample(seq(which(outcome == boundary),
+                                    length(outcome)),
+                                n_new_samples)
+        # Replace old "normal" samples with new samples
+        outcome[index_resample] = new_samples
+      }
+    } else if(distance > 0){ # If smaller mode is to the right
+      # Find proportion of "rare" outcomes in sample
+      n_rare = sum(outcome >= boundary)
+      n_normal = sum(outcome < boundary)
+      # Find what proportion should be
+      target_prop = (n_rare + n_normal) * rel_proportion
+      # If proportion of rare too low
+      if(n_rare < target_prop){
+        # Get how many rare outcomes need to be added
+        n_new_samples = target_prop - n_rare
+        # Sample from "rare" mode
+        new_samples = round(rnorm(n_new_samples, second.mean, second.sd))
+        # Get random samples from 'normal' mode to replace
+        index_resample = sample(seq(which(outcome == boundary)),
+                                n_new_samples)
+        # Replace old "normal" samples with new "rare" samples
+        outcome[index_resample] = new_samples
+      }
+    }
+    
+    # Adjust for potential mean changes by adding whole numbers to all samples
+    sample_mean = mean(outcome)
+    mean_diff = mean - sample_mean
+    outcome = outcome + round(mean_diff)
+    
+  }
+  
+  # If sample adjustment created numbers outside of reward space, adjust them
+  if(min(outcome) < reward_space_lb | max(outcome) > reward_space_ub){
+    outcome[outcome < reward_space_lb] = reward_space_lb
+    outcome[outcome > reward_space_ub] = reward_space_ub
+  }
+  
   # Randomize sample
   outcome = sample(outcome)
   

@@ -19,12 +19,12 @@ source(file.path(source_path, 'design', 'Transform_design_online.R', fsep = .Pla
 n_blocks = 4
 perc_forced = 20
 blocks_per_task = 2
-dist_list = list(c('bimodal', 30, 30, 80, 10, 0.2),
-                 c('beta', 3, 2),
-                 c('gaussian', 2*100/3, 30),
-                 c('beta', 3, 2),
-                 c('bimodal', 30, 0.2, 40, 10, 10),
-                 c('beta', 2, 3))
+dist_list = list(c('gaussian', 100 * 1/6, (100 * 1/6) / 3),
+                 c('bimodal', 100 * 2/6, 0.2, 40, (100 * 1/6) / 3, (100 * 1/6) / 3),
+                 c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
+                 c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
+                 c('bimodal', 100 * 4/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
+                 c('gaussian', 100 * 5/6, (100 * 1/6) / 3))
 
 # Twenty different designs
 for(i in seq(20)){
