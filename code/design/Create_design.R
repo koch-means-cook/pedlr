@@ -17,7 +17,8 @@ Create_design <- function(n_blocks,
                           perc_forced,
                           blocks_per_task,
                           dist_list,
-                          prop_rare = 0.2){
+                          prop_rare = 0.2,
+                          min_forced_with_rare_per_block = 2){
   
   # Build plan mapping blocks, versions, distributions, and parameters
   plan = Create_plan(n_blocks,
@@ -171,19 +172,99 @@ Create_design <- function(n_blocks,
       }
       
       # Find rare events which are in the wrong forced choices (wouldnt get selected)
-      bad_forced_left = as.numeric(version$forced_left & version$option_right == dist_count)
-      bad_forced_right = as.numeric(version$forced_right & version$option_left == dist_count)
-      bad_forced = involved_forced_left + involved_forced_right
+      if(needs_rare){
+        bad_forced_left = as.numeric(version$forced_left & version$option_right == dist_count)
+        bad_forced_right = as.numeric(version$forced_right & version$option_left == dist_count)
+        bad_forced = bad_forced_left + bad_forced_right
+        version$bad_forced = bad_forced
+      }
       
-      # - Swap bad forced choices with random reward from same option
+      if(needs_rare){
+        # Swap bad forced choices with random reward from same option
+        swap_index = which(version$is_rare > 0 & version$bad_forced > 0)
+        n_swaps = length(swap_index)
+        for(i in seq(n_swaps)){
+          # Find if left or right stimulus (if forced stimulus is on right, swap stimulus is on left, because we only look at bad forced trials)
+          left = version$forced_right[swap_index[i]]
+          if(left == 1){
+            # Get pool of possible swap locations (swap only with same side rewards)
+            pool_index = which(version$option_left == dist_count & version$is_rare == 0 & version$bad_forced == 0)
+            # Get single location to swap with
+            swap_with_index = sample(pool_index, 1)
+            # Swap
+            version$reward_stim_1 = replace(version$reward_stim_1,
+                                            c(swap_index[i], swap_with_index),
+                                            version$reward_stim_1[c(swap_with_index, swap_index[i])])
+          } else{
+            pool_index = which(version$option_right == dist_count & version$is_rare == 0 & version$bad_forced == 0)
+            swap_with_index = sample(pool_index, 1)
+            version$reward_stim_2 = replace(version$reward_stim_2,
+                                            c(swap_index[i], swap_with_index),
+                                            version$reward_stim_2[c(swap_with_index, swap_index[i])])
+          }
+          # Swap rare indicator (unaffected by stimulus side)
+          version$is_rare = replace(version$is_rare,
+                                    c(swap_index[i], swap_with_index),
+                                    version$is_rare[c(swap_with_index, swap_index[i])])
+        }
+        
+        # Add more of the rare events to the (good) forced choice trials
+        # Go through each block individually
+        for(block_count in unique(version$block_n)){
+          curr_block = version[version$block_n == block_count,]
+          # Get number of forced choices which force a rare outcome
+          n_forced_with_rare_per_block = sum(curr_block$is_rare == 1 & curr_block$free_choice == 0)
+          # Less than expected?
+          if(n_forced_with_rare_per_block < min_forced_with_rare_per_block){
+            # Find potential forced choices (forcing choice of skewed dist)
+            index = curr_block$free_choice == 0 &
+              curr_block$bad_forced == 0 &
+              curr_block$is_rare == 0 &
+              (curr_block$option_left == dist_count | curr_block$option_right == dist_count)
+            # Select forced choices to put rare event in
+            index = sample(which(index), min_forced_with_rare_per_block - n_forced_with_rare_per_block)
+            # For each selected forced choice
+            for(i in index){
+              # Find side of stimulus
+              left = curr_block$forced_left[i]
+              # If stimulus on left side: replace with rare event of free choice on left side
+              if(left == 1){
+                replace_pool = which(curr_block$option_left == dist_count & curr_block$is_rare == 1 & curr_block$free_choice == 1)
+                if(length(replace_pool) == 0){
+                  stop('Error during min forced choices with rare outcome: No possible replacements')
+                }
+                # Sample replacement location from pool
+                replacement = sample(replace_pool, 1)
+                # Swap forced outcome with rare free outcome
+                curr_block$reward_stim_1 = replace(curr_block$reward_stim_1,
+                                                   c(i, replacement),
+                                                   curr_block$reward_stim_1[c(replacement, i)])
+              } else {
+                replace_pool = which(curr_block$option_right == dist_count & curr_block$is_rare == 1 & curr_block$free_choice == 1)
+                if(length(replace_pool) == 0){
+                  stop('Error during min forced choices with rare outcome: No possible replacements')
+                }
+                # Sample replacement location from pool
+                replacement = sample(replace_pool, 1)
+                # Swap forced outcome with rare free outcome
+                curr_block$reward_stim_2 = replace(curr_block$reward_stim_2,
+                                                   c(i, replacement),
+                                                   curr_block$reward_stim_2[c(replacement, i)])
+              }
+              # Swap rare indicator (unaffected by stimulus side)
+              curr_block$is_rare = replace(curr_block$is_rare,
+                                           c(i, replacement),
+                                           curr_block$is_rare[c(replacement, i)])
+              
+              # Overwrite block with new one containing required forced choices
+              version[version$block_n == block_count,] = curr_block
+            }
+          }
+        }  
+      }
+
       # - Put some estimates to after forced choice rare event
-      # - Add more of the rare events to the (good) forced choice trials
-      
-      version$bad_forced = bad_forced
-      
-      
-      bla = version[version$is_rare == 1 & bad_forced == 1, ]
-      
+      # TBD
       
     }
     
@@ -200,6 +281,13 @@ Create_design <- function(n_blocks,
   return(design)
   
 }
+
+# library(data.table)
+# bla = data.table(design)
+# bla[bad_forced == 1 & is_rare == 1] # should be no rows
+# for(i in unique(bla$block_n)){
+#   print(nrow(bla[block_n == i & is_rare == 1 & free_choice == 0]))
+# }
 
 
 # # Provide standard values
