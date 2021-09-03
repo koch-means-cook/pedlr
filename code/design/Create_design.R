@@ -13,12 +13,27 @@ source(file.path(source_path, 'design', 'Uniform_pseudo_sim.R', fsep = .Platform
 source(file.path(source_path, 'design', 'Create_plan.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'design', 'Create_block.R', fsep = .Platform$file.sep))
 
+
 Create_design <- function(n_blocks,
                           perc_forced,
                           blocks_per_task,
                           dist_list,
                           prop_rare = 0.2,
-                          min_forced_with_rare_per_block = 2){
+                          min_forced_with_rare_per_block = 2,
+                          min_rate_after_rare_forced_per_block = 2){
+  
+  n_blocks = 4
+  perc_forced = 20
+  blocks_per_task = 2
+  dist_list = list(c('gaussian', 100 * 2/6, (100 * 1/6) / 3),
+                   c('bimodal', 100 * 3/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
+                   c('gaussian', 100 * 4/6, (100 * 1/6) / 3),
+                   c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
+                   c('bimodal', 100 * 4/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
+                   c('gaussian', 100 * 5/6, (100 * 1/6) / 3))
+  prop_rare = 0.2
+  min_forced_with_rare_per_block = 2
+  min_rate_after_rare_forced_per_block = 2
   
   # Build plan mapping blocks, versions, distributions, and parameters
   plan = Create_plan(n_blocks,
@@ -43,6 +58,8 @@ Create_design <- function(n_blocks,
   # For each task version
   for(version_count in unique(plan$version)){
     
+    #print(paste('version_count: ', as.character(version_count)))
+    
     # Get plan for specific task version
     plan_version = plan[plan$version == version_count,]
     
@@ -54,6 +71,8 @@ Create_design <- function(n_blocks,
     
     # For each block in this task version
     for(block_count in version_blocks){
+      
+      #print(paste('block_count: ', as.character(block_count)))
       
       # Get plan for specific block
       plan_block = plan_version[plan_version$block == block_count,]
@@ -80,6 +99,8 @@ Create_design <- function(n_blocks,
     # cannot represent the whole distribution in our Pseudo_sampling)
     for(dist_count in seq(3)){
       
+      #print(paste('dist_count: ', as.character(dist_count)))
+      
       # Set number of distribution according to overall provided distributions
       dist_nr = plan_version$dist_nr[dist_count]
       
@@ -94,7 +115,7 @@ Create_design <- function(n_blocks,
       if(dist %in% c('beta', 'bimodal')){
         needs_rare = TRUE
       }
-
+      
       # Sample rewards according to distributions
       # Beta distribution
       if(dist == 'beta'){
@@ -107,7 +128,7 @@ Create_design <- function(n_blocks,
       }
       # Bimodal distribution
       if(dist == 'bimodal'){
-        reward = Bimodal_pseudo_sim(n_sample,
+        reward = Bimodal_pseudo_sim(n_sim = n_sample,
                                     mean = plan_dist$arg_1,
                                     rel_proportion = plan_dist$arg_2,
                                     distance = plan_dist$arg_3,
@@ -183,34 +204,40 @@ Create_design <- function(n_blocks,
         # Swap bad forced choices with random reward from same option
         swap_index = which(version$is_rare > 0 & version$bad_forced > 0)
         n_swaps = length(swap_index)
-        for(i in seq(n_swaps)){
-          # Find if left or right stimulus (if forced stimulus is on right, swap stimulus is on left, because we only look at bad forced trials)
-          left = version$forced_right[swap_index[i]]
-          if(left == 1){
-            # Get pool of possible swap locations (swap only with same side rewards)
-            pool_index = which(version$option_left == dist_count & version$is_rare == 0 & version$bad_forced == 0)
-            # Get single location to swap with
-            swap_with_index = sample(pool_index, 1)
-            # Swap
-            version$reward_stim_1 = replace(version$reward_stim_1,
-                                            c(swap_index[i], swap_with_index),
-                                            version$reward_stim_1[c(swap_with_index, swap_index[i])])
-          } else{
-            pool_index = which(version$option_right == dist_count & version$is_rare == 0 & version$bad_forced == 0)
-            swap_with_index = sample(pool_index, 1)
-            version$reward_stim_2 = replace(version$reward_stim_2,
-                                            c(swap_index[i], swap_with_index),
-                                            version$reward_stim_2[c(swap_with_index, swap_index[i])])
+        # Check if any swaps need to be made
+        if(n_swaps > 0){
+          for(i in seq(n_swaps)){
+            # Find if left or right stimulus (if forced stimulus is on right, swap stimulus is on left, because we only look at bad forced trials)
+            left = version$forced_right[swap_index[i]]
+            if(left == 1){
+              # Get pool of possible swap locations (swap only with same side rewards)
+              pool_index = which(version$option_left == dist_count & version$is_rare == 0 & version$bad_forced == 0)
+              # Get single location to swap with
+              swap_with_index = sample(pool_index, 1)
+              # Swap
+              version$reward_stim_1 = replace(version$reward_stim_1,
+                                              c(swap_index[i], swap_with_index),
+                                              version$reward_stim_1[c(swap_with_index, swap_index[i])])
+            } else{
+              pool_index = which(version$option_right == dist_count & version$is_rare == 0 & version$bad_forced == 0)
+              swap_with_index = sample(pool_index, 1)
+              version$reward_stim_2 = replace(version$reward_stim_2,
+                                              c(swap_index[i], swap_with_index),
+                                              version$reward_stim_2[c(swap_with_index, swap_index[i])])
+            }
+            # Swap rare indicator (unaffected by stimulus side)
+            version$is_rare = replace(version$is_rare,
+                                      c(swap_index[i], swap_with_index),
+                                      version$is_rare[c(swap_with_index, swap_index[i])])
           }
-          # Swap rare indicator (unaffected by stimulus side)
-          version$is_rare = replace(version$is_rare,
-                                    c(swap_index[i], swap_with_index),
-                                    version$is_rare[c(swap_with_index, swap_index[i])])
         }
         
         # Add more of the rare events to the (good) forced choice trials
         # Go through each block individually
         for(block_count in unique(version$block_n)){
+          
+          #print(paste('block_count: ', as.character(block_count)))
+          
           curr_block = version[version$block_n == block_count,]
           # Get number of forced choices which force a rare outcome
           n_forced_with_rare_per_block = sum(curr_block$is_rare == 1 & curr_block$free_choice == 0)
@@ -256,85 +283,65 @@ Create_design <- function(n_blocks,
                                            c(i, replacement),
                                            curr_block$is_rare[c(replacement, i)])
               
-              # Overwrite block with new one containing required forced choices
-              version[version$block_n == block_count,] = curr_block
+              
             }
           }
+          
+          # - Put some estimates to after forced choice rare event
+          # Find number of ratings after forced rare events
+          n_crit_rate = nrow(curr_block[curr_block$is_rare == 1 &
+                                          curr_block$free_choice == 0 &
+                                          curr_block$bad_forced == 0 &
+                                          curr_block$with_rating == 1,])
+          # Less than expected?
+          if(n_crit_rate < min_rate_after_rare_forced_per_block){
+            # Location of forced choices with rare outcome
+            crit_index = which(curr_block$is_rare == 1 & curr_block$free_choice == 0 & curr_block$bad_forced == 0)
+            # Randomly go through desired number of these trials to add rating
+            crit_index = sample(crit_index, min_rate_after_rare_forced_per_block)
+            for(i in crit_index){
+              # Find closes rating trial which is not after a rare event
+              rating_index = which(curr_block$with_rating == 1 & curr_block$is_rare == 0)
+              rating_index = rating_index[which(abs(rating_index - i) == min(abs(rating_index - i)))]
+              # Swap with closest rating
+              curr_block$with_rating[i] = 1
+              curr_block$with_rating[rating_index] = 0
+            }
+          }
+          
+          # Overwrite block with new one containing required forced choices
+          version[version$block_n == block_count,] = curr_block
+          
         }  
       }
-
-      # - Put some estimates to after forced choice rare event
-      # TBD
-      
     }
-    
     
     # Concatenate task_versions to create design
     design = rbind(design, version)
     
   }
   
-  # - Present reward estimates after critical forced choice trial
-  # - Ideally rating should also be done before (too suspicious?)
-  
   # Let function return complete design
   return(design)
   
 }
 
+# # Some checks
 # library(data.table)
 # bla = data.table(design)
-# bla[bad_forced == 1 & is_rare == 1] # should be no rows
+# if(nrow(bla[bad_forced == 1 & is_rare == 1]) != 0){
+#   stop('Still contains bad forced choices')
+# }
+# # Number of forced choices with rare outcomes
 # for(i in unique(bla$block_n)){
-#   print(nrow(bla[block_n == i & is_rare == 1 & free_choice == 0]))
+#   if(nrow(bla[block_n == i & is_rare == 1 & free_choice == 0]) < 2){
+#     stop(paste('Still too few forced choices with rare outcome per block in block ', as.character(i), sep = ''))
+#   }
+# }
+# # Print number of forced choices with rare outcomes with rating after
+# for(i in unique(bla$block_n)){
+#   if(nrow(bla[block_n == i & is_rare == 1 & free_choice == 0 & with_rating == 1]) < 2){
+#     stop(paste('Still too few ratings after forced choices with rare outcome per block in block ', as.character(i), sep = ''))
+#   }
 # }
 
-
-# # Provide standard values
-# n_blocks = 6
-# perc_forced = 20
-# blocks_per_task = 2
-# dist_list = list(c('bimodal', 30, 30, 80, 10, 0.2),
-#                  c('beta', 3, 2),
-#                  c('gaussian', 2*100/3, 30),
-#                  c('beta', 3, 2),
-#                  c('bimodal', 30, 0.2, 40, 10, 10),
-#                  c('beta', 2, 3),
-#                  c('uniform', 1, 100),
-#                  c('uniform', 1, 100),
-#                  c('gaussian', 66, 10))
-# 
-# # Testrun plan
-# plan = Create_plan(n_blocks,
-#                    perc_forced,
-#                    blocks_per_task,
-#                    dist_list)
-# 
-# # Testrun rewards
-# design = Create_design(n_blocks,
-#                        perc_forced,
-#                        blocks_per_task,
-#                        dist_list)
-
-# Provide standard values
-n_blocks = 4
-perc_forced = 20
-blocks_per_task = 2
-dist_list = list(c('bimodal', 30, 30, 80, 10, 0.2),
-                 c('beta', 3, 2),
-                 c('gaussian', 2*100/3, 30),
-                 c('beta', 3, 2),
-                 c('bimodal', 30, 0.2, 40, 10, 10),
-                 c('beta', 2, 3))
-
-# Testrun plan
-plan = Create_plan(n_blocks,
-                   perc_forced,
-                   blocks_per_task,
-                   dist_list)
-
-# Testrun rewards
-design = Create_design(n_blocks,
-                       perc_forced,
-                       blocks_per_task,
-                       dist_list)

@@ -19,9 +19,9 @@ source(file.path(source_path, 'design', 'Transform_design_online.R', fsep = .Pla
 n_blocks = 4
 perc_forced = 20
 blocks_per_task = 2
-dist_list = list(c('gaussian', 100 * 1/6, (100 * 1/6) / 3),
-                 c('bimodal', 100 * 2/6, 0.2, 40, (100 * 1/6) / 3, (100 * 1/6) / 3),
-                 c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
+dist_list = list(c('gaussian', 100 * 2/6, (100 * 1/6) / 3),
+                 c('bimodal', 100 * 3/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
+                 c('gaussian', 100 * 4/6, (100 * 1/6) / 3),
                  c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
                  c('bimodal', 100 * 4/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
                  c('gaussian', 100 * 5/6, (100 * 1/6) / 3))
@@ -42,7 +42,10 @@ for(i in seq(20)){
   design = Create_design(n_blocks,
                          perc_forced,
                          blocks_per_task,
-                         dist_list)
+                         dist_list,
+                         prop_rare = 0.2,
+                         min_forced_with_rare_per_block = 2,
+                         min_rate_after_rare_forced_per_block = 2)
   
   # Port design for online task
   design_online = Transform_design_online(design)

@@ -100,6 +100,10 @@ Bimodal_pseudo_sim = function(n_sim,
   # If there is any detectable gap between modes
   if(max(diff(sort(outcome))) >= 3){
     boundary = sort(outcome)[diff(sort(outcome)) == max(diff(sort(outcome)))]
+    
+    #print(as.character(distance))
+    #print(as.character(boundary))
+    
     # If smaller mode is to the left
     if(distance < 0){
       # Find proportion of "rare" outcomes in sample
@@ -113,8 +117,9 @@ Bimodal_pseudo_sim = function(n_sim,
         n_new_samples = target_prop - n_rare
         # Sample from "rare" mode
         new_samples = round(rnorm(n_new_samples, second.mean, second.sd))
+        
         # Get random samples from 'normal' mode to replace
-        index_resample = sample(seq(which(outcome == boundary),
+        index_resample = sample(seq(which(outcome == boundary)[1],
                                     length(outcome)),
                                 n_new_samples)
         # Replace old "normal" samples with new samples
@@ -133,7 +138,7 @@ Bimodal_pseudo_sim = function(n_sim,
         # Sample from "rare" mode
         new_samples = round(rnorm(n_new_samples, second.mean, second.sd))
         # Get random samples from 'normal' mode to replace
-        index_resample = sample(seq(which(outcome == boundary)),
+        index_resample = sample(seq(which(outcome == boundary)[1]),
                                 n_new_samples)
         # Replace old "normal" samples with new "rare" samples
         outcome[index_resample] = new_samples
