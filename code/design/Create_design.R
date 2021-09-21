@@ -22,18 +22,18 @@ Create_design <- function(n_blocks,
                           min_forced_with_rare_per_block = 2,
                           min_rate_after_rare_forced_per_block = 2){
   
-  n_blocks = 4
-  perc_forced = 20
-  blocks_per_task = 2
-  dist_list = list(c('gaussian', 100 * 2/6, (100 * 1/6) / 3),
-                   c('bimodal', 100 * 3/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
-                   c('gaussian', 100 * 4/6, (100 * 1/6) / 3),
-                   c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
-                   c('bimodal', 100 * 4/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
-                   c('gaussian', 100 * 5/6, (100 * 1/6) / 3))
-  prop_rare = 0.2
-  min_forced_with_rare_per_block = 2
-  min_rate_after_rare_forced_per_block = 2
+  # n_blocks = 4
+  # perc_forced = 20
+  # blocks_per_task = 2
+  # dist_list = list(c('gaussian', 100 * 2/6, (100 * 1/6) / 3),
+  #                  c('bimodal', 100 * 3/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
+  #                  c('gaussian', 100 * 4/6, (100 * 1/6) / 3),
+  #                  c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
+  #                  c('bimodal', 100 * 4/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
+  #                  c('gaussian', 100 * 5/6, (100 * 1/6) / 3))
+  # prop_rare = 0.2
+  # min_forced_with_rare_per_block = 2
+  # min_rate_after_rare_forced_per_block = 2
   
   # Build plan mapping blocks, versions, distributions, and parameters
   plan = Create_plan(n_blocks,
@@ -320,6 +320,12 @@ Create_design <- function(n_blocks,
     design = rbind(design, version)
     
   }
+  
+  # Eliminate break at end of each task version since there are breaks in the task
+  for(version_count in unique(design$task_version)){
+    design$with_block_break[design$task_version == version_count][1] = 0
+  }
+  
   
   # Let function return complete design
   return(design)
