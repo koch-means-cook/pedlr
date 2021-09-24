@@ -71,6 +71,16 @@ for(i in seq(20)){
                  '.json',
                  sep = '')
     write(json_list[[json_count]], file = name)
+    
+    # Save design alongside (in pedlr-task submodule)
+    name = paste(file,
+                 paste('_run-', as.character(json_count), sep = ''),
+                 '.tsv',
+                 sep = '')
+    write.table(design[design$task_version == json_count],
+                file = name,
+                sep = '\t',
+                na = 'n/a')
   }
 }
 
