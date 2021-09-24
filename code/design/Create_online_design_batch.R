@@ -77,10 +77,11 @@ for(i in seq(20)){
                  paste('_run-', as.character(json_count), sep = ''),
                  '.tsv',
                  sep = '')
-    write.table(design[design$task_version == json_count],
+    write.table(design[design$task_version == json_count,],
                 file = name,
                 sep = '\t',
-                na = 'n/a')
+                na = 'n/a',
+                row.names = FALSE)
   }
 }
 
