@@ -40,6 +40,7 @@ Load_arc_data = function(input){
     data = data[end_train_idx:nrow(data),]
   }
   
+  
   # Get duration of breaks
   duration_breaks = data$rt[which(data$type == 'break')]
   data$duration_break_first = duration_breaks[1]
@@ -48,14 +49,21 @@ Load_arc_data = function(input){
   # Get duration of break between task versions
   data$duration_halftime = data[type == 'halftime']$rt
   
-  # Get task version variable
-  data$task_version = 0
-  data$task_version[1:which(data$type == 'halftime')] = 1
-  data$task_version[which(data$type == 'halftime'):nrow(data)] = 2
+  # # Get task version variable
+  # data$task_version = 0
+  # data$task_version[1:which(data$type == 'halftime')] = 1
+  # data$task_version[which(data$type == 'halftime'):nrow(data)] = 2
+  # 
+  # # Get blocks (via breaks)
+  # breaks = which(data$type == 'break')
+  # data$block_n = 1
+  # data$block_n[breaks[1] : which(data$type == 'halftime')] = 2
+  # data$block_n[which(data$type == 'halftime'):breaks[length(breaks)]] = 3
+  # data$block_n[breaks[length(breaks)]:nrow(data)] = 4
   
+  # Remove irrelevant columns for data analysis
   data = data %>%
     setDT() %>%
-    # Remove irrelevant columns for data analysis
     .[, c('url',
           'trial_type',
           'trial_index',
@@ -71,8 +79,8 @@ Load_arc_data = function(input){
           'response_reward',
           'response_range'):=NULL]
   
-  # Delete all entries not requiring response
-  data = data[which(!is.na(data$rt)),]
+  # Delete all entries not requiring response (watch out to not delete missed responses/timeouts)
+  data = data[!is.na(data$rt) | data$type %in% c('free', 'forced'),]
   
   # Delete break entries and goodbye
   data = data[!which(data$type %in% c('break', 'halftime', 'goodbye'))]
@@ -222,5 +230,73 @@ Load_arc_data = function(input){
   data[type == 'forced' & forced != choice]$timeout = FALSE
   data[type == 'forced' & forced != choice]$error = TRUE
   
+  # Adjust to design file
+  data[type == 'free']$type = 'choice'
+  data$type = as.factor(data$type)
+  data$free_choice = 0
+  data[type == 'choice']$free_choice = 1
+  data$forced_left = 0
+  data[forced == 'left']$forced_left = 1
+  data$forced_right = 0
+  data[forced == 'right']$forced_right = 1
+  
+  data = data %>%
+    data.table::setnames(.,
+                         old = c('stimulus_left',
+                                 'stimulus_right',
+                                 'outcome_left',
+                                 'outcome_right',
+                                 'type'),
+                         new = c('pic_left',
+                                 'pic_right',
+                                 'reward_stim_1',
+                                 'reward_stim_2',
+                                 'trial_type'))
+  
+  # data$comp_number = 0
+  # combs = list(c(1,2), c(1,3), c(2,3))
+  # for(block_count in unique(data$block_n)){
+  #   block_index = data$block_n == block_count
+  #   for(i in combs){
+  #     comb_index = (data$option_left == i[1] & data$option_right == i[2]) |
+  #       (data$option_left == i[2] & data$option_right == i[1])
+  #     comb_index = comb_index & block_index
+  #     data$comp_number[comb_index] = seq(sum(comb_index))
+  #   }
+  # }
+  
+  
+  
+  # ----
+  
+  # Load design for check
+  # Run 1
+  # replace '_' with '-' where they were falsly used
+  design_name_r1 = unique(data$name_design_r1)
+  substr(design_name_r1, 7, 7) = '-'
+  substr(design_name_r1, 14, 14) = '-'
+  # Load design
+  file_r1 = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs',
+                      paste(design_name_r1, '.tsv', sep = ''))
+  design_r1 = read.table(file_r1, header = TRUE, na.strings = 'n/a', sep = '\t')
+  # Run 2
+  design_name_r2 = unique(data$name_design_r2)
+  substr(design_name_r2, 7, 7) = '-'
+  substr(design_name_r2, 14, 14) = '-'
+  file_r2 = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs',
+                      paste(design_name_r2, '.tsv', sep = ''))
+  design_r2 = read.table(file_r2, header = TRUE, na.strings = 'n/a', sep = '\t')
+  # Combine designs
+  design = rbind(design_r1, design_r2)
+  
+  colnames(design)
+  
+  # Check for identical values to design and results
+  i_check = all(all(data$outcome_left == design$reward_stim_1),
+                all(data$outcome_right == design$reward_stim_2),
+                all(design$option_left == data$option_left),
+                all(design$option_right == data$option_right),
+                all(as.logical(design$with_rating) == as.logical(data$with_rating)))
+
   
 }
