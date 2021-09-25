@@ -4,7 +4,7 @@ library(jsonlite)
 library(data.table)
 library(magrittr)
 
-input = '/Users/koch/Desktop/results/2021-09-21 15_28_40.json'
+input = '/Users/koch/Desktop/results/2021-09-25 20_19_39.json'
 
 Load_arc_data = function(input){
   
