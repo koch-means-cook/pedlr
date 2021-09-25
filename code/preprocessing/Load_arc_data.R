@@ -50,16 +50,8 @@ Load_arc_data = function(input){
   data$duration_halftime = data[type == 'halftime']$rt
   
   # # Get task version variable
-  # data$task_version = 0
-  # data$task_version[1:which(data$type == 'halftime')] = 1
-  # data$task_version[which(data$type == 'halftime'):nrow(data)] = 2
-  # 
-  # # Get blocks (via breaks)
-  # breaks = which(data$type == 'break')
-  # data$block_n = 1
-  # data$block_n[breaks[1] : which(data$type == 'halftime')] = 2
-  # data$block_n[which(data$type == 'halftime'):breaks[length(breaks)]] = 3
-  # data$block_n[breaks[length(breaks)]:nrow(data)] = 4
+  data$task_version[1:which(data$type == 'halftime')] = 1
+  data$task_version[which(data$type == 'halftime'):nrow(data)] = 2
   
   # Remove irrelevant columns for data analysis
   data = data %>%
@@ -253,50 +245,53 @@ Load_arc_data = function(input){
                                  'reward_stim_2',
                                  'trial_type'))
   
-  # data$comp_number = 0
-  # combs = list(c(1,2), c(1,3), c(2,3))
-  # for(block_count in unique(data$block_n)){
-  #   block_index = data$block_n == block_count
-  #   for(i in combs){
-  #     comb_index = (data$option_left == i[1] & data$option_right == i[2]) |
-  #       (data$option_left == i[2] & data$option_right == i[1])
-  #     comb_index = comb_index & block_index
-  #     data$comp_number[comb_index] = seq(sum(comb_index))
-  #   }
-  # }
   
-  
+  # Put design columns to start
+  data.table::setcolorder(data,
+                          c('option_left', 'option_right', 'pic_left', 'pic_right',
+                            'reward_stim_1', 'reward_stim_2', 'comp_number', 'trial_type',
+                            'free_choice', 'forced_left', 'forced_right',
+                            'with_rating', 'task_version', 'block_n', 'is_rare', 'bad_forced'))
   
   # ----
   
-  # Load design for check
-  # Run 1
-  # replace '_' with '-' where they were falsly used
-  design_name_r1 = unique(data$name_design_r1)
-  substr(design_name_r1, 7, 7) = '-'
-  substr(design_name_r1, 14, 14) = '-'
-  # Load design
-  file_r1 = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs',
-                      paste(design_name_r1, '.tsv', sep = ''))
-  design_r1 = read.table(file_r1, header = TRUE, na.strings = 'n/a', sep = '\t')
-  # Run 2
-  design_name_r2 = unique(data$name_design_r2)
-  substr(design_name_r2, 7, 7) = '-'
-  substr(design_name_r2, 14, 14) = '-'
-  file_r2 = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs',
-                      paste(design_name_r2, '.tsv', sep = ''))
-  design_r2 = read.table(file_r2, header = TRUE, na.strings = 'n/a', sep = '\t')
-  # Combine designs
-  design = rbind(design_r1, design_r2)
-  
-  colnames(design)
-  
-  # Check for identical values to design and results
-  i_check = all(all(data$outcome_left == design$reward_stim_1),
-                all(data$outcome_right == design$reward_stim_2),
-                all(design$option_left == data$option_left),
-                all(design$option_right == data$option_right),
-                all(as.logical(design$with_rating) == as.logical(data$with_rating)))
-
+  # # Load design for check
+  # # Run 1
+  # # replace '_' with '-' where they were falsly used
+  # design_name_r1 = unique(data$name_design_r1)
+  # substr(design_name_r1, 7, 7) = '-'
+  # substr(design_name_r1, 14, 14) = '-'
+  # # Load design
+  # file_r1 = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs',
+  #                     paste(design_name_r1, '.tsv', sep = ''))
+  # design_r1 = read.table(file_r1, header = TRUE, na.strings = 'n/a', sep = '\t')
+  # # Run 2
+  # design_name_r2 = unique(data$name_design_r2)
+  # substr(design_name_r2, 7, 7) = '-'
+  # substr(design_name_r2, 14, 14) = '-'
+  # file_r2 = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs',
+  #                     paste(design_name_r2, '.tsv', sep = ''))
+  # design_r2 = read.table(file_r2, header = TRUE, na.strings = 'n/a', sep = '\t')
+  # # Combine designs
+  # design = rbind(design_r1, design_r2)
+  # 
+  # colnames(design)
   
 }
+
+# Create options to pass to script
+option_list = list(
+  make_option(c('-i', '--input'),
+              type='character',
+              default = NULL,
+              help = 'Path to experiment result file that should be preprocessed',
+              metavar = 'INPUT'))
+
+# provide options in list to be callable by script
+opt_parser = OptionParser(option_list = option_list)
+opt = parse_args(opt_parser)
+
+# Call main function
+Load_arc_data(input = opt$input)
+
+
