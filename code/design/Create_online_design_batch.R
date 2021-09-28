@@ -1,6 +1,9 @@
 
 require(jsonlite)
 require(stringr)
+require(data.table)
+require(magrittr)
+require(ggplot2)
 
 # For knitting:
 source_path = file.path(here::here(), 'code', fsep = .Platform$file.sep)
@@ -26,6 +29,9 @@ dist_list = list(c('gaussian', 100 * 2/6, (100 * 1/6) / 3),
                  c('bimodal', 100 * 4/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
                  c('gaussian', 100 * 5/6, (100 * 1/6) / 3))
 
+all_designs = data.table()
+all_designs_online = list()
+
 # Twenty different designs
 for(i in seq(20)){
   
@@ -47,6 +53,10 @@ for(i in seq(20)){
                          min_forced_with_rare_per_block = 2,
                          min_rate_after_rare_forced_per_block = 2)
   
+  # design$n_design = i
+  # 
+  # all_designs = rbind(all_designs, design)
+  
   # Port design for online task
   design_online = Transform_design_online(design)
   
@@ -55,7 +65,7 @@ for(i in seq(20)){
                      dataframe = 'rows',
                      pretty = TRUE,
                      na = 'string')
-  
+
   # Save json files for each run (in pedlr-task submodule)
   file = file.path(here::here(),
                    'pedlr-task',
@@ -71,7 +81,7 @@ for(i in seq(20)){
                  '.json',
                  sep = '')
     write(json_list[[json_count]], file = name)
-    
+
     # Save design alongside (in pedlr-task submodule)
     name = paste(file,
                  paste('_run-', as.character(json_count), sep = ''),
@@ -84,5 +94,24 @@ for(i in seq(20)){
                 row.names = FALSE)
   }
 }
+
+# # Get max and min points of each design
+# all_designs = all_designs %>%
+#   .[, trial:=seq(.N),
+#     by = n_design] %>%
+#   .[trial_type == 'choice',
+#     ':='(max_choice = max(c(reward_stim_1, reward_stim_2)),
+#          min_choice = min(c(reward_stim_1, reward_stim_2))),
+#     by = c('trial', 'n_design')] %>%
+#   .[, ':='(max_points = sum(max_choice, na.rm = TRUE),
+#            min_points = sum(min_choice, na.rm = TRUE)),
+#     by = n_design]
+# 
+# data_plot = all_designs[trial == 1] %>%
+#   data.table::melt(., id.vars = 'n_design', measure.vars = c('max_points', 'min_points')) %>%
+#   .[]
+# ggplot(data = data_plot, aes(x = variable, y = value)) +
+#   geom_point()
+
 
 
