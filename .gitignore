@@ -1,5 +1,5 @@
 # Ignore all data files
-raw_data/
+data/
 
 # Ignore all derivative files
 derivatives/

@@ -4,12 +4,18 @@ library(jsonlite)
 library(data.table)
 library(magrittr)
 
-input = '/Users/koch/Desktop/results/2021-09-25 20_19_39.json'
+# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03/raw/2021-09-29 13_19_24.json'
+# demo_path = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03/raw/pedlr-pilot-03_demographic.csv'
+# out_dir = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03'
 
-Load_arc_data = function(input){
+Preprocess_arc_data = function(input_path,
+                               demo_path,
+                               out_dir){
   
   # Load json file of participant
-  data = data.table(jsonlite::fromJSON(input))
+  data = data.table(jsonlite::fromJSON(input_path))
+  
+  #data$prolific_id = '6152dd1b67ccad1d7a3e20b9'
   
   # Check if participant has hiragana skills, add as variable
   if(grepl(pattern = 'No', x = data[type == 'hiragana']$responses,fixed = TRUE)){
@@ -61,7 +67,6 @@ Load_arc_data = function(input){
           'trial_index',
           'internal_node_id',
           'success',
-          'prolific_id',
           'stimulus',
           'button_pressed',
           'responses',
@@ -253,45 +258,68 @@ Load_arc_data = function(input){
                             'free_choice', 'forced_left', 'forced_right',
                             'with_rating', 'task_version', 'block_n', 'is_rare', 'bad_forced'))
   
-  # ----
+  # Add demographic data
+  # Load demo data
+  demo_data = data.table(read.table(file = demo_path, header = TRUE, sep = ',', na.strings = ''))
+  # find demo data of participant
+  prolific_id = unique(data$prolific_id)
+  # Add demo data
+  demo_data = demo_data[participant_id == prolific_id, c('time_taken',
+                                                         'age',
+                                                         'num_approvals',
+                                                         'num_rejections',
+                                                         'prolific_score',
+                                                         'Country.of.Birth',
+                                                         'Current.Country.of.Residence',
+                                                         'Employment.Status',
+                                                         'Nationality',
+                                                         'Sex')]
+  demo_data$prolific_id = prolific_id
+  data = data.table::merge.data.table(data, demo_data, by = 'prolific_id')
+  setnames(data, 'Country.of.Birth', 'country_of_birth')
+  setnames(data, 'Current.Country.of.Residence', 'curent_country_of_residence')
+  setnames(data, 'Employment.Status', 'employment_status')
+  setnames(data, 'Nationality', 'nationality')
+  setnames(data, 'Sex', 'sex')
   
-  # # Load design for check
-  # # Run 1
-  # # replace '_' with '-' where they were falsly used
-  # design_name_r1 = unique(data$name_design_r1)
-  # substr(design_name_r1, 7, 7) = '-'
-  # substr(design_name_r1, 14, 14) = '-'
-  # # Load design
-  # file_r1 = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs',
-  #                     paste(design_name_r1, '.tsv', sep = ''))
-  # design_r1 = read.table(file_r1, header = TRUE, na.strings = 'n/a', sep = '\t')
-  # # Run 2
-  # design_name_r2 = unique(data$name_design_r2)
-  # substr(design_name_r2, 7, 7) = '-'
-  # substr(design_name_r2, 14, 14) = '-'
-  # file_r2 = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs',
-  #                     paste(design_name_r2, '.tsv', sep = ''))
-  # design_r2 = read.table(file_r2, header = TRUE, na.strings = 'n/a', sep = '\t')
-  # # Combine designs
-  # design = rbind(design_r1, design_r2)
-  # 
-  # colnames(design)
+  # Delete prolific ID from data for anonymization
+  data[, prolific_id := NULL]
+  
+  # Get name to save data as
+  out_name = paste(unique(data$participant_id), '_exp_data.tsv', sep = '')
+  out_file = file.path(out_dir, out_name, fsep = .Platform$file.sep)
+  
+  # Save preprocessed data
+  write.table(data, file = out_file, sep = '\t', na = 'n/a', row.names = FALSE)
+  
   
 }
 
 # Create options to pass to script
 option_list = list(
-  make_option(c('-i', '--input'),
+  make_option(c('-i', '--input_path'),
               type='character',
               default = NULL,
               help = 'Path to experiment result file that should be preprocessed',
-              metavar = 'INPUT'))
+              metavar = 'INPUT_PATH'),
+  make_option(c('-d', '--demo_path'),
+              type='character',
+              default = NULL,
+              help = 'Path to demographic data given by prolific',
+              metavar = 'DEMO_PATH'),
+  make_option(c('-o', '--out_dir'),
+              type='character',
+              default = NULL,
+              help = 'Path to output directory',
+              metavar = 'OUT_DIR'))
 
 # provide options in list to be callable by script
 opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
 
 # Call main function
-Load_arc_data(input = opt$input)
+Preprocess_arc_data(input_path = opt$input_path,
+                    demo_path = opt$demo_path,
+                    out_dir = opt$out_dir)
 
 
