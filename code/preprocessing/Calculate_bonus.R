@@ -6,8 +6,8 @@ library(magrittr)
 
 # input = '/Users/koch/Desktop/results/2021-09-25 20_19_39.json'
 # input = '/Users/koch/Desktop/results/2021-09-21 15_28_40.json'
-input = '/Users/koch/Desktop/20210915_inlab_pilot'
-input = '/Users/koch/Desktop/pedlr-pilot-01'
+#input = '/Users/koch/Desktop/20210915_inlab_pilot'
+#input = '/Users/koch/Desktop/pedlr-pilot-01'
 
 Calculate_bonus = function(input){
   
