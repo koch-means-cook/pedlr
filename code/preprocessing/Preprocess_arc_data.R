@@ -4,9 +4,15 @@ library(jsonlite)
 library(data.table)
 library(magrittr)
 
-# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03/raw/2021-09-29 13_19_24.json'
+# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03/raw/2021-09-29 14_39_40.json'
+# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03/raw/2021-09-29 14_45_26.json'
+# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03/raw/2021-09-29 14_48_35.json'
 # demo_path = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03/raw/pedlr-pilot-03_demographic.csv'
 # out_dir = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03'
+
+# Preprocess_arc_data(input_path = input_path,
+#                     demo_path = demo_path,
+#                     out_dir = out_dir)
 
 Preprocess_arc_data = function(input_path,
                                demo_path,
@@ -14,8 +20,6 @@ Preprocess_arc_data = function(input_path,
   
   # Load json file of participant
   data = data.table(jsonlite::fromJSON(input_path))
-  
-  #data$prolific_id = '6152dd1b67ccad1d7a3e20b9'
   
   # Check if participant has hiragana skills, add as variable
   if(grepl(pattern = 'No', x = data[type == 'hiragana']$responses,fixed = TRUE)){
@@ -109,7 +113,7 @@ Preprocess_arc_data = function(input_path,
      stimuli$mean[grepl(x = stimuli$stimuli, pattern = stim)] = mean(as.numeric(data[grepl(x = stimulus_left, pattern = stim)]$outcome_left))
     }
     # Get low/mid/high dist
-    stimuli$option = order(stimuli$mean)
+    stimuli$option = rank(stimuli$mean)
     # Enter options
     for(stim_count in seq(nrow(stimuli))){
       # Left stimulus
@@ -292,6 +296,9 @@ Preprocess_arc_data = function(input_path,
   # Save preprocessed data
   write.table(data, file = out_file, sep = '\t', na = 'n/a', row.names = FALSE)
   
+  # Give message to user:
+  msg = paste('Saved as: ', out_name)
+  message(msg)
   
 }
 
