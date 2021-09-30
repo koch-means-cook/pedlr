@@ -1,21 +1,41 @@
 ---
 title: "Summary Stats"
-author: "Christoph Koch"
-date: "9/29/2021"
-output: html_document
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
-```{r}
+```{r, message=FALSE}
 library(data.table)
 library(here)
 library(magrittr)
 library(ggplot2)
 library(viridis)
+library(binhf)
 ```
 
 ```{r}
@@ -32,7 +52,8 @@ invisible(lapply(source_files, function(x) source(x)))
 
 ```{r}
 # Load data
-data = Load_data()
+data = Load_data() %>%
+  Add_comp(.)
 ```
 
 # Errors in forced choices
@@ -55,22 +76,52 @@ p_fce = ggplot(data = check_fce,
   geom_label() +
   labs(x = 'Number of errors during forced choices',
        y = 'N') +
+  scale_x_continuous(limits = c(0,max(check_fce$n_error)),
+                     breaks = seq(max(check_fce$n_error, by = 1))) +
   scale_y_continuous(limits = c(1,max(check_fce$count)),
                      breaks = seq(max(check_fce$count, by = 1))) +
   theme()
 p_fce
 ```
 
+# Number of time out trials
+
+```{r}
+check_tot = data %>%
+  .[trial_type %in% c('choice', 'forced'),] %>%
+  .[, .(n_timeout = sum(as.logical(timeout))),
+        by = 'participant_id'] %>%
+  .[, count := seq(.N), by = n_timeout]
+
+# Plot errors for each participant
+p_tot = ggplot(data = check_tot,
+               aes(x = n_timeout,
+                   y = count,
+                   label = participant_id)) +
+  geom_label() +
+  labs(x = 'Number of timeouts across all trials',
+       y = 'N') +
+  scale_x_continuous(limits = c(0,max(check_tot$n_timeout)),
+                     breaks = seq(max(check_tot$n_timeout, by = 1))) +
+  scale_y_continuous(limits = c(1,max(check_tot$count)),
+                     breaks = seq(max(check_tot$count, by = 1))) +
+  theme()
+p_tot
+```
+
+
 # Estimation track
 
 ```{r}
 check_est = data %>%
+  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
   .[!is.na(est_1_reward),] %>%
   .[, est_trial := seq(.N), by = c('participant_id', 'task_version')] %>%
   data.table::melt(.,
                    id.vars = c('participant_id',
                                'task_version',
-                               'est_trial'),
+                               'est_trial',
+                               'forced_rare'),
                    measure.vars = c('est_1_reward',
                                     'est_1_range',
                                     'est_2_reward',
@@ -81,7 +132,7 @@ check_est = data %>%
   .[, type := substr(variable, 7, 9)] %>%
   .[type == 'rew', type := 'reward'] %>%
   .[type == 'ran', type := 'range'] %>%
-  data.table::dcast(., participant_id + task_version + est_trial + est_stim ~ type, value.var = 'value')
+  data.table::dcast(., participant_id + task_version + est_trial + forced_rare + est_stim ~ type, value.var = 'value')
 
 # Get true mean of options
 rewards = data %>%
@@ -105,30 +156,91 @@ p_est = ggplot(data = check_est,
               alpha = 0.3) +
   geom_point(size = 0.8) +
   geom_path() +
+  labs(x = 'Estimation Trial',
+       y = 'Estimate') +
   facet_grid(participant_id ~ task_version + est_stim) +
-  scale_color_viridis(option = 'D', discrete = TRUE)
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  theme(legend.position = 'none')
 p_est
 ```
 
-# Check RT
+# Estimates after rare
+
+```{r}
+p_ear = ggplot(data = check_est,
+               aes(x = est_trial,
+                   y = reward)) +
+  geom_hline(data = true_means,
+             aes(yintercept = mean),
+             linetype = 'dashed') +
+  geom_ribbon(aes(ymin = reward - range,
+                  ymax = reward + range),
+              alpha = 0.3) +
+  geom_path() +
+  geom_point(aes(color = as.factor(forced_rare)),
+             size = 0.8) +
+  labs(x = 'Estimation Trial',
+       y = 'Estimate') +
+  facet_grid(participant_id ~ task_version + est_stim) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  theme(legend.position = 'bottom')
+p_ear
+```
+
+
+# Check RT (median)
 
 ```{r}
 check_rt = data %>%
   .[, trial := seq(.N),
     by = c('participant_id', 'task_version')] %>%
-  .[, comp := paste(sort(c(option_left, option_right)), collapse = 'v'),
-    by = c('participant_id', 'task_version', 'trial')] %>%
   .[timeout == FALSE, ] %>%
   data.table::melt(.,
-                   id.vars = c('participant_id', 'task_version', 'trial', 'trial_type', 'comp'),
+                   id.vars = c('participant_id',
+                               'task_version',
+                               'trial',
+                               'trial_type',
+                               'comp'),
                    measure.vars = 'rt')
 p_rt = ggplot(data = check_rt,
-       aes(x = trial_type,
+       aes(x = comp,
            y = value)) +
   geom_jitter(width = 0.1,
               size = 0.2) +
-  facet_grid(participant_id ~ task_version + comp)
+  stat_summary(geom = 'point',
+               fun = 'median',
+               color = 'black',
+               fill = 'white',
+               shape = 21,
+               size = 2) +
+  labs(x = 'Trial Type',
+       y = 'RT') +
+  facet_grid(participant_id ~ task_version + trial_type)
 p_rt
+```
+
+# Percent of non-optimal choices
+
+```{r}
+check_noc = data %>%
+  .[trial_type == 'choice',] %>%
+  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'task_version', 'trial')] %>%
+  .[, correct := correct_choice == choice] %>%
+  # Get percentage of correct choices (exclude timeouts from overall trials)
+  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
+    by = c('participant_id', 'task_version', 'comp')]
+
+p_noc = ggplot(data = check_noc,
+               aes(x = comp,
+                   y = perc_correct,
+                   group = participant_id)) +
+  geom_line() +
+  geom_point() +
+  labs(x = '%-correct',
+       y = 'Comparison') +
+  facet_grid(participant_id ~ task_version)
+p_noc
 ```
 
 
