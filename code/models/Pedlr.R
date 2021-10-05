@@ -30,8 +30,8 @@ Pedlr = function(design,
                                                                    as.character(c(1:params.ndist)),
                                                                    sep='')
   
-  # Loop over trials (leave out last trial to avoid updating beyond last trial)
-  for(trial_count in 1:(params.ntrials - 1)){
+  # Loop over trials
+  for(trial_count in 1:params.ntrials){
     
     # Get current comparison (choice options as 2 entry vector)
     comp_stim = c(design$option_left[trial_count], design$option_right[trial_count])
@@ -94,8 +94,10 @@ Pedlr = function(design,
     df_choices$forced_choice[trial_count] = forced_choice
     df_pe[trial_count, choice_stim] = pe
     df_fpe[trial_count, choice_stim] = fpe
-    # Value is updated for all following trials
-    df_values[trial_count:nrow(df_values), choice_stim] = updated_value
+    # Value is updated for all following trials (exception of last trial)
+    if(trial_count != params.ntrials){
+      df_values[(trial_count + 1):nrow(df_values), choice_stim] = updated_value 
+    }
     
   }
   
