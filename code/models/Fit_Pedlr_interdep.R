@@ -12,13 +12,13 @@
 
 
 Fit_Pedlr_interdep = function(data,
-                               params.alpha0,
-                               params.alpha1,
-                               params.interdep,
-                               params.temperature,
-                               params.reward_space_ub,
-                               choice_policy,
-                               init_values = c(50,50,50)){
+                              params.alpha0,
+                              params.alpha1,
+                              params.interdep,
+                              params.temperature,
+                              params.reward_space_ub,
+                              choice_policy,
+                              init_values = c(50,50,50)){
   
   # Get other parameters from design
   # Number of trials
@@ -56,7 +56,7 @@ Fit_Pedlr_interdep = function(data,
         forced_choice = 0
         model_choice = NA
         choice_prob = NA
-
+        
         # In case of forced choice left, chose left with 100% probability
       } else if(data$forced_left[trial_count] == 1){
         forced_choice = 1
@@ -75,7 +75,7 @@ Fit_Pedlr_interdep = function(data,
                    sep=''))
       }
       
-    # Normal trials (no time out): Choice and updating of model
+      # Normal trials (no time out): Choice and updating of model
     } else{
       # In case of free choice trial
       if(data$forced_left[trial_count] == 0 & data$forced_right[trial_count] == 0){
@@ -149,7 +149,7 @@ Fit_Pedlr_interdep = function(data,
       if(forced_choice == 1 & model_choice != subj_choice){
         choice_reward = NA
         
-      # Otherwise get reward from choice
+        # Otherwise get reward from choice
       } else {
         choice_reward = comp_reward[subj_choice]
       }
@@ -161,7 +161,7 @@ Fit_Pedlr_interdep = function(data,
         pe = NA
         fpe = NA
         
-      # Otherwise update
+        # Otherwise update
       } else {
         pe = choice_reward - choice_value
         fpe = params.interdep * params.alpha0 + (1 - params.interdep) * params.alpha1 * (abs(pe)/params.reward_space_ub)

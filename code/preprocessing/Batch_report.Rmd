@@ -1,0 +1,219 @@
+---
+title: "Data Report"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+params:
+  base_path: NA
+  input: NA
+---
+
+```{r, include=FALSE}
+library(jsonlite)
+library(magrittr)
+library(data.table)
+library(ggplot2)
+library(viridis)
+library(knitr)
+library(kableExtra)
+
+# Load conversion function
+source_path = file.path(params$base_path,
+                        'code',
+                        'preprocessing',
+                        'Raw_to_data.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
+
+# Load utility functions
+source_path = file.path(params$base_path,
+                        'code',
+                        'utils',
+                        'Add_comp.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
+```
+
+
+```{r, include=FALSE}
+# Load participants data
+data = jsonlite::fromJSON(params$input) %>%
+  as.data.table() %>%
+  # Convert to analysis data format
+  Raw_to_data(data = .,
+              demo_data = NA,
+              add_demo = FALSE,
+              delete_prolific = FALSE) %>%
+  # Add comparison
+  Add_comp()
+
+# Get participant ID
+id = unique(data$prolific_id)
+```
+
+---
+
+# `r basename(params$input)` | `r id`
+
+---
+
+## Outcomes
+
+```{r}
+check_out = data %>%
+  .[, trial := seq(length(outcome)),
+    by = task_version]
+check_to = data %>%
+  .[timeout == TRUE,]
+check_err = data %>%
+  .[error == TRUE,]
+
+p_out = ggplot(data = check_out,
+               aes(x = trial, y = outcome)) +
+  geom_path() +
+  facet_wrap(~task_version)
+
+if(nrow(check_to != 0)){
+  p_out = p_out +
+    geom_vline(data = check_to,
+               aes(xintercept = trial),
+               color = 'blue') +
+    geom_label(data = check_to,
+               aes(y = 120, label = 'timeout'),
+               color = 'blue')
+}
+
+if(nrow(check_err != 0)){
+  p_out = p_out +
+    geom_vline(data = check_err,
+               aes(xintercept = trial),
+               color = 'darkgreen') +
+    geom_label(data = check_err,
+               aes(y = 120, label = 'error'),
+               color = 'darkgreen')
+}
+
+p_out
+```
+
+## Reaction time
+
+```{r}
+check_rt = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'task_version')] %>%
+  .[timeout == FALSE, ] %>%
+  data.table::melt(.,
+                   id.vars = c('participant_id',
+                               'task_version',
+                               'trial',
+                               'trial_type',
+                               'comp'),
+                   measure.vars = 'rt')
+
+p_rt = ggplot(data = check_rt,
+              aes(x = trial,
+                  y = value)) +
+  geom_path() +
+  facet_wrap(~task_version)
+p_rt
+```
+
+
+## Estimates
+
+```{r}
+check_est = data %>%
+  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
+  .[!is.na(est_1_reward),] %>%
+  .[, est_trial := seq(.N), by = c('participant_id', 'task_version')] %>%
+  data.table::melt(.,
+                   id.vars = c('participant_id',
+                               'task_version',
+                               'est_trial',
+                               'forced_rare'),
+                   measure.vars = c('est_1_reward',
+                                    'est_1_range',
+                                    'est_2_reward',
+                                    'est_2_range',
+                                    'est_3_reward',
+                                    'est_3_range')) %>%
+  .[, est_stim := substr(variable, 5, 5)] %>%
+  .[, type := substr(variable, 7, 9)] %>%
+  .[type == 'rew', type := 'reward'] %>%
+  .[type == 'ran', type := 'range'] %>%
+  data.table::dcast(., participant_id + task_version + est_trial + forced_rare + est_stim ~ type, value.var = 'value')
+
+# Get true mean of options
+rewards = data %>%
+  .[, c('participant_id', 'task_version', 'option_left', 'reward_stim_1', 'option_right', 'reward_stim_2')]
+rewards_left = rewards[, c('participant_id', 'task_version', 'option_left', 'reward_stim_1')] %>%
+  setnames(., c('option_left', 'reward_stim_1'), c('est_stim', 'reward'))
+rewards_right = rewards[, c('participant_id', 'task_version', 'option_right', 'reward_stim_2')] %>%
+  setnames(., c('option_right', 'reward_stim_2'), c('est_stim', 'reward'))
+true_means = rbind(rewards_left, rewards_right) %>%
+  .[, .(mean = mean(reward)), by = c('participant_id', 'task_version', 'est_stim')]
+
+p_est = ggplot(data = check_est,
+               aes(x = est_trial,
+                   y = reward,
+                   color = est_stim)) +
+  geom_hline(data = true_means,
+             aes(yintercept = mean),
+             linetype = 'dashed') +
+  geom_ribbon(aes(ymin = reward - range,
+                  ymax = reward + range),
+              alpha = 0.3) +
+  geom_point(size = 0.8) +
+  geom_path() +
+  labs(x = 'Estimation Trial',
+       y = 'Estimate') +
+  facet_grid( task_version ~ est_stim) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  theme(legend.position = 'none')
+p_est
+```
+
+---
+
+## Run 1
+
+```{r}
+knitr::kable(data[task_version == 1], 'html') %>%
+  kableExtra::kable_styling('striped',
+                            font_size = 9,
+                            fixed_thead = TRUE) %>%
+  kableExtra::scroll_box(width = '100%',
+                         height = '500px')
+```
+
+## Run 2
+
+```{r}
+knitr::kable(data[task_version == 2], 'html') %>%
+  kableExtra::kable_styling('striped',
+                            font_size = 9,
+                            fixed_thead = TRUE) %>%
+  kableExtra::scroll_box(width = '100%',
+                         height = '500px')
+```
