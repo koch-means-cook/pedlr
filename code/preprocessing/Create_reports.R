@@ -50,7 +50,6 @@ Create_reports = function(input_path){
   message('-------------------------------------------')
   message('\n')
   
-  
 }
 
 # Create options to pass to script

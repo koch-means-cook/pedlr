@@ -151,8 +151,7 @@ Raw_to_data = function(data,
     .[, c('stimulus_estimation',
           'estimation_reward',
           'estimation_range',
-          'option_estimation',
-          'key_press'):=NULL]
+          'option_estimation'):=NULL]
   
   # Data coding clean-up (turn different NA codings into proper NAs)
   data[outcome == 'n/a']$outcome = NA
@@ -213,11 +212,11 @@ Raw_to_data = function(data,
   # Get time-outs (only for free and forced)
   # Mark all missing outcomes as time-outs
   data$timeout = FALSE
-  data[is.na(outcome)]$timeout = TRUE
+  data[is.na(outcome) & rt >= 3000]$timeout = TRUE
   # If missing outcome was because of false choice in forced, dont mark as timeout but as error
   data$error = FALSE
-  data[type == 'forced' & forced != choice]$timeout = FALSE
-  data[type == 'forced' & forced != choice]$error = TRUE
+  data[type == 'forced' & forced == 'left' & key_press == 74]$error = TRUE
+  data[type == 'forced' & forced == 'right' & key_press == 70]$error = TRUE
   
   # Adjust to design file
   data[type == 'free']$type = 'choice'
