@@ -47,8 +47,9 @@ Pedlr_interdep = function(design,
       # Softmax
       if(choice_policy == 'softmax'){
         # Make softmax choice based on model values (returns index of choice in 2 entry vector)
-        choice = Softmax_choice(comp_value[1], comp_value[2], params.temperature)$choice
-        choice_prob = Softmax_choice(comp_value[1], comp_value[2], params.temperature)$choice_prob
+        sm = Softmax_choice(comp_value[1], comp_value[2], params.temperature)
+        choice = sm$choice
+        choice_prob = sm$choice_prob
         # Greedy
       } else if(choice_policy == 'greedy'){
         # Make greedy choice

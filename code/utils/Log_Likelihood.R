@@ -73,12 +73,12 @@ Log_Likelihood = function(x,
   choices_prob_model = model_data$choices$choice_prob
   
   # Exclude forced choices (since here there is no choice probability and in turn no likelihood of choice)
-  choices_prob_model = choices_prob_model[-(design$trial_type == 'forced')]
+  choices_prob_model = choices_prob_model[-which(design$trial_type == 'forced')]
   
   # Exclude time out trials (outcome = NA)
-  choices_participant = choices_participant[-is.na(design$outcome)]
-  choices_model = choices_model[-is.na(design$outcome)]
-  choices_prob_model = choices_model[-is.na(design$outcome)]
+  choices_participant = choices_participant[-which(is.na(design$outcome))]
+  choices_model = choices_model[-which(is.na(design$outcome))]
+  choices_prob_model = choices_prob_model[-which(is.na(design$outcome))]
   
   # Calculate likelihood (Probability model decides as participant)
   likelihood = choices_prob_model

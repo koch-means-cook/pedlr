@@ -4,13 +4,12 @@
 # - Updating of values only for chosen option
 # - Choice policy based on softmax
 
-Pedlr = function(design,
-                 params.alpha0,
-                 params.alpha1,
-                 params.temperature,
-                 params.reward_space_ub,
-                 choice_policy,
-                 init_values = c(50,50,50)){
+Rw = function(design,
+              params.alpha,
+              params.temperature,
+              params.reward_space_ub,
+              choice_policy,
+              init_values = c(50,50,50)){
   
   # Get other parameters from design
   # Number of trials
@@ -85,8 +84,8 @@ Pedlr = function(design,
     
     # Calculate updating according to model
     pe = choice_reward - choice_value
-    fpe = params.alpha0 + (1 - params.alpha0) * params.alpha1 * (abs(pe)/params.reward_space_ub)
-    updated_value = choice_value + fpe * pe
+    fpe = pe
+    updated_value = choice_value + params.alpha * pe
     
     # Update entries
     # choice, pe, and fpe are updated in current trial

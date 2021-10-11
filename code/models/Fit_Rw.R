@@ -12,11 +12,11 @@
 
 
 Fit_Rw = function(data,
-                     params.alpha,
-                     params.temperature,
-                     params.reward_space_ub,
-                     choice_policy,
-                     init_values = c(50,50,50)){
+                  params.alpha,
+                  params.temperature,
+                  params.reward_space_ub,
+                  choice_policy,
+                  init_values = c(50,50,50)){
   
   # Get other parameters from design
   # Number of trials
@@ -46,6 +46,9 @@ Fit_Rw = function(data,
     # Get index of choice the participant made
     subj_choice = which(comp_stim == data$choice[trial_count])
     
+    # Get if forced choice was an error
+    error = data$error[trial_count]
+    
     # Skip NA choice trials (time outs of participant)
     if(is.na(data$choice[trial_count])){
       if(data$forced_left[trial_count] == 0 & data$forced_right[trial_count] == 0){
@@ -54,7 +57,7 @@ Fit_Rw = function(data,
         forced_choice = 0
         model_choice = NA
         choice_prob = NA
-
+        
         # In case of forced choice left, chose left with 100% probability
       } else if(data$forced_left[trial_count] == 1){
         forced_choice = 1
@@ -73,7 +76,7 @@ Fit_Rw = function(data,
                    sep=''))
       }
       
-    # Normal trials (no time out): Choice and updating of model
+      # Normal trials (no time out): Choice and updating of model
     } else{
       # In case of free choice trial
       if(data$forced_left[trial_count] == 0 & data$forced_right[trial_count] == 0){
@@ -83,17 +86,12 @@ Fit_Rw = function(data,
         # Select between softmax and greedy choice based on input
         # Softmax
         if(choice_policy == 'softmax'){
-          softmax = Softmax_choice(comp_value[1], comp_value[2], params.temperature)
-          # Get index of choice model would make
-          model_choice = comp_stim[softmax$choice]
-          # Get probability of model's choice given participant's previous choices
-          if(model_choice == subj_choice){
-            # Softmax choice always gives probability of choice model made
-            choice_prob = softmax$choice_prob
-          } else{
-            # If model and participant dont agree we need to take counter probability
-            choice_prob = 1 - softmax$choice_prob
-          }
+          # Get probability of choice model made (based on which values the model assigned to choice options)
+          softmax = Softmax_choice_prob(comp_value[1],
+                                        comp_value[2],
+                                        choice = subj_choice,
+                                        params.temperature)
+          choice_prob = softmax$choice_prob
           
           # Greedy
         } else if(choice_policy == 'greedy'){
@@ -144,10 +142,10 @@ Fit_Rw = function(data,
       
       # Reward chosen by participant
       # No reward in case of wrong choice in forced choice trials
-      if(forced_choice == 1 & model_choice != subj_choice){
+      if(forced_choice == 1 & error){
         choice_reward = NA
         
-      # Otherwise get reward from choice
+        # Otherwise get reward from choice
       } else {
         choice_reward = comp_reward[subj_choice]
       }
@@ -159,7 +157,7 @@ Fit_Rw = function(data,
         pe = NA
         fpe = NA
         
-      # Otherwise update
+        # Otherwise update
       } else {
         pe = choice_reward - choice_value
         fpe = NA

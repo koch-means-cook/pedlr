@@ -55,17 +55,227 @@ source_path = file.path(base_path, 'code', 'models',
 source_files = list.files(source_path, pattern = "[.][rR]$",
                           full.names = TRUE, recursive = TRUE)
 invisible(lapply(source_files, function(x) source(x)))
+
+# Load apply function
+source_path = file.path(base_path, 'code', 'simulation', 'Apply_model.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
 ```
 
 ```{r}
 # Load data
 data = Load_data() %>%
   Add_comp(.) %>%
+  .[participant_id == '158HUXE' & task_version == 1, ] %>%
   Prepare_data_for_fit(.)
 ```
 
-```{r}
+# Rw
 
+## Simulate data
+
+```{r}
+true_parameters = data.frame(alpha = 0.2,
+                             temperature = 7,
+                             reward_space_ub = 100,
+                             choice_policy = 'softmax')
+
+# Change choices of data to that of a Rw model
+source_model = Rw(design = data,
+                  params.alpha = true_parameters$alpha,
+                  params.temperature = true_parameters$temperature,
+                  params.reward_space_ub = true_parameters$reward_space_ub,
+                  choice_policy = true_parameters$choice_policy,
+                  init_values = c(50,50,50))
+simulated_data = data %>%
+  .[, ':='(choice = source_model$choices$choice,
+           choice_prob = source_model$choices$choice_prob,
+           forced_choice = source_model$choices$forced_choice,
+           v_stim_1 = source_model$values$stim_1,
+           v_stim_2 = source_model$values$stim_2,
+           v_stim_3 = source_model$values$stim_3,
+           # No errors possible in simulation
+           error = FALSE)] %>%
+  .[, c('option_left', 'option_right', 'reward_stim_1', 'reward_stim_2','error', 'outcome', 'trial_type', 'forced_left', 'forced_right',
+        'choice', 'choice_prob', 'forced_choice',
+        'v_stim_1', 'v_stim_2', 'v_stim_3')]
 ```
 
+## Grid search (alpha)
+
+```{r}
+grid_search_ll = data.table()
+grid_search_data = data.table()
+
+for(alpha in seq(0,1, by = 0.01)){
+  parameters = data.frame(alpha = alpha,
+                          temperature = 7,
+                          reward_space_ub = 100,
+                          choice_policy = 'softmax')
+  
+  fitted_model = Fit_Rw(data = simulated_data,
+                        params.alpha = parameters$alpha,
+                        params.temperature = parameters$temperature,
+                        params.reward_space_ub = parameters$reward_space_ub,
+                        choice_policy = parameters$choice_policy,
+                        init_values = c(50,50,50))
+  test_data = simulated_data %>%
+    .[, ':='(Rw_choice = fitted_model$choices$choice,
+             Rw_choice_prob = fitted_model$choices$choice_prob,
+             Rw_forced_choice = fitted_model$choices$forced_choice,
+             Rw_v_1 = fitted_model$values$stim_1,
+             Rw_v_2 = fitted_model$values$stim_2,
+             Rw_v_3 = fitted_model$values$stim_3)]
+  
+  # Get likelihood
+  choices_participant = simulated_data$choice
+  # Get choices and probability of choices of model
+  choices_model = fitted_model$choices$choice
+  choices_prob_model = fitted_model$choices$choice_prob
+  
+  # Exclude forced choices (since here there is no choice probability and in turn no likelihood of choice)
+  choices_prob_model = choices_prob_model[-which((simulated_data$trial_type == 'forced'))]
+  
+  # Exclude time out trials (outcome = NA)
+  choices_participant = choices_participant[-which(is.na(simulated_data$outcome))]
+  choices_model = choices_model[-which(is.na(simulated_data$outcome))]
+  choices_prob_model = choices_prob_model[-which(is.na(simulated_data$outcome))]
+  
+  # Calculate likelihood (Probability model decides as participant)
+  likelihood = choices_prob_model
+  if(any(is.na(likelihood))){
+    stop('NA in likelihood vector')
+  }
+  # Log likelihood
+  likelihood = log(likelihood)
+  # Sum up log likelihood over all choices
+  likelihood = sum(likelihood)
+  # Negative log likelihood
+  likelihood = -likelihood
+  
+  ans = data.table(ll = likelihood, alpha = alpha)
+  grid_search_ll = rbind(grid_search_ll, ans)
+  grid_search_data = rbind(grid_search_data, test_data)
+}
+
+
+
+# Plot LL based on alpha
+ggplot(data = grid_search_ll,
+       aes(x = alpha,
+           y = ll)) +
+  geom_point(size = 0.5) +
+  geom_line()
+```
+
+## Recovery
+
+```{r}
+rw_recovery = data.table()
+for(i in seq(5)){
+  solution = Fit_model(data = simulated_data,
+                       model = 'Rw')
+  result = data.table(i = i,
+                      first_x0_alpha = solution$first_x0[1],
+                      first_x0_temp = solution$first_x0[2],
+                      first_alpha = solution$first_solution[1],
+                      first_temp = solution$first_solution[2],
+                      first_ll = solution$first_ll,
+                      first_status = solution$first_status,
+                      second_x0_alpha = solution$second_x0[1],
+                      second_x0_temp = solution$second_x0[2],
+                      second_alpha = solution$second_solution[1],
+                      second_temp = solution$second_solution[2],
+                      second_ll = solution$second_ll,
+                      second_status = solution$second_status)
+  rw_recovery = rbind(rw_recovery, result)
+}
+
+ggplot(data = rw_recovery,
+       aes(x = first_x0_alpha,
+           y = second_alpha)) +
+  geom_hline(yintercept = true_parameters$alpha) +
+  geom_point() +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,1))
+```
+
+---
+
+# Pedlr
+
+## Simulate data
+
+```{r}
+true_parameters = data.frame(alpha0 = 0.3,
+                             alpha1 = 0.7,
+                             temperature = 5,
+                             reward_space_ub = 100,
+                             choice_policy = 'softmax')
+
+# Change choices of data to that of a Rw model
+source_model = Pedlr(design = data,
+                     params.alpha0 = true_parameters$alpha0,
+                     params.alpha1 = true_parameters$alpha1,
+                     params.temperature = true_parameters$temperature,
+                     params.reward_space_ub = true_parameters$reward_space_ub,
+                     choice_policy = true_parameters$choice_policy,
+                     init_values = c(50,50,50))
+simulated_data = data %>%
+  .[, ':='(choice = source_model$choices$choice,
+           choice_prob = source_model$choices$choice_prob,
+           forced_choice = source_model$choices$forced_choice,
+           v_stim_1 = source_model$values$stim_1,
+           v_stim_2 = source_model$values$stim_2,
+           v_stim_3 = source_model$values$stim_3,
+           # No errors possible in simulation
+           error = FALSE)] %>%
+  .[, c('option_left', 'option_right', 'reward_stim_1', 'reward_stim_2','error', 'outcome', 'trial_type', 'forced_left', 'forced_right',
+        'choice', 'choice_prob', 'forced_choice',
+        'v_stim_1', 'v_stim_2', 'v_stim_3')]
+```
+
+## Recovery
+
+```{r}
+pedlr_recovery = data.table()
+for(i in seq(5)){
+  solution = Fit_model(data = simulated_data,
+                       model = 'Pedlr')
+  result = data.table(i = i,
+                      first_x0_alpha0 = solution$first_x0[1],
+                      first_x0_alpha1 = solution$first_x0[2],
+                      first_x0_temp = solution$first_x0[3],
+                      first_alpha0 = solution$first_solution[1],
+                      first_alpha1 = solution$first_solution[2],
+                      first_temp = solution$first_solution[3],
+                      first_ll = solution$first_ll,
+                      first_status = solution$first_status,
+                      second_x0_alpha0 = solution$second_x0[1],
+                      second_x0_alpha1 = solution$second_x0[2],
+                      second_x0_temp = solution$second_x0[3],
+                      second_alpha0 = solution$second_solution[1],
+                      second_alpha1 = solution$second_solution[2],
+                      second_temp = solution$second_solution[3],
+                      second_ll = solution$second_ll,
+                      second_status = solution$second_status)
+  pedlr_recovery = rbind(pedlr_recovery, result)
+}
+
+ggplot(data = pedlr_recovery,
+       aes(x = first_x0_alpha0,
+           y = second_alpha0)) +
+  geom_hline(yintercept = true_parameters$alpha0) +
+  geom_point() +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,1))
+
+ggplot(data = pedlr_recovery,
+       aes(x = first_x0_alpha1,
+           y = second_alpha1)) +
+  geom_hline(yintercept = true_parameters$alpha1) +
+  geom_point() +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,1))
+```
 

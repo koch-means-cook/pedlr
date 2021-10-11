@@ -6,6 +6,8 @@ source_path = file.path(here::here(), 'code', fsep = .Platform$file.sep)
 source(file.path(source_path, 'models', 'Pedlr.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'models', 'Pedlr_interdep.R',
                  fsep = .Platform$file.sep))
+source(file.path(source_path, 'models', 'Rw.R',
+                 fsep = .Platform$file.sep))
 
 # Function to apply model to design
 Apply_model = function(design,
@@ -104,6 +106,13 @@ Apply_model = function(design,
                            params.reward_space_ub = parameters$reward_space_ub,
                            choice_policy = parameters$choice_policy,
                            init_values = init_values[[version_count]])
+    } else if(model == 'Rw'){
+      sim = Rw(design = design_version,
+               params.alpha = parameters$alpha,
+               params.temperature = parameters$temperature,
+               params.reward_space_ub = parameters$reward_space_ub,
+               choice_policy = parameters$choice_policy,
+               init_values = init_values[[version_count]])
     }
     
     # Save model values, PE and fPE for ech trial and subject
