@@ -53,7 +53,8 @@ invisible(lapply(source_files, function(x) source(x)))
 ```{r}
 # Load data
 data = Load_data() %>%
-  Add_comp(.)
+  Add_comp(.) %>%
+  .[, task_version := as.factor(task_version)]
 ```
 
 # Errors in forced choices
@@ -187,6 +188,32 @@ p_ear = ggplot(data = check_est,
 p_ear
 ```
 
+# Estimating difference from truth
+
+```{r}
+true_means$est_stim = as.factor(true_means$est_stim)
+# Merge true means with estimation
+check_est_diff = check_est %>%
+  data.table::merge.data.table(.,
+                               true_means,
+                               by = c('participant_id',
+                                      'task_version',
+                                      'est_stim')) %>%
+  # Get difference between estimation and true mean
+  .[, diff_from_true := reward - mean]
+
+p_est_diff = ggplot(data = check_est_diff,
+                    aes(x = est_trial,
+                        y = diff_from_true,
+                        color = as.factor(task_version))) +
+  geom_hline(yintercept = 0,
+             linetype = 'dashed') +
+  geom_path() +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  facet_grid(participant_id ~ est_stim)
+p_est_diff
+```
+
 
 # Check RT (median)
 
@@ -207,6 +234,11 @@ p_rt = ggplot(data = check_rt,
            y = value)) +
   geom_jitter(width = 0.1,
               size = 0.2) +
+  stat_summary(geom = 'path',
+               fun = 'median',
+               color = 'black',
+               size = 0.5,
+               group = 'participant_id') +
   stat_summary(geom = 'point',
                fun = 'median',
                color = 'black',
@@ -219,7 +251,9 @@ p_rt = ggplot(data = check_rt,
 p_rt
 ```
 
-# RT difference 1v2 and 2v3
+# RT difference 1v2 and 2v3 {.tabset}
+
+## Line plot
 
 ```{r, out.width='50%', fig.show='hold'}
 check_rt_diff = check_rt %>%
@@ -246,7 +280,40 @@ p_rtd_mean = ggplot(data = check_rt_diff,
   facet_grid(trial_type~task_version)
 p_rtd_mean
 ```
+
 Time-outs excluded from calculation.
+
+## Difference
+
+```{r, out.width='50%', fig.show='hold'}
+check_rt_diff_comp = check_rt_diff %>%
+  data.table::dcast(participant_id + task_version + trial_type ~ comp,
+                    value.var = c('median_rt', 'mean_rt')) %>%
+  .[, ':='(median_1v2m2v3 = median_rt_1v2 - median_rt_2v3,
+           mean_1v2m2v3 = mean_rt_1v2 - mean_rt_2v3)] %>%
+  .[, task_version := as.factor(task_version)]
+
+p_rtc_median = ggplot(data = check_rt_diff_comp,
+                      aes(x = task_version,
+                          y = median_1v2m2v3)) +
+  geom_hline(yintercept = 0,
+             linetype = 'dashed') +
+  geom_point() +
+  labs(title = 'Difference Median (1v2 - 2v3)') +
+  facet_wrap(~trial_type)
+p_rtc_median
+
+p_rtc_mean = ggplot(data = check_rt_diff_comp,
+                      aes(x = task_version,
+                          y = mean_1v2m2v3)) +
+  geom_hline(yintercept = 0,
+             linetype = 'dashed') +
+  geom_point() +
+  labs(title = 'Difference Mean (1v2 - 2v3)') +
+  facet_wrap(~trial_type)
+p_rtc_mean
+```
+
 
 # Percent of non-optimal choices
 
@@ -275,7 +342,14 @@ p_noc
 # Comparison between run 1 and 2
 
 ```{r}
-
+p_noc_diff = ggplot(data = check_noc,
+                    aes(x = task_version,
+                        y = perc_correct,
+                        group = participant_id)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~comp)
+p_noc_diff
 ```
 
 
