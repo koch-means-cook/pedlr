@@ -17,8 +17,7 @@ Fit_model_wrapper = function(input_path,
                              model,
                              start_values,
                              lb,
-                             ub,
-                             random_start_values){
+                             ub){
   
   # Set parameter names for model
   if(model == 'Rw'){
@@ -61,5 +60,12 @@ Fit_model_wrapper = function(input_path,
     
   }
   
+  # Write output
+  data.table::fwrite(x = output,
+                     file = output_path,
+                     sep = '\t',
+                     na = 'n/a',
+                     row.names = FALSE,
+                     col.names = TRUE)
   
 }
