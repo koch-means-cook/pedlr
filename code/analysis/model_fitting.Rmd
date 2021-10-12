@@ -174,7 +174,13 @@ ggplot(data = grid_search_ll,
 rw_recovery = data.table()
 for(i in seq(5)){
   solution = Fit_model(data = simulated_data,
-                       model = 'Rw')
+                       model = 'Rw',
+                       start_values = c(runif(1, 0, 1),
+                                        runif(1, 1, 10)),
+                       lb = c(0,
+                              1),
+                       ub = c(1,
+                              10))
   result = data.table(i = i,
                       first_x0_alpha = solution$first_x0[1],
                       first_x0_temp = solution$first_x0[2],
@@ -207,7 +213,7 @@ ggplot(data = rw_recovery,
 ## Simulate data
 
 ```{r}
-true_parameters = data.frame(alpha0 = 0.3,
+true_parameters = data.frame(alpha0 = 0.1,
                              alpha1 = 0.7,
                              temperature = 5,
                              reward_space_ub = 100,
@@ -230,7 +236,8 @@ simulated_data = data %>%
            v_stim_3 = source_model$values$stim_3,
            # No errors possible in simulation
            error = FALSE)] %>%
-  .[, c('option_left', 'option_right', 'reward_stim_1', 'reward_stim_2','error', 'outcome', 'trial_type', 'forced_left', 'forced_right',
+  .[, c('option_left', 'option_right', 'reward_stim_1', 'reward_stim_2','error',
+        'outcome', 'trial_type', 'forced_left', 'forced_right',
         'choice', 'choice_prob', 'forced_choice',
         'v_stim_1', 'v_stim_2', 'v_stim_3')]
 ```
@@ -239,9 +246,18 @@ simulated_data = data %>%
 
 ```{r}
 pedlr_recovery = data.table()
-for(i in seq(5)){
+for(i in seq(1)){
   solution = Fit_model(data = simulated_data,
-                       model = 'Pedlr')
+                       model = 'Pedlr',
+                       start_values = c(runif(1, 0, 1),
+                                        runif(1, 0, 1),
+                                        runif(1, 1, 10)),
+                       lb = c(0,
+                              0,
+                              1),
+                       ub = c(1,
+                              1,
+                              10))
   result = data.table(i = i,
                       first_x0_alpha0 = solution$first_x0[1],
                       first_x0_alpha1 = solution$first_x0[2],

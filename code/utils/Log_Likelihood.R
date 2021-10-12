@@ -1,10 +1,14 @@
+library(here)
+
 
 # Load models
-# source_path = file.path(base_path, 'code', 'models',
-#                         fsep = .Platform$file.sep)
-# source_files = list.files(source_path, pattern = "[.][rR]$",
-#                           full.names = TRUE, recursive = TRUE)
-# invisible(lapply(source_files, function(x) source(x)))
+source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Rw.R',
+                 fsep = .Platform$file.sep))
+source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_interdep.R',
+                 fsep = .Platform$file.sep))
+source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr.R',
+                 fsep = .Platform$file.sep))
+
 
 # LL function
 Log_Likelihood = function(x,

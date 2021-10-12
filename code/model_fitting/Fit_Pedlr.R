@@ -1,24 +1,20 @@
+library(here)
 
-# data = Load_data()
-# data = data[participant_id == 'PYV1GPO' & task_version == 1]
-# data = Prepare_data_for_fit(data)
-# params.alpha0 = 0.1
-# params.alpha1 = 0.7
-# params.interdep = 0.5
-# params.temperature = 5
-# params.reward_space_ub = 100
-# choice_policy = 'softmax'
-# init_values = c(50,50,50)
+# Load functions
+source_path = file.path(here::here(), 'code', 'models',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
 
 
-Fit_Pedlr_interdep = function(data,
-                              params.alpha0,
-                              params.alpha1,
-                              params.interdep,
-                              params.temperature,
-                              params.reward_space_ub,
-                              choice_policy,
-                              init_values = c(50,50,50)){
+Fit_Pedlr = function(data,
+                     params.alpha0,
+                     params.alpha1,
+                     params.temperature,
+                     params.reward_space_ub,
+                     choice_policy,
+                     init_values = c(50,50,50)){
   
   # Get other parameters from design
   # Number of trials
@@ -56,7 +52,7 @@ Fit_Pedlr_interdep = function(data,
         forced_choice = 0
         model_choice = NA
         choice_prob = NA
-        
+
         # In case of forced choice left, chose left with 100% probability
       } else if(data$forced_left[trial_count] == 1){
         forced_choice = 1
@@ -75,7 +71,7 @@ Fit_Pedlr_interdep = function(data,
                    sep=''))
       }
       
-      # Normal trials (no time out): Choice and updating of model
+    # Normal trials (no time out): Choice and updating of model
     } else{
       # In case of free choice trial
       if(data$forced_left[trial_count] == 0 & data$forced_right[trial_count] == 0){
@@ -149,7 +145,7 @@ Fit_Pedlr_interdep = function(data,
       if(forced_choice == 1 & model_choice != subj_choice){
         choice_reward = NA
         
-        # Otherwise get reward from choice
+      # Otherwise get reward from choice
       } else {
         choice_reward = comp_reward[subj_choice]
       }
@@ -160,11 +156,13 @@ Fit_Pedlr_interdep = function(data,
       if(is.na(choice_reward)){
         pe = NA
         fpe = NA
+        updated_value = choice_value + fpe * pe
+      
         
-        # Otherwise update
+      # Otherwise update
       } else {
         pe = choice_reward - choice_value
-        fpe = params.interdep * params.alpha0 + (1 - params.interdep) * params.alpha1 * (abs(pe)/params.reward_space_ub)
+        fpe = params.alpha0 + (1 - params.alpha0) * params.alpha1 * (abs(pe)/params.reward_space_ub)
         updated_value = choice_value + fpe * pe 
       }
       
