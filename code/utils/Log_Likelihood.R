@@ -9,7 +9,6 @@ source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_interdep.R',
 source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr.R',
                  fsep = .Platform$file.sep))
 
-
 # LL function
 Log_Likelihood = function(x,
                           design,
@@ -77,12 +76,14 @@ Log_Likelihood = function(x,
   choices_prob_model = model_data$choices$choice_prob
   
   # Exclude forced choices (since here there is no choice probability and in turn no likelihood of choice)
-  choices_prob_model = choices_prob_model[-which(design$trial_type == 'forced')]
+  choices_prob_model = choices_prob_model[which(design$trial_type == 'choice')]
+  design = design[which(design$trial_type == 'choice'),]
   
   # Exclude time out trials (outcome = NA)
-  choices_participant = choices_participant[-which(is.na(design$outcome))]
-  choices_model = choices_model[-which(is.na(design$outcome))]
-  choices_prob_model = choices_prob_model[-which(is.na(design$outcome))]
+  choices_participant = choices_participant[which(!is.na(design$outcome))]
+  choices_model = choices_model[which(!is.na(design$outcome))]
+  choices_prob_model = choices_prob_model[which(!is.na(design$outcome))]
+  design = design[which(!is.na(design$outcome)),]
   
   # Calculate likelihood (Probability model decides as participant)
   likelihood = choices_prob_model
