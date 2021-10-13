@@ -47,7 +47,6 @@ if [ ! -z "${PARTICIPANTS}" ]; then
   DATA_LIST=${PARTICIPANTS}
 fi
 
-
 # ===
 # Define job parameters for cluster
 # ===
@@ -65,7 +64,6 @@ MEM_MB="$((${MEM_GB} * 1000))"
 # ===
 # For more parallelization fitting can be split into multiple jobs per participant
 N_PARALLEL=2
-
 
 # ===
 # Run model fitting
@@ -120,7 +118,7 @@ for DATA in ${DATA_LIST}; do
 
   	# submit job to cluster queue and remove it to avoid confusion:
   	#sbatch job.slurm
-  	rm -f job.slurm
+  	#rm -f job.slurm
 
   done
 done
