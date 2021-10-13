@@ -5,7 +5,7 @@
 # ===
 
 # define repo directory
-PATH_BASE="~/pedlr"
+PATH_BASE="${HOME}/Docs/pedlr"
 # data directory
 PATH_DATA="${PATH_BASE}/data"
 # output directory
@@ -15,7 +15,7 @@ PATH_LOG="${PATH_BASE}/logs/model_fitting"
 # Path to script to run
 PATH_CODE="${PATH_BASE}/code/model_fitting"
 # current path
-PATH_RETURN=pwd
+PATH_RETURN=$(pwd)
 
 
 # ===
@@ -30,29 +30,97 @@ if [ ! -d ${PATH_LOG} ]; then
 	mkdir -p ${PATH_LOG}
 fi
 
+
+# ===
+# Get data
+# ===
+# User-defined data list
+PARTICIPANTS=$1
+# Get data to work on
+cd ${PATH_DATA}
+DATA_LIST=$(ls *.tsv)
+cd ${PATH_RETURN}
+# Only overwrite data with provided input if not empty
+if [ ! -z "${PARTICIPANTS}" ]; then
+  echo "Specific participant ID supplied"
+  # Overwrite sub_list with supplied participant
+  DATA_LIST=${PARTICIPANTS}
+fi
+
+
 # ===
 # Define job parameters for cluster
 # ===
 # maximum number of cpus per process:
-N_CPUS=8
+N_CPUS=2
 # maximum number of threads per process:
-N_THREADS=8
+N_THREADS=2
 # memory demand in *GB*
-MEM_GB=35
+MEM_GB=2
 # memory demand in *MB*
 MEM_MB="$((${MEM_GB} * 1000))"
-# user-defined subject list
-PARTICIPANTS=$1
-# Get participants to work on
-cd ${PATH_DATA}
-DATA_LIST=*.tsv
-cd ${PATH_RETURN}
 
-# Only overwrite sub_list with provided input if not empty
-if [ ! -z "${PARTICIPANTS}" ]; then
-  echo "Specific participant ID supplied"
-  # Overwrite sub_list with supplied participant
-  SUB_LIST=${PARTICIPANTS}
-fi
+# ===
+# Set number of iterative jobs per particpant
+# ===
+# For more parallelization fitting can be split into multiple jobs per participant
+N_PARALLEL=2
 
-echo ${DATA_LIST}
+
+# ===
+# Run model fitting
+# ===
+# loop over all subjects:
+for DATA in ${DATA_LIST}; do
+
+	# create label of participant (full ID without "sub-")
+	SUB_LABEL=${DATA:0:7}
+	echo ${SUB_LABEL}
+
+  # Function inputs
+  INPUT_PATH="${PATH_DATA}/${DATA}"
+  MODEL="Rw"
+  START_VALUES="0.5,5"
+  LB="0,1"
+  UB="1,10"
+  RANDOM_START_VALUES="TRUE"
+  N_ITER=5
+
+  # Loop over job parallelization
+  for PARALLEL in $(seq -f "%03g" ${N_PARALLEL}); do
+
+    # Define output path (depends on parallelization)
+    OUTPUT_PATH="${PATH_OUT}/${SUB_LABEL}_fit_${MODEL}_${PARALLEL}.tsv"
+
+  	# Get job name
+  	JOB_NAME="fit_${PARALLEL}_${MODEL}_${SUB_LABEL}"
+
+  	# Create job file
+  	echo "#!/bin/bash" > job.slurm
+  	# name of the job
+  	echo "#SBATCH --job-name ${JOB_NAME}" >> job.slurm
+  	# set the expected maximum running time for the job:
+  	echo "#SBATCH --time 23:59:00" >> job.slurm
+  	# determine how much RAM your operation needs:
+  	echo "#SBATCH --mem ${MEM_GB}GB" >> job.slurm
+  	# determine number of CPUs
+  	echo "#SBATCH --cpus-per-task ${N_CPUS}" >> job.slurm
+  	# write to log folder
+  	echo "#SBATCH --output ${PATH_LOG}/slurm-${JOB_NAME}.%j.out" >> job.slurm
+
+    echo "Rscript ${PATH_CODE}/Fit_model_wrapper.R \
+    --input_path ${INPUT_PATH} \
+    --output_path ${OUTPUT_PATH} \
+    --model ${MODEL} \
+    --start_values ${START_VALUES} \
+    --lb ${LB} \
+    --ub ${UB} \
+    --random_start_values ${RANDOM_START_VALUES} \
+    --n_iter ${N_ITER}" >> job.slurm
+
+  	# submit job to cluster queue and remove it to avoid confusion:
+  	#sbatch job.slurm
+  	rm -f job.slurm
+
+  done
+done

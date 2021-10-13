@@ -32,4 +32,7 @@ logs/*
 *.png
 *.jpeg
 
+# Ignore slurm hpc files
+*.slurm
+
 
