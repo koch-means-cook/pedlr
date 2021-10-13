@@ -5,7 +5,7 @@
 # ===
 
 # define repo directory
-PATH_BASE="${HOME}/Docs/pedlr"
+PATH_BASE="${HOME}/pedlr"
 # data directory
 PATH_DATA="${PATH_BASE}/data"
 # output directory
