@@ -106,6 +106,9 @@ for DATA in ${DATA_LIST}; do
   	# write to log folder
   	echo "#SBATCH --output ${PATH_LOG}/slurm-${JOB_NAME}.%j.out" >> job.slurm
 
+    # Load R module
+    echo "module unload R"
+    echo "module load R/4.0"
     echo "Rscript ${PATH_CODE}/Fit_model_wrapper.R \
     --input_path ${INPUT_PATH} \
     --output_path ${OUTPUT_PATH} \
