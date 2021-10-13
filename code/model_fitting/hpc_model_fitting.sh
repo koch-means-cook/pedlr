@@ -11,7 +11,7 @@ PATH_DATA="${PATH_BASE}/data"
 # output directory
 PATH_OUT="${PATH_BASE}/derivatives/model_fitting"
 # directory to save logs of HPC
-PATH_LOG="${PATH_BASE}/logs/model_fitting"
+PATH_LOG="${PATH_BASE}/logs/model_fitting/$(date '+%Y%m%d_%H%M')"
 # Path to script to run
 PATH_CODE="${PATH_BASE}/code/model_fitting"
 # current path
@@ -88,7 +88,7 @@ for DATA in ${DATA_LIST}; do
   for PARALLEL in $(seq -f "%03g" ${N_PARALLEL}); do
 
     # Define output path (depends on parallelization)
-    OUTPUT_PATH="${PATH_OUT}/${SUB_LABEL}_fit_${MODEL}_${PARALLEL}.tsv"
+    OUTPUT_PATH="${PATH_OUT}/${SUB_LABEL}-fit-${MODEL}-${PARALLEL}.tsv"
 
   	# Get job name
   	JOB_NAME="fit_${PARALLEL}_${MODEL}_${SUB_LABEL}"

@@ -97,6 +97,8 @@ Fit_model_wrapper = function(input_path,
     }
   }
   
+  message('Writing output...')
+  
   # Write output
   data.table::fwrite(x = output,
                      file = output_path,
@@ -104,6 +106,8 @@ Fit_model_wrapper = function(input_path,
                      na = 'n/a',
                      row.names = FALSE,
                      col.names = TRUE)
+  
+  message('\n...Le Fin')
   
 }
 
