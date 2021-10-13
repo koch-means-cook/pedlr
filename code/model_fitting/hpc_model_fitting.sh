@@ -117,8 +117,8 @@ for DATA in ${DATA_LIST}; do
     --n_iter ${N_ITER}" >> job.slurm
 
   	# submit job to cluster queue and remove it to avoid confusion:
-  	#sbatch job.slurm
-  	#rm -f job.slurm
+  	sbatch job.slurm
+  	rm -f job.slurm
 
   done
 done
