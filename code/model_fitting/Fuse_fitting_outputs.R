@@ -44,6 +44,12 @@ Fuse_fitting_outputs = function(){
                                    sep = '\t',
                                    header = TRUE,
                                    na.strings = 'n/a')
+          # Add column giving file count
+          file_count = unlist(strsplit(basename(i), '-'))
+          file_count = file_count[length(file_count)]
+          file_count = as.numeric(substr(file_count, 1,3))
+          temp$file = file_count
+          # Bind individual file to complete file of participant
           out = rbind(out, temp)
         }
         # Write fused table to output file

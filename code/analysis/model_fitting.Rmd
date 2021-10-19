@@ -60,6 +60,11 @@ invisible(lapply(source_files, function(x) source(x)))
 source_path = file.path(base_path, 'code', 'simulation', 'Apply_model.R',
                         fsep = .Platform$file.sep)
 source(source_path)
+
+# Load fitting function
+source_path = file.path(base_path, 'code', 'model_fitting', 'Fit_model.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
 ```
 
 ```{r}
@@ -204,6 +209,14 @@ ggplot(data = rw_recovery,
   geom_point() +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1))
+
+ggplot(data = rw_recovery,
+       aes(x = first_x0_temp,
+           y = second_temp)) +
+  geom_hline(yintercept = true_parameters$temperature) +
+  geom_point() +
+  scale_x_continuous(limits = c(1,10)) +
+  scale_y_continuous(limits = c(1,10))
 ```
 
 ---
@@ -293,5 +306,13 @@ ggplot(data = pedlr_recovery,
   geom_point() +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1))
+
+ggplot(data = pedlr_recovery,
+       aes(x = first_x0_temp,
+           y = second_temp)) +
+  geom_hline(yintercept = true_parameters$temperature) +
+  geom_point() +
+  scale_x_continuous(limits = c(1,10)) +
+  scale_y_continuous(limits = c(1,10))
 ```
 

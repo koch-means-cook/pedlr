@@ -1,0 +1,92 @@
+---
+title: "Model fitting"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+```
+
+```{r}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+```
+
+```{r}
+# Load data
+data = Load_model_fits()
+```
+
+```{r}
+data_plot = data %>%
+  data.table::melt(., id.vars = c('participant_id',
+                                  'iter',
+                                  'task_version',
+                                  'name_design_r1',
+                                  'name_design_r2',
+                                  'para',
+                                  'first_status',
+                                  'first_ll',
+                                  'second_status',
+                                  'second_ll'),
+                   measure.vars = c('first_x0',
+                                    'first_solution',
+                                    'second_solution'),
+                   value.name = 'val') %>%
+  .[, variable := factor(variable, levels = c('first_x0',
+                                              'first_solution',
+                                              'second_solution'))]
+
+bla = data.table::dcast(data_plot,
+                        participant_id + 
+                          iter +
+                          task_version + 
+                          name_design_r1 + 
+                          name_design_r2 + 
+                          first_status + 
+                          first_ll + 
+                          second_status + 
+                          second_ll + 
+                          variable ~ paste0('value_', para), value.var = 'val')
+
+ggplot(data = data_plot,
+       aes(x = ))
+```
+
