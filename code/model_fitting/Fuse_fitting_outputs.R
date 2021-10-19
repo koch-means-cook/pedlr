@@ -52,7 +52,16 @@ Fuse_fitting_outputs = function(){
                            na = 'n/a',
                            col.names = TRUE,
                            row.names = FALSE)
+        
+        message(paste('Created ', out_file, '...', sep = ''))
       }
     }
   }
+  
+  message('...done')
+  
 }
+
+# Call function
+Fuse_fitting_outputs()
+
