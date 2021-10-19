@@ -51,7 +51,8 @@ Fuse_fitting_outputs = function(){
                            out_file,
                            na = 'n/a',
                            col.names = TRUE,
-                           row.names = FALSE)
+                           row.names = FALSE,
+                           sep = '\t')
         
         message(paste('Created ', out_file, '...', sep = ''))
       }
