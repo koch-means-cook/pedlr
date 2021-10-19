@@ -51,11 +51,11 @@ fi
 # Define job parameters for cluster
 # ===
 # maximum number of cpus per process:
-N_CPUS=2
+N_CPUS=1
 # maximum number of threads per process:
-N_THREADS=2
+N_THREADS=1
 # memory demand in *GB*
-MEM_GB=2
+MEM_GB=0.128
 # memory demand in *MB*
 MEM_MB="$((${MEM_GB} * 1000))"
 
@@ -63,7 +63,7 @@ MEM_MB="$((${MEM_GB} * 1000))"
 # Set number of iterative jobs per particpant
 # ===
 # For more parallelization fitting can be split into multiple jobs per participant
-N_PARALLEL=2
+N_PARALLEL=10
 
 # ===
 # Run model fitting
@@ -82,9 +82,9 @@ for DATA in ${DATA_LIST}; do
   LB="0,1"
   UB="1,10"
   RANDOM_START_VALUES="TRUE"
-  N_ITER=5
+  N_ITER=10
 
-  # Loop over job parallelization
+  # Loop over job parallelization (N_PARRALEL is zero padded, e.g. 005)
   for PARALLEL in $(seq -f "%03g" ${N_PARALLEL}); do
 
     # Define output path (depends on parallelization)
