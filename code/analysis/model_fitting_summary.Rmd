@@ -1,5 +1,5 @@
 ---
-title: "Model fitting"
+title: "Model fitting Summary"
 output:
   html_document:
     toc: yes
@@ -50,13 +50,10 @@ invisible(lapply(source_files, function(x) source(x)))
 ```
 
 ```{r}
-# Load data
-data = Load_model_fits()
-```
-
-```{r}
-data_plot = data %>%
+Plot_prepare = function(data){
+  data_plot = data %>%
   data.table::melt(., id.vars = c('participant_id',
+                                  'file',
                                   'iter',
                                   'task_version',
                                   'name_design_r1',
@@ -67,26 +64,66 @@ data_plot = data %>%
                                   'second_status',
                                   'second_ll'),
                    measure.vars = c('first_x0',
-                                    'first_solution',
                                     'second_solution'),
                    value.name = 'val') %>%
   .[, variable := factor(variable, levels = c('first_x0',
-                                              'first_solution',
-                                              'second_solution'))]
+                                              'second_solution'))] %>%
+  # Join iterations of across jobs and within jobs
+  .[, real_iter := seq(.N),
+    by = c('participant_id',
+           'task_version',
+           'name_design_r1',
+           'name_design_r2',
+           'para',
+           'variable')] %>%
+  # Delete previous iteration columns
+  .[, ':='(iter = NULL,
+           file = NULL)] %>%
+  data.table::dcast(.,
+                    participant_id + 
+                      real_iter +
+                      task_version + 
+                      name_design_r1 + 
+                      name_design_r2 + 
+                      first_status + 
+                      first_ll + 
+                      second_status + 
+                      second_ll + 
+                      variable ~ paste0('value_', para), value.var = 'val')
+  
+  return(data_plot)
+}
+```
 
-bla = data.table::dcast(data_plot,
-                        participant_id + 
-                          iter +
-                          task_version + 
-                          name_design_r1 + 
-                          name_design_r2 + 
-                          first_status + 
-                          first_ll + 
-                          second_status + 
-                          second_ll + 
-                          variable ~ paste0('value_', para), value.var = 'val')
+
+```{r}
+# Load data
+data = Load_model_fits()
+```
+
+# Rw
+
+## Fitting consistency
+
+```{r, out.width='100%'}
+data_plot = Plot_prepare(data)
 
 ggplot(data = data_plot,
-       aes(x = ))
+       aes(x = value_alpha,
+           y = value_temperature,
+           fill = variable,
+           shape = variable,
+           group = real_iter)) +
+  scale_fill_manual(values = c('white', 'black')) +
+  scale_shape_manual(values = c(21, 24)) +
+  geom_path(color = 'black',
+            size = 0.2,
+            alpha = 0.3) +
+  geom_point(size = 0.8,
+             stroke = 0.3,
+             color = 'black',
+             alpha = 0.5) +
+  facet_grid(participant_id ~ task_version) +
+  theme(legend.position = 'bottom')
 ```
 
