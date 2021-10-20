@@ -55,9 +55,9 @@ N_CPUS=1
 # maximum number of threads per process:
 N_THREADS=1
 # memory demand in *GB*
-MEM_GB=0.128
+MEM_MB=128
 # memory demand in *MB*
-MEM_MB="$((${MEM_GB} * 1000))"
+#MEM_MB="$((${MEM_GB} * 1000))"
 
 # ===
 # Set number of iterative jobs per particpant
@@ -73,7 +73,6 @@ for DATA in ${DATA_LIST}; do
 
 	# create label of participant (full ID without "sub-")
 	SUB_LABEL=${DATA:0:7}
-	echo ${SUB_LABEL}
 
   # Function inputs
   INPUT_PATH="${PATH_DATA}/${DATA}"
@@ -91,6 +90,9 @@ for DATA in ${DATA_LIST}; do
   LB="0,1"
   UB="1,10"
 
+	# Give message to user
+	echo "${SUB_LABEL}: ${MODEL}"
+
   # Loop over job parallelization (N_PARRALEL is zero padded, e.g. 005)
   for PARALLEL in $(seq -f "%03g" ${N_PARALLEL}); do
 
@@ -107,7 +109,7 @@ for DATA in ${DATA_LIST}; do
   	# set the expected maximum running time for the job:
   	echo "#SBATCH --time 23:59:00" >> job.slurm
   	# determine how much RAM your operation needs:
-  	echo "#SBATCH --mem ${MEM_GB}GB" >> job.slurm
+  	echo "#SBATCH --mem ${MEM_MB}MB" >> job.slurm
   	# determine number of CPUs
   	echo "#SBATCH --cpus-per-task ${N_CPUS}" >> job.slurm
   	# write to log folder
@@ -142,6 +144,9 @@ for DATA in ${DATA_LIST}; do
 	LB="0,0,1"
 	UB="1,1,10"
 
+	# Give message to user
+	echo "${SUB_LABEL}: ${MODEL}"
+
   # Loop over job parallelization (N_PARRALEL is zero padded, e.g. 005)
   for PARALLEL in $(seq -f "%03g" ${N_PARALLEL}); do
 
@@ -158,7 +163,7 @@ for DATA in ${DATA_LIST}; do
   	# set the expected maximum running time for the job:
   	echo "#SBATCH --time 23:59:00" >> job.slurm
   	# determine how much RAM your operation needs:
-  	echo "#SBATCH --mem ${MEM_GB}GB" >> job.slurm
+  	echo "#SBATCH --mem ${MEM_MB}MB" >> job.slurm
   	# determine number of CPUs
   	echo "#SBATCH --cpus-per-task ${N_CPUS}" >> job.slurm
   	# write to log folder
@@ -193,6 +198,9 @@ for DATA in ${DATA_LIST}; do
 	LB="0,0,0,1"
 	UB="1,1,1,10"
 
+	# Give message to user
+	echo "${SUB_LABEL}: ${MODEL}"
+
   # Loop over job parallelization (N_PARRALEL is zero padded, e.g. 005)
   for PARALLEL in $(seq -f "%03g" ${N_PARALLEL}); do
 
@@ -209,7 +217,7 @@ for DATA in ${DATA_LIST}; do
   	# set the expected maximum running time for the job:
   	echo "#SBATCH --time 23:59:00" >> job.slurm
   	# determine how much RAM your operation needs:
-  	echo "#SBATCH --mem ${MEM_GB}GB" >> job.slurm
+  	echo "#SBATCH --mem ${MEM_MB}MB" >> job.slurm
   	# determine number of CPUs
   	echo "#SBATCH --cpus-per-task ${N_CPUS}" >> job.slurm
   	# write to log folder
