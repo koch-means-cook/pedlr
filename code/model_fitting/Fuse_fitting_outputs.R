@@ -49,6 +49,8 @@ Fuse_fitting_outputs = function(){
           file_count = file_count[length(file_count)]
           file_count = as.numeric(substr(file_count, 1,3))
           temp$file = file_count
+          # Add model as column
+          temp$model = model
           # Bind individual file to complete file of participant
           out = rbind(out, temp)
         }

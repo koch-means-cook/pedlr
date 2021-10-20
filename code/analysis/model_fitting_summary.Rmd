@@ -35,6 +35,7 @@ library(here)
 library(magrittr)
 library(ggplot2)
 library(viridis)
+library(plotly)
 ```
 
 ```{r}
@@ -58,6 +59,7 @@ Plot_prepare = function(data){
                                   'task_version',
                                   'name_design_r1',
                                   'name_design_r2',
+                                  'model',
                                   'para',
                                   'first_status',
                                   'first_ll',
@@ -99,6 +101,9 @@ Plot_prepare = function(data){
 ```{r}
 # Load data
 data = Load_model_fits()
+data_rw = data[model == 'Rw']
+data_pedlr = data[model == 'Pedlr']
+data_pedlr_interdep = data[model == 'Pedlr_interdep']
 ```
 
 # Rw
@@ -106,7 +111,7 @@ data = Load_model_fits()
 ## Fitting consistency
 
 ```{r, out.width='100%'}
-data_plot = Plot_prepare(data)
+data_plot = Plot_prepare(data_rw)
 
 ggplot(data = data_plot,
        aes(x = value_alpha,
@@ -129,7 +134,40 @@ ggplot(data = data_plot,
 
 # Pedlr
 
-```{r}
+```{r, warning=FALSE, fig.show='hold'}
+data_plot = Plot_prepare(data_pedlr)
 
+for(pid in unique(data_plot$participant_id)){
+  data_plot_i = data_plot[participant_id == pid]
+  fig = plotly::plot_ly(x = data_plot_i$value_alpha0,
+                        y = data_plot_i$value_alpha1,
+                        z = data_plot_i$value_temperature,
+                        type = "scatter3d",
+                        mode = 'markers',
+                        color = data_plot_i$variable,
+                        size = nchar(as.character(data_plot_i$variable)) * 0.1) %>%
+    plotly::layout(title = unique(data_plot_i$participant_id))
+  
+  print(fig)
+}
 ```
 
+# Pedlr_interdep
+
+```{r, warning=FALSE, fig.show='hold'}
+data_plot = Plot_prepare(data_pedlr_interdep)
+
+for(pid in unique(data_plot$participant_id)){
+  data_plot_i = data_plot[participant_id == pid]
+  fig = plotly::plot_ly(x = data_plot_i$value_alpha0,
+                        y = data_plot_i$value_alpha1,
+                        z = data_plot_i$value_temperature,
+                        type = "scatter3d",
+                        mode = 'markers',
+                        color = data_plot_i$variable,
+                        size = nchar(as.character(data_plot_i$variable)) * 0.1) %>%
+    plotly::layout(title = unique(data_plot_i$participant_id))
+  
+  print(fig)
+}
+```
