@@ -194,6 +194,8 @@ p_ear = ggplot(data = check_est,
 p_ear
 ```
 
+## 
+
 ## Estimating difference from truth
 
 ```{r, fig.height=0.75*n_participants, out.width='100%'}
