@@ -104,13 +104,16 @@ data = Load_model_fits()
 data_rw = data[model == 'Rw']
 data_pedlr = data[model == 'Pedlr']
 data_pedlr_interdep = data[model == 'Pedlr_interdep']
+
+# Get number of participants
+n_participants = length(unique(data$participant_id))
 ```
 
 # Rw
 
 ## Fitting consistency
 
-```{r, out.width='100%'}
+```{r, out.width='100%', fig.height=n_participants}
 data_plot = Plot_prepare(data_rw)
 
 ggplot(data = data_plot,
