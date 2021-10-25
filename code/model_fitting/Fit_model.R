@@ -58,9 +58,9 @@ Fit_model = function(data,
   first = nloptr::nloptr(x0=start_values,
                          # Minimize neg LL
                          eval_f=Log_Likelihood,
-                         # Lower bound of parameters
+                         # Lower bound of parameters (e.g. c(0,0,1))
                          lb=lb,
-                         # Upper bound of parameters
+                         # Upper bound of parameters (e.g. c(1,1,10))
                          ub=ub,
                          # Minimizer options
                          opts=opts1,
@@ -70,6 +70,7 @@ Fit_model = function(data,
                          model = model)
   
   # Use results of global minimization as inputs for local minimization algorithm
+  # (to find lowest point in the rough estimate provided by first, global minimization)
   second = nloptr::nloptr(x0=first$solution,
                           # Minimize neg LL
                           eval_f=Log_Likelihood,

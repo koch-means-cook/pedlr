@@ -92,6 +92,7 @@ source_model = Rw(design = data,
                   params.reward_space_ub = true_parameters$reward_space_ub,
                   choice_policy = true_parameters$choice_policy,
                   init_values = c(50,50,50))
+# Use design of real participant to make simulated data (as if model had played design that was presented to participant)
 simulated_data = data %>%
   .[, ':='(choice = source_model$choices$choice,
            choice_prob = source_model$choices$choice_prob,
@@ -113,17 +114,19 @@ grid_search_ll = data.table()
 grid_search_data = data.table()
 
 for(alpha in seq(0,1, by = 0.01)){
+  # Set paremeters for each loop
   parameters = data.frame(alpha = alpha,
                           temperature = 7,
                           reward_space_ub = 100,
                           choice_policy = 'softmax')
-  
+  # Fit model to simulated data with the given parameters
   fitted_model = Fit_Rw(data = simulated_data,
                         params.alpha = parameters$alpha,
                         params.temperature = parameters$temperature,
                         params.reward_space_ub = parameters$reward_space_ub,
                         choice_policy = parameters$choice_policy,
                         init_values = c(50,50,50))
+  # Combine simulated data and fit results into one data frame (add columns of fitting process, like model choices and estimates)
   test_data = simulated_data %>%
     .[, ':='(Rw_choice = fitted_model$choices$choice,
              Rw_choice_prob = fitted_model$choices$choice_prob,
@@ -132,13 +135,14 @@ for(alpha in seq(0,1, by = 0.01)){
              Rw_v_2 = fitted_model$values$stim_2,
              Rw_v_3 = fitted_model$values$stim_3)]
   
-  # Get likelihood
+  # Get choices of participant
   choices_participant = simulated_data$choice
-  # Get choices and probability of choices of model
+  # Get choices and probability of choices from model
   choices_model = fitted_model$choices$choice
   choices_prob_model = fitted_model$choices$choice_prob
   
-  # Exclude forced choices (since here there is no choice probability and in turn no likelihood of choice)
+  # Exclude forced choices from likelihood calculation (since here there is no
+  # choice probability and in turn no likelihood of choice)
   choices_prob_model = choices_prob_model[-which((simulated_data$trial_type == 'forced'))]
   
   # Exclude time out trials (outcome = NA)
@@ -146,8 +150,9 @@ for(alpha in seq(0,1, by = 0.01)){
   choices_model = choices_model[-which(is.na(simulated_data$outcome))]
   choices_prob_model = choices_prob_model[-which(is.na(simulated_data$outcome))]
   
-  # Calculate likelihood (Probability model decides as participant)
+  # Calculate likelihood (Probability of choice given the model behaved like participant)
   likelihood = choices_prob_model
+  # Check for NA in likelihood vector (means smth went wrong)
   if(any(is.na(likelihood))){
     stop('NA in likelihood vector')
   }
@@ -158,6 +163,7 @@ for(alpha in seq(0,1, by = 0.01)){
   # Negative log likelihood
   likelihood = -likelihood
   
+  # Fuse LL and model data across grid search
   ans = data.table(ll = likelihood, alpha = alpha)
   grid_search_ll = rbind(grid_search_ll, ans)
   grid_search_data = rbind(grid_search_data, test_data)
@@ -177,7 +183,10 @@ ggplot(data = grid_search_ll,
 
 ```{r}
 rw_recovery = data.table()
+
+# For x number of fitting processes
 for(i in seq(5)){
+  # Fit model to simulated data (simulated data stems from parameters we know to be the true values)
   solution = Fit_model(data = simulated_data,
                        model = 'Rw',
                        start_values = c(runif(1, 0, 1),
@@ -186,6 +195,7 @@ for(i in seq(5)){
                               1),
                        ub = c(1,
                               10))
+  # Save fitting details with results into data frame
   result = data.table(i = i,
                       first_x0_alpha = solution$first_x0[1],
                       first_x0_temp = solution$first_x0[2],
@@ -199,9 +209,11 @@ for(i in seq(5)){
                       second_temp = solution$second_solution[2],
                       second_ll = solution$second_ll,
                       second_status = solution$second_status)
+  # Append data frame for each loop
   rw_recovery = rbind(rw_recovery, result)
 }
 
+# Plot recovery with true parameters
 ggplot(data = rw_recovery,
        aes(x = first_x0_alpha,
            y = second_alpha)) +
