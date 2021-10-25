@@ -371,19 +371,6 @@ p_noc = ggplot(data = check_noc,
 p_noc
 ```
 
-## Non-optimal between run 1 and 2
-
-```{r, out.width='100%'}
-p_noc_diff_run = ggplot(data = check_noc,
-                        aes(x = task_version,
-                            y = perc_correct,
-                            group = participant_id)) +
-  geom_point() +
-  geom_line() +
-  facet_wrap(~comp)
-p_noc_diff_run
-```
-
 ## Difference between comparisons including asymmetric stimulus {.tabset}
 
 ### Line plot
@@ -400,7 +387,6 @@ p_noc_diff_comp_line = ggplot(data = check_noc_crit,
   facet_wrap(~task_version)
 p_noc_diff_comp_line
 ```
-
 
 ### Difference
 
@@ -423,3 +409,15 @@ p_noc_diff_comp_diff = ggplot(data = check_noc_diff,
 p_noc_diff_comp_diff
 ```
 
+## Non-optimal between run 1 and 2
+
+```{r, out.width='100%'}
+p_noc_diff_run = ggplot(data = check_noc,
+                        aes(x = task_version,
+                            y = perc_correct,
+                            group = participant_id)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~comp)
+p_noc_diff_run
+```
