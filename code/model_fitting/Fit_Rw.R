@@ -41,7 +41,8 @@ Fit_Rw = function(data,
     comp_value = c(df_values[trial_count, comp_stim[1]], df_values[trial_count, comp_stim[2]])
     comp_reward = c(data$reward_stim_1[trial_count], data$reward_stim_2[trial_count])
     # Get index of choice the participant made
-    subj_choice = which(comp_stim == data$choice[trial_count])
+    subj_choice_index = which(comp_stim == data$choice[trial_count])
+    subj_choice = comp_stim[subj_choice_index]
     
     # Get if forced choice was an error
     error = data$error[trial_count]
@@ -86,17 +87,19 @@ Fit_Rw = function(data,
           # Get probability of choice model made (based on which values the model assigned to choice options)
           softmax = Softmax_choice_prob(comp_value[1],
                                         comp_value[2],
-                                        choice = subj_choice,
+                                        choice = subj_choice_index,
                                         params.temperature)
           choice_prob = softmax$choice_prob
           
           # Greedy
         } else if(choice_policy == 'greedy'){
           # Make greedy choice
-          model_choice = which(comp_value == max(comp_value))
+          model_choice_index = which(comp_value == max(comp_value))
+          model_choice = comp_stim[model_choice_index]
           # In case of same value take random choice
           if(length(choice) > 1){
-            model_choice = sample(c(1,2), 1)
+            model_choice_index = sample(c(1,2), 1)
+            model_choice = comp_stim[model_choice_index]
           }
           # Get choice probability based on subjects choice (avoid 0 since log would produce inf)
           if(model_choice == subj_choice){
@@ -108,7 +111,8 @@ Fit_Rw = function(data,
         # In case of forced choice left, choose left with 100% probability
       } else if(data$forced_left[trial_count] == 1){
         forced_choice = 1
-        model_choice = 1
+        model_choice_index = 1
+        model_choice = comp_stim[model_choice_index]
         # Get choice probability based on subjects choice (avoid 0 since log would produce inf)
         if(model_choice == subj_choice){
           choice_prob = 99999/100000
@@ -118,7 +122,8 @@ Fit_Rw = function(data,
         # In case of forced choice right, choose right with 100% probability
       } else if(data$forced_right[trial_count] == 1){
         forced_choice = 1
-        model_choice = 2
+        model_choice_index = 2
+        model_choice = comp_stim[model_choice_index]
         # Get choice probability based on subjects choice (avoid 0 since log would produce inf)
         if(model_choice == subj_choice){
           choice_prob = 99999/100000
@@ -134,8 +139,8 @@ Fit_Rw = function(data,
       }
       
       # Stimulus and value of option chosen by participant
-      choice_stim = comp_stim[subj_choice]
-      choice_value = comp_value[subj_choice]
+      choice_stim = comp_stim[subj_choice_index]
+      choice_value = comp_value[subj_choice_index]
       
       # Reward chosen by participant
       # No reward in case of wrong choice in forced choice trials
@@ -144,7 +149,7 @@ Fit_Rw = function(data,
         
         # Otherwise get reward from choice
       } else {
-        choice_reward = comp_reward[subj_choice]
+        choice_reward = comp_reward[subj_choice_index]
       }
       
       
