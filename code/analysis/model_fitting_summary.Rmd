@@ -36,6 +36,7 @@ library(magrittr)
 library(ggplot2)
 library(viridis)
 library(plotly)
+library(plyr)
 ```
 
 ```{r}
@@ -134,6 +135,63 @@ ggplot(data = data_plot,
   facet_grid(participant_id ~ task_version) +
   theme(legend.position = 'bottom')
 ```
+
+## Best fit
+
+```{r}
+# Process model fits
+data_para_rw = data_rw %>%
+  # Enumerate different fitting attempts
+  .[, fit := seq(.N),
+    by = c('participant_id', 'task_version', 'para')] %>%
+  # Add number of parameters
+  .[, n_para := length(para),
+    by = c('participant_id', 'task_version', 'fit')] %>%
+  # Cast into long format (one line per fit attempt)
+  data.table::dcast(., fit + participant_id + task_version + name_design_r1 + name_design_r2 + n_para + second_ll ~ para,
+                    value.var = c('first_x0', 'second_solution')) %>%
+  # Calculate AIC = 2k + 2(-LL)
+  .[, ':='(AIC = 2*n_para + 2*second_ll)]
+
+# Get best fit
+data_best_rw = data_para_rw %>%
+  .[, .SD[which.min(AIC)], by = c('participant_id', 'task_version')]
+```
+
+## Apply best fit
+
+```{r}
+all_designs = Load_data()
+
+best_fits = data.table()
+for(id in unique(all_designs$participant_id)){
+  for(run in unique(all_designs$task_version)){
+    sim = Rw(design = all_designs[participant_id == id & task_version == run],
+             params.alpha = data_best_rw[participant_id == id & task_version == run, second_solution_alpha],
+             params.temperature = data_best_rw[participant_id == id & task_version == run, second_solution_temperature],
+             params.reward_space_ub = 100,
+             choice_policy = 'softmax',
+             init_values = c(50,50,50))
+    temp = all_designs[participant_id == id & task_version == run]
+    temp$model_choice = sim$choices$choice
+    temp$model_choice_prob = sim$choices$choice_prob
+    temp$model_value_1 = sim$values$stim_1
+    temp$model_value_2 = sim$values$stim_2
+    temp$model_value_3 = sim$values$stim_3
+    temp$model_pe_1 = sim$PE$stim_1
+    temp$model_pe_2 = sim$PE$stim_2
+    temp$model_pe_3 = sim$PE$stim_3
+    temp$model_fpe_1 = sim$fPE$stim_1
+    temp$model_fpe_2 = sim$fPE$stim_2
+    temp$model_fpe_3 = sim$fPE$stim_3
+    
+    best_fits = rbind(best_fits, temp)
+  }
+}
+
+
+```
+
 
 # Pedlr
 
