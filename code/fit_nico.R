@@ -4,6 +4,9 @@ library(magrittr)
 library(nloptr)
 library(optparse)
 
+# out_file = '/Users/koch/Docs/pedlr/derivatives/model_fitting/nico/test.tsv'
+# random_x0 = TRUE
+
 fit_nico = function(out_file,
                     random_x0){
   
@@ -53,6 +56,8 @@ fit_nico = function(out_file,
     Prepare_data_for_fit(.)
   
   output = data.table()
+  
+  # For each run
   for(ctv in seq(2)){
     modeldf = data.frame(matrix(NA, nid, 2+7+2+2+6))
     colnames(modeldf) = c('RW_LL', 'RW_alpha', 'RW_temp', 'RW_init_values',
