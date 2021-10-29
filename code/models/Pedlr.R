@@ -59,15 +59,15 @@ Pedlr = function(design,
           choice = choice[sample(choice)[1]]
         }
       }
-      # In case of forced choice left, chose left with 100% probability
+      # In case of forced choice left, chose left with nearly 100% probability
     } else if(design$forced_left[trial_count] == 1){
       choice = 1
-      choice_prob = 1
+      choice_prob = 99999/100000
       forced_choice = 1
-      # In case of forced choice right, chose right with 100% probability
+      # In case of forced choice right, chose right with nearly 100% probability
     } else if(design$forced_right[trial_count] == 1){
       choice = 2
-      choice_prob = 1
+      choice_prob = 99999/100000
       forced_choice = 1
       # In case forced choice of both alternatives, raise error (broken design)
     } else if(design$forced_left[trial_count] == 1 & design$forced_right[trial_count] == 1){
