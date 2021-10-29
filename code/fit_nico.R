@@ -2,6 +2,7 @@ library(data.table)
 library(here)
 library(magrittr)
 library(nloptr)
+library(optparse)
 
 fit_nico = function(out_file,
                     random_x0){
