@@ -1,0 +1,186 @@
+---
+title: "Model fitting Summary"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(plotly)
+library(plyr)
+```
+
+```{r}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+```
+
+
+```{r}
+# Load data
+file = file.path(base_path, 'derivatives', 'model_fitting', 'nico', '*.tsv', fsep = .Platform$file.sep)
+files = Sys.glob(file)
+data = data.table()
+for(i in seq(length(files))){
+  temp = data.table::fread(files[i], sep = '\t', na.strings = 'n/a')
+  temp$fit = i
+  data = rbind(data, temp)
+  
+}
+
+data = data %>%
+  data.table::melt(., id.vars = c('participant_id',
+                                  'task_version',
+                                  'fit',
+                                  'random_x0',
+                                  'Choice1v2',
+                                  'Choice2v3',
+                                  'Rating2',
+                                  'RatingSD2')) %>%
+  .[, ':='(model = unlist(strsplit(as.character(variable), split = '_'))[1],
+           var = unlist(strsplit(as.character(variable), split = '_'),)[2]),
+    by = c('participant_id', 'task_version', 'fit', 'variable')] %>%
+  .[, variable := NULL] %>%
+  data.table::dcast(.,
+                    participant_id + task_version + fit + random_x0 + Choice1v2 + Choice2v3 + Rating2 + RatingSD2 + model ~ var, value.var = 'value')
+
+# Get number of participants
+n_participants = length(unique(data$participant_id))
+
+# Get all designs
+all_designs = Load_data()
+```
+
+# Fitting consistency
+
+## Rw
+
+```{r, out.width='100%', fig.height=n_participants}
+data_plot = data[model == 'RW']
+
+ggplot(data = data_plot,
+       aes(x = alpha,
+           y = temp)) +
+  geom_point(size = 0.8,
+             stroke = 0.3,
+             color = 'black',
+             alpha = 0.5) +
+  facet_grid(participant_id ~ task_version) +
+  theme(legend.position = 'bottom')
+```
+
+## Pedlr
+
+```{r, warning=FALSE, fig.show='hold'}
+data_plot = data[model == 'PEDLR']
+
+axx <- list(
+  nticks = 4,
+  range = c(0,1)
+)
+axy <- list(
+  nticks = 4,
+  range = c(-1,1)
+)
+axz <- list(
+  nticks = 4,
+  range = c(0,10)
+)
+
+for(pid in unique(data_plot$participant_id)){
+  data_plot_i = data_plot[participant_id == pid]
+  fig = plotly::plot_ly(x = data_plot_i$alpha0,
+                        y = data_plot_i$alpha1,
+                        z = data_plot_i$temp,
+                        type = "scatter3d",
+                        mode = 'markers',
+                        size = (data_plot_i$task_version * 10)) %>%
+    plotly::layout(title = unique(data_plot_i$participant_id),
+                   scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
+  
+  print(fig)
+}
+```
+```{r}
+data_corr = data.table()
+for(i in seq(length(unique(data$fit)))){
+  for(j in seq(2)){
+    # does a model with higher alpha 1 have lower value estimates for bandit 2?
+    x = data[model == 'PEDLR' & task_version == j & fit == i]$value2
+    y = data[model == 'PEDLR' & task_version == j & fit == i]$alpha1
+    a1_rating2 = cor.test(x, y)
+    
+    # do subjs with more evidence for the PEDLR model make more mistakes in bandit 2?
+    x = data[model == 'RW' & task_version == j & fit == i]$LL - data[model == 'PEDLR' & task_version == j & fit == i]$LL
+    y = data[model == 'PEDLR' & task_version == j & fit == i]$Choice1v2
+    diffLL_1v2 = cor.test(x, y)
+    x = data[model == 'RW' & task_version == j & fit == i]$LL - data[model == 'PEDLR' & task_version == j & fit == i]$LL
+    y = data[model == 'PEDLR' & task_version == j & fit == i]$Choice1v2 - data[model == 'PEDLR' & task_version == j & fit == i]$Choice2v3
+    diffLL_diffChoice = cor.test(x, y)
+    
+    # do subjs with more evidence for the PEDLR model have higher alpha1 learnig rates
+    x = data[model == 'RW' & task_version == j & fit == i]$LL - data[model == 'PEDLR' & task_version == j & fit == i]$LL
+    y = data[model == 'PEDLR' & task_version == j & fit == i]$alpha1
+    diffLL_a1 = cor.test(x, y)
+    
+    # a0 vs a1
+    x = data[model == 'PEDLR' & task_version == j & fit == i]$alpha0
+    y = data[model == 'PEDLR' & task_version == j & fit == i]$alpha1
+    a0_a1 = cor.test(x, y)
+    
+    temp = data.table(fit = i, task_version = j,
+                      a1_rating2_est = a1_rating2$estimate, a1_rating2_p = a1_rating2$p.value,
+                      diffLL_1v2_est = diffLL_1v2$estimate, diffLL_1v2_p = diffLL_1v2$p.value,
+                      diffLL_diffChoice_est = diffLL_diffChoice$estimate, diffLL_diffChoice_p = diffLL_diffChoice$p.value,
+                      diffLL_a1_est = diffLL_a1$estimate, diffLL_a1_p = diffLL_a1$p.value,
+                      a0_a1_est = a0_a1$estimate, a0_a1_p = a0_a1$p.value)
+    data_corr = rbind(data_corr, temp)
+    
+    
+    
+  }
+  
+}
+
+# # are differenes in estimates values for bandit 2 related to ratings ?
+# cor.test(modeldf$RW_value2 - modeldf$PEDLR_value2, modeldf$Rating2)
+# cor.test(modeldf$PEDLR_value2, modeldf$Rating2)
+# cor.test(modeldf$RW_value2, modeldf$Rating2)
+```
+
