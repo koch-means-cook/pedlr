@@ -40,16 +40,6 @@ fit_nico = function(out_file,
   ub_rw = c(1, 10)
   lb_rw = c(0, 0.1)
   
-  # Set starting values for optimizer (either random or fixed)
-  if(random_x0){
-    x0_pedlr = round(c(runif(1,0,1), runif(1,-1,1), runif(1, 0.1, 10)), 2)
-    x0_rw = round(c(runif(1,0,1), runif(1, 0.1, 10)), 2)
-  } else{
-    x0_pedlr = c(0.2, 0.2, 1)
-    x0_rw = c(0.2, 1)
-  }
-  
-  
   # Load data of participants
   data_all = Load_data() %>%
     Add_comp(.) %>%
@@ -59,16 +49,27 @@ fit_nico = function(out_file,
   
   # For each run
   for(ctv in seq(2)){
-    modeldf = data.frame(matrix(NA, nid, 2+7+2+2+6))
+    modeldf = data.frame(matrix(NA, nid, 2+7+2+2+6+5))
     colnames(modeldf) = c('RW_LL', 'RW_alpha', 'RW_temp', 'RW_init_values',
                           'RW_value1', 'RW_value2', 'RW_value3', 'PEDLR_LL',
                           'PEDLR_alpha0', 'PEDLR_alpha1', 'PEDLR_temp',
                           'PEDLR_init_values',  'PEDLR_value1', 'PEDLR_value2',
                           'PEDLR_value3', 'Choice1v2', 'Choice2v3', 'Rating2',
-                          'RatingSD2')
+                          'RatingSD2', 'RW_x0alpha', 'RW_x0temp',
+                          'PEDLR_x0alpha0', 'PEDLR_x0alpha1', 'PEDLR_x0temp')
     
     # For each participant
     for (cid in 1:nid) {
+      
+      # Set starting values for optimizer (either random or fixed)
+      if(random_x0){
+        x0_pedlr = round(c(runif(1,0,1), runif(1,-1,1), runif(1, 0.1, 10)), 2)
+        x0_rw = round(c(runif(1,0,1), runif(1, 0.1, 10)), 2)
+      } else{
+        x0_pedlr = c(0.2, 0.2, 1)
+        x0_rw = c(0.2, 1)
+      }
+      
       # Message to user
       cat(paste('Fitting Sub ', sprintf("%02d", cid), ' ', sep = ''))
       data = data_all %>%
@@ -123,6 +124,11 @@ fit_nico = function(out_file,
         modeldf$participant_id = ids
         modeldf$task_version = ctv
         modeldf$random_x0 = random_x0
+        modeldf$RW_x0alpha = x0_rw[1]
+        modeldf$RW_x0temp = x0_rw[2]
+        modeldf$PEDLR_x0alpha0 = x0_pedlr[1]
+        modeldf$PEDLR_x0alpha1 = x0_pedlr[2]
+        modeldf$PEDLR_x0temp = x0_pedlr[3]
         output = rbind(output, modeldf)
       }
     }
