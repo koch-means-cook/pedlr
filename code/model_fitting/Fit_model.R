@@ -29,9 +29,12 @@ Fit_model = function(data,
   #     D = derivative-based
   
   # Options for first (global) optimization
-  opts1 = list('algorithm'='NLOPT_GN_CRS2_LM',
+  # opts1 = list('algorithm'='NLOPT_GN_CRS2_LM',
+  #              'xtol_rel'=1.0e-4,
+  #              'maxeval'=500)
+  opts1 = list('algorithm'='NLOPT_GN_DIRECT_L',
                'xtol_rel'=1.0e-4,
-               'maxeval'=500)
+               'maxeval'= 5000)
   # Options for second (local) optimization
   opts2 = list('algorithm'='NLOPT_LN_COBYLA',
                'xtol_rel'=1.0e-4,
