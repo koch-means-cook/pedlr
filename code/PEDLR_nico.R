@@ -40,6 +40,7 @@ PEDLR_nico = function(data, params, init_values = 50) {
     
     if (!is.na(R)) {
       PE = R - V
+      
       df$PE[trial_count] = PE
       #LR = params$alpha0 + (1-params$alpha0)*params$alpha1 * (abs(PE)/max(abs(df$PE[1:trial_count]), na.rm = TRUE))
       
@@ -49,9 +50,11 @@ PEDLR_nico = function(data, params, init_values = 50) {
       # My approach (constant normalization of PE term with 100, the highest point range)
       LR = params$alpha0 + (1-params$alpha0)*params$alpha1 * (abs(PE)/100)
       
-      
       df$LR[trial_count] = LR
-      values[min(trial_count + 1, ntrials):ntrials, data$choice[trial_count]] = V + LR * PE
+      
+      # Update values
+      update = V + LR * PE
+      values[min(trial_count + 1, ntrials):ntrials, data$choice[trial_count]] = update
     }
   }
   df$value1 = values[,1]

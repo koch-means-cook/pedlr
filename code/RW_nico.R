@@ -24,7 +24,15 @@ RW_nico = function(data, params) {
     df$choice_prob[trial_count] = exp(V/params$temp) / sum(exp(comp_value/params$temp))
     if (!is.na(R)) {
       PE = R - V
-      values[min(trial_count + 1, ntrials):ntrials, data$choice[trial_count]] = V + params$alpha * PE
+      
+      # Update values
+      update = V + params$alpha * PE
+      # Value can't be below 0 (experiment states point range between 0 and 100)
+      if(update < 0){
+        # If value goes lower than 0, set to 0
+        update = 0
+      }
+      values[min(trial_count + 1, ntrials):ntrials, data$choice[trial_count]] = update
       df$PE[trial_count] = PE
     }
   }

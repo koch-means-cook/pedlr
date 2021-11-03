@@ -31,12 +31,13 @@ fit_nico = function(out_file,
   source(source_path)
   
   #opts = list('algorithm'='NLOPT_GN_CRS2_LM', 'xtol_rel'=1.0e-4, 'maxeval'= 5000)
-  opts = list('algorithm'='NLOPT_GN_DIRECT_L', 'xtol_rel'=1.0e-4, 'maxeval'= 5000)
+  #opts = list('algorithm'='NLOPT_GN_DIRECT_L', 'xtol_rel'=1.0e-4, 'maxeval'= 5000)
+  opts = list('algorithm'='NLOPT_GN_DIRECT_L', 'xtol_rel'=1.0e-4, 'maxeval'= 1)
   #opts = list('algorithm'='NLOPT_LN_BOBYQA', 'xtol_rel'=1.0e-8, 'maxeval'= 5000)
   
   # Set lower and upper boundaries
   ub_pedlr =  c(1, 1, 10)
-  lb_pedlr = c(0, -1, 0.1)
+  lb_pedlr = c(0, 0, 0.1)
   ub_rw = c(1, 10)
   lb_rw = c(0, 0.1)
   
@@ -63,12 +64,16 @@ fit_nico = function(out_file,
       
       # Set starting values for optimizer (either random or fixed)
       if(random_x0){
-        x0_pedlr = round(c(runif(1,0,1), runif(1,-1,1), runif(1, 0.1, 10)), 2)
+        x0_pedlr = round(c(runif(1,0,1), runif(1,0,1), runif(1, 0.1, 10)), 2)
         x0_rw = round(c(runif(1,0,1), runif(1, 0.1, 10)), 2)
       } else{
         x0_pedlr = c(0.2, 0.2, 1)
         x0_rw = c(0.2, 1)
       }
+      
+      message(paste('\n', 'x0_rw: ', paste(x0_rw, collapse = ' ', sep = ''),
+                    ' | x0_pedlr: ', paste(x0_pedlr, collapse = ' ', sep = ''),
+                    sep = ''))
       
       # Message to user
       cat(paste('Fitting Sub ', sprintf("%02d", cid), ' ', sep = ''))
@@ -99,6 +104,9 @@ fit_nico = function(out_file,
                         opts=opts,
                         data=data,
                         model = 'PEDLR')
+      
+      #LL_nico(data = data, x = x0_pedlr, model = 'PEDLR')
+      
       cparams = NULL
       modeldf$PEDLR_LL[cid] = PEDLRfit$objective
       cparams$alpha0 = modeldf$PEDLR_alpha0[cid] = PEDLRfit$solution[1]
