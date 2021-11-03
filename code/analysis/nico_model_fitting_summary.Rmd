@@ -56,15 +56,15 @@ invisible(lapply(source_files, function(x) source(x)))
 # Load data
 file = file.path(base_path, 'derivatives', 'model_fitting', 'nico', '*.tsv', fsep = .Platform$file.sep)
 files = Sys.glob(file)
-data = data.table()
+fit_data = data.table()
 for(i in seq(length(files))){
   temp = data.table::fread(files[i], sep = '\t', na.strings = 'n/a')
   temp$fit = i
-  data = rbind(data, temp)
+  fit_data = rbind(fit_data, temp)
   
 }
 
-data = data %>%
+data = fit_data %>%
   data.table::melt(., id.vars = c('participant_id',
                                   'task_version',
                                   'fit',
@@ -101,6 +101,8 @@ ggplot(data = data_plot,
              stroke = 0.3,
              color = 'black',
              alpha = 0.5) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,10)) +
   facet_grid(participant_id ~ task_version) +
   theme(legend.position = 'bottom')
 ```
@@ -116,7 +118,7 @@ axx <- list(
 )
 axy <- list(
   nticks = 4,
-  range = c(-1,1)
+  range = c(0,1)
 )
 axz <- list(
   nticks = 4,
@@ -137,6 +139,8 @@ for(pid in unique(data_plot$participant_id)){
   print(fig)
 }
 ```
+
+
 ```{r}
 data_corr = data.table()
 for(i in seq(length(unique(data$fit)))){
