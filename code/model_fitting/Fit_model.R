@@ -57,6 +57,17 @@ Fit_model = function(data,
     stop('Mismatch between provided n of parameter concerning values and n parameters of model')
   }
   
+  # Give message to user
+  message('      ####### Options #######')
+  message('      LB: ', paste(lb, collapse = '  '))
+  message('      UB: ', paste(ub, collapse = '  '))
+  
+  # Give message to user
+  message('      ##### First Optim #####')
+  message('      x0: ', paste(start_values, collapse = '  '))
+  message('      ', paste(names(opts1), opts1, collapse = '\n      ', sep = ': '))
+  
+  
   # Solve function for minimum
   first = nloptr::nloptr(x0=start_values,
                          # Minimize neg LL
@@ -71,6 +82,15 @@ Fit_model = function(data,
                          data=data,
                          design=data,
                          model = model)
+  
+  # Give message to user
+  message('      LL: ', round(first$objective, 3))
+  message('      Solution: ', paste(ruond(first$solution, 3), collapse = '  '))
+  
+  # Give message to user
+  message('      ###### Sec Optim ######')
+  message('      x0: ', paste(reound(first$solution, 3), collapse = '  '))
+  message('      ', paste(names(opts2), opts2, collapse = '\n      ', sep = ': '))
   
   # Use results of global minimization as inputs for local minimization algorithm
   # (to find lowest point in the rough estimate provided by first, global minimization)
@@ -87,6 +107,9 @@ Fit_model = function(data,
                           data=data,
                           design=data,
                           model = model)
+  
+  message('      LL: ', round(second$objective, 3))
+  message('  ->  Solution: ', paste(round(second$solution, 3), collapse = '  '))
   
   return(list('first_x0' = first$x0,
               'first_solution' = first$solution,

@@ -61,7 +61,6 @@ Fit_model_wrapper = function(input_path,
       }
     }
     
-    message('   Starting values: ', paste(start_values, collapse = ' '))
     
     # Separate fits for runs (each iteration)
     for(i_version in unique(data$task_version)){
@@ -89,12 +88,6 @@ Fit_model_wrapper = function(input_path,
                                          "name_design_r1",
                                          "name_design_r2",
                                          "para"))]
-      
-      message('      LB:\t', paste(lb, collapse = ' '))
-      message('      UB:\t', paste(ub, collapse = ' '))
-      message('      First solution:\t', paste(round(result$first_solution, 3), collapse = ' '))
-      message('      Result:\t', paste(round(result$second_solution, 3), collapse = ' '))
-      message('      LL:\t', round(unique(result$second_ll), 3))
       
       output = rbind(output, result)
     }
