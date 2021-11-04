@@ -129,9 +129,9 @@ ggplot(data = data_plot,
   scale_shape_manual(values = c(21, 24)) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,10)) +
-  geom_path(color = 'black',
-            size = 0.2,
-            alpha = 0.3) +
+  # geom_path(color = 'black',
+  #           size = 0.2,
+  #           alpha = 0.3) +
   geom_point(size = 0.8,
              stroke = 0.3,
              color = 'black',
@@ -153,7 +153,8 @@ for(pid in unique(data_plot$participant_id)){
                         type = "scatter3d",
                         mode = 'markers',
                         color = data_plot_i$variable,
-                        size = nchar(as.character(data_plot_i$variable)) * 0.1) %>%
+                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1,
+                        shape = data_plot$task_version) %>%
     plotly::layout(title = unique(data_plot_i$participant_id))
   
   print(fig)
@@ -173,11 +174,53 @@ for(pid in unique(data_plot$participant_id)){
                         type = "scatter3d",
                         mode = 'markers',
                         color = data_plot_i$variable,
-                        size = nchar(as.character(data_plot_i$variable)) * 0.1) %>%
+                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1) %>%
     plotly::layout(title = unique(data_plot_i$participant_id))
   
   print(fig)
 }
+```
+
+# Parameter relations
+
+```{r}
+data_rel = Plot_prepare_consistency(data) %>%
+  .[variable == 'second_solution']
+```
+
+## Pedlr
+
+```{r}
+data_plot = data_rel[model == 'Pedlr']
+
+ggplot(data = data_plot,
+       aes(x = value_alpha0,
+           y = value_alpha1)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x, 
+              fill = NA,
+              size = 0.5,
+              alpha = 0.5) +
+  facet_wrap(~ task_version)
+```
+
+## Pedlr_interdep
+
+```{r}
+data_plot = data_rel[model == 'Pedlr_interdep']
+
+ggplot(data = data_plot,
+       aes(x = value_alpha0,
+           y = value_alpha1,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x, 
+              fill = NA,
+              size = 0.5,
+              alpha = 0.5) +
+  facet_wrap(~ task_version)
 ```
 
 # Model vs. participants
