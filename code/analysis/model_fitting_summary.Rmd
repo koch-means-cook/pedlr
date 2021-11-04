@@ -181,14 +181,16 @@ for(pid in unique(data_plot$participant_id)){
 }
 ```
 
-# Parameter relations
+# Central questions
 
 ```{r}
 data_rel = Plot_prepare_consistency(data) %>%
   .[variable == 'second_solution']
 ```
 
-## Pedlr
+## Correlation between a0 and a1?
+
+### Pedlr
 
 ```{r}
 data_plot = data_rel[model == 'Pedlr']
@@ -205,7 +207,7 @@ ggplot(data = data_plot,
   facet_wrap(~ task_version)
 ```
 
-## Pedlr_interdep
+### Pedlr_interdep
 
 ```{r}
 data_plot = data_rel[model == 'Pedlr_interdep']
@@ -222,6 +224,44 @@ ggplot(data = data_plot,
               alpha = 0.5) +
   facet_wrap(~ task_version)
 ```
+
+## Higher a1 = lower estimate for bandit 2?
+
+### Pedlr
+
+```{r}
+data_corr = all_designs %>%
+  Add_comp(.) %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'task_version')] %>%
+  .[trial_type == 'choice',] %>%
+  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'task_version', 'trial')] %>%
+  .[, correct := correct_choice == choice] %>%
+  # Get percentage of correct choices (exclude timeouts from overall trials)
+  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
+    by = c('participant_id', 'task_version', 'comp')] %>%
+  data.table::dcast(., participant_id + task_version ~ comp, value.var = 'perc_correct')
+bla = data.table::merge.data.table(data, data_corr, by = c('participant_id', 'task_version'))
+```
+
+
+```{r}
+# # does a model with higher alpha 1 have lower value estimates for bandit 2?
+# cor.test(modeldf$PEDLR_value2, modeldf$PEDLR_alpha1)
+# # do subjs with more evidence for the PEDLR model make more mistakes in bandit 2?
+# cor.test(modeldf$RW_LL - modeldf$PEDLR_LL, modeldf$Choice1v2)
+# cor.test(modeldf$RW_LL - modeldf$PEDLR_LL, modeldf$Choice1v2 - modeldf$Choice2v3)
+# 
+# # do subjs with more evidence for the PEDLR model have higher alpha1 learnig rates
+# cor.test(modeldf$RW_LL - modeldf$PEDLR_LL, modeldf$PEDLR_alpha1)
+# # are differenes in estimates values for bandit 2 related to ratings ?
+# cor.test(modeldf$RW_value2 - modeldf$PEDLR_value2, modeldf$Rating2)
+# cor.test(modeldf$PEDLR_value2, modeldf$Rating2)
+# cor.test(modeldf$RW_value2, modeldf$Rating2)
+```
+
+
 
 # Model vs. participants
 

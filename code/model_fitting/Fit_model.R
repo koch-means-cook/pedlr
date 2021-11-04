@@ -94,7 +94,7 @@ Fit_model = function(data,
   
   # Use results of global minimization as inputs for local minimization algorithm
   # (to find lowest point in the rough estimate provided by first, global minimization)
-  second = nloptr::nloptr(x0=first$solution,
+  second = nloptr::nloptr(x0=round(first$solution, 3),
                           # Minimize neg LL
                           eval_f=Log_Likelihood,
                           # Lower bound of parameters
