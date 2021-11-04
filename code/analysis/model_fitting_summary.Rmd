@@ -230,6 +230,7 @@ ggplot(data = data_plot,
 ### Pedlr
 
 ```{r}
+# Get percentage of correct choices for each comparison type
 data_corr = all_designs %>%
   Add_comp(.) %>%
   .[, trial := seq(.N),
@@ -241,8 +242,18 @@ data_corr = all_designs %>%
   # Get percentage of correct choices (exclude timeouts from overall trials)
   .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
     by = c('participant_id', 'task_version', 'comp')] %>%
-  data.table::dcast(., participant_id + task_version ~ comp, value.var = 'perc_correct')
-bla = data.table::merge.data.table(data, data_corr, by = c('participant_id', 'task_version'))
+  data.table::dcast(., participant_id + task_version ~ paste0('corr_', comp), value.var = 'perc_correct') %>%
+  # Add correctness of choices to model fit
+  data.table::merge.data.table(data, ., by = c('participant_id', 'task_version')) %>%
+  # parse to wide format for plotting
+  data.table::dcast(., participant_id + task_version + real_iter + corr_1v2 + corr_2v3 + corr_1v3 ~ para, value.var = 'second_solution')
+  
+
+
+data_fit = 
+
+ggplot(data_fit,
+       aes(x = alpha1))
 ```
 
 
