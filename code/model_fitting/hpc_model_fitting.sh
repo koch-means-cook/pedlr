@@ -87,7 +87,7 @@ for DATA in ${DATA_LIST}; do
 	# ----------------------------------------------------------------------------
   MODEL="Rw"
   START_VALUES="0.5,5"
-  LB="0,0.1"
+  LB="0,1"
   UB="1,10"
 
 	# Give message to user
@@ -141,7 +141,7 @@ for DATA in ${DATA_LIST}; do
 	# ----------------------------------------------------------------------------
 	MODEL="Pedlr"
 	START_VALUES="0.5,0.5,5"
-	LB="0,0,0.1"
+	LB="0,0,1"
 	UB="1,1,10"
 
 	# Give message to user
@@ -195,7 +195,7 @@ for DATA in ${DATA_LIST}; do
 	# ----------------------------------------------------------------------------
 	MODEL="Pedlr_interdep"
 	START_VALUES="0.5,0.5,0.5,5"
-	LB="0,0,0,0.1"
+	LB="0,0,0,1"
 	UB="1,1,1,10"
 
 	# Give message to user

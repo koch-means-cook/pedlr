@@ -14,7 +14,7 @@ fit_nico = function(out_file,
   data_dir = file.path(base_path, 'data', fsep = .Platform$file.sep)
   # List of all data points
   data_list = Sys.glob(file.path(data_dir, '*.tsv', fsep = .Platform$file.sep))
-  ids = unname(sapply(data_list, function(x) unlist(strsplit(basename(x), split = '_'))[1]))
+  ids = unname(sapply(data_list, function(x) unlist(strsplit(basename(x), split = '_'))[1]))[1:2]
   nid = length(ids)
   # Load pre-written functions
   source_path = file.path(base_path, 'code', 'utils',
@@ -36,9 +36,9 @@ fit_nico = function(out_file,
   
   # Set lower and upper boundaries
   ub_pedlr =  c(1, 1, 10)
-  lb_pedlr = c(0, 0, 0.1)
+  lb_pedlr = c(0, 0, 1)
   ub_rw = c(1, 10)
-  lb_rw = c(0, 0.1)
+  lb_rw = c(0, 1)
   
   # Load data of participants
   data_all = Load_data() %>%
@@ -63,8 +63,8 @@ fit_nico = function(out_file,
       
       # Set starting values for optimizer (either random or fixed)
       if(random_x0){
-        x0_pedlr = round(c(runif(1,0,1), runif(1,0,1), runif(1, 0.1, 10)), 2)
-        x0_rw = round(c(runif(1,0,1), runif(1, 0.1, 10)), 2)
+        x0_pedlr = round(c(runif(1,0,1), runif(1,0,1), runif(1, 1, 10)), 2)
+        x0_rw = round(c(runif(1,0,1), runif(1, 1, 10)), 2)
       } else{
         x0_pedlr = c(0.2, 0.2, 1)
         x0_rw = c(0.2, 1)
