@@ -177,7 +177,7 @@ Fit_model_wrapper(input_path = opt$input_path,
                   n_iter = opt$n_iter)
 
 # Rscript Fit_model_wrapper.R --input_path "/Users/koch/Docs/pedlr/data/PYV1GPO_exp_data.tsv" --output_path "/Users/koch/Docs/pedlr/derivatives/model_fitting/_bla.tsv" --model Rw --start_values 0.5,5 --lb 0,1 --ub 0.1,10 --random_start_values TRUE --n_iter 2
-# Rscript Fit_model_wrapper.R --input_path "/home/mpib/koch/pedlr/data/G5RTD96_exp_data.tsv" --output_path "/home/mpib/koch/pedlr/derivatives/model_fitting/bla.tsv" --model Rw --start_values 0.5,5 --lb 0,1 --ub 1,10 --random_start_values TRUE --n_iter 2
+# Rscript Fit_model_wrapper.R --input_path "/home/mpib/koch/pedlr/data/PYV1GPO_exp_data.tsv" --output_path "/home/mpib/koch/pedlr/derivatives/model_fitting/bla.tsv" --model Pedlr_interdep --start_values 0.5,0.5,0.5,5 --lb 0,0,0,1 --ub 1,1,1,10 --random_start_values TRUE --n_iter 2
 
 # Rscript Fit_model_wrapper.R --input_path "/Users/koch/Docs/pedlr/data/PYV1GPO_exp_data.tsv" --output_path "/Users/koch/Docs/pedlr/derivatives/model_fitting/_bla.tsv" --model Pedlr --start_values 0.5,0.5,5 --lb 0,0,0.1 --ub 1,1,10 --random_start_values TRUE --n_iter 2
 

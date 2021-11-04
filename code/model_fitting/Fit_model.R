@@ -85,11 +85,11 @@ Fit_model = function(data,
   
   # Give message to user
   message('      LL: ', round(first$objective, 3))
-  message('      Solution: ', paste(ruond(first$solution, 3), collapse = '  '))
+  message('      Solution: ', paste(round(first$solution, 3), collapse = '  '))
   
   # Give message to user
   message('      ###### Sec Optim ######')
-  message('      x0: ', paste(reound(first$solution, 3), collapse = '  '))
+  message('      x0: ', paste(round(first$solution, 3), collapse = '  '))
   message('      ', paste(names(opts2), opts2, collapse = '\n      ', sep = ': '))
   
   # Use results of global minimization as inputs for local minimization algorithm
