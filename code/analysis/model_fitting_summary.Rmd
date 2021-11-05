@@ -203,8 +203,17 @@ data_corr = all_designs %>%
   data.table::dcast(., participant_id + task_version ~ paste0('corr_', comp), value.var = 'perc_correct') %>%
   # Add correctness of choices to model fit
   data.table::merge.data.table(data, ., by = c('participant_id', 'task_version')) %>%
+  # Join iterations for each file
+  .[, real_iter := seq(.N),
+      by = c('participant_id',
+             'task_version',
+             'name_design_r1',
+             'name_design_r2',
+             'model',
+             'para')] %>%
   # parse to wide format for plotting
-  data.table::dcast(., participant_id + task_version + iter + corr_1v2 + corr_2v3 + corr_1v3 ~ para, value.var = 'second_solution')
+  data.table::dcast(., participant_id + task_version + real_iter + model + corr_1v2 + corr_2v3 + corr_1v3 ~ para,
+                    value.var = 'second_solution')
 
 # Get mean ratings of participants
 data_rat = all_designs %>%
@@ -263,7 +272,7 @@ ggplot(data = data_plot,
 ### Pedlr
 
 ```{r}
-ggplot(data_rat,
+ggplot(data_rat[model == 'Pedlr'],
        aes(x = alpha1,
            y = corr_1v2)) +
   geom_point() +
@@ -272,6 +281,17 @@ ggplot(data_rat,
   facet_wrap(~ task_version)
 ```
 
+## Pedlr_interdep
+
+```{r}
+ggplot(data_rat[model == 'Pedlr_interdep'],
+       aes(x = alpha1,
+           y = corr_1v2)) +
+  geom_point() +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,1)) +
+  facet_wrap(~ task_version)
+```
 
 ```{r}
 # # does a model with higher alpha 1 have lower value estimates for bandit 2?
