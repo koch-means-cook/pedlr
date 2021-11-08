@@ -212,7 +212,7 @@ data_corr = all_designs %>%
              'model',
              'para')] %>%
   # parse to wide format for plotting
-  data.table::dcast(., participant_id + task_version + real_iter + model + corr_1v2 + corr_2v3 + corr_1v3 ~ para,
+  data.table::dcast(., participant_id + task_version + real_iter + model + corr_1v2 + corr_2v3 + corr_1v3 + second_ll ~ para,
                     value.var = 'second_solution')
 
 # Get mean ratings of participants
@@ -228,11 +228,14 @@ data_rat = all_designs %>%
     by = c('participant_id', 'task_version')] %>%
   # Merge with correctness data
   data.table::merge.data.table(data_corr, ., by = c('participant_id', 'task_version'))
+
 ```
 
-## Correlation between a0 and a1?
+## Correlation between a0 and a1? 
 
-### Pedlr
+### Pedlr {.tabset}
+
+#### Plot
 
 ```{r}
 data_plot = data_rel[model == 'Pedlr']
@@ -249,7 +252,22 @@ ggplot(data = data_plot,
   facet_wrap(~ task_version)
 ```
 
-### Pedlr_interdep
+#### Stats
+
+```{r}
+data_rat[model == 'Pedlr'] %>%
+  .[, .( r = cor.test(alpha0, alpha1)$estimate,
+         p = cor.test(alpha0, alpha1)$p.value,
+         method = cor.test(alpha0, alpha1)$method,
+         df = cor.test(alpha0, alpha1)$parameter,
+         statisic = cor.test(alpha0, alpha1)$statistic),
+    by = c('task_version', 'real_iter')]
+```
+
+
+### Pedlr_interdep {.tabset}
+
+#### Plot
 
 ```{r}
 data_plot = data_rel[model == 'Pedlr_interdep']
@@ -267,41 +285,180 @@ ggplot(data = data_plot,
   facet_wrap(~ task_version)
 ```
 
+#### Stats
+
+```{r}
+data_rat[model == 'Pedlr_interdep'] %>%
+  .[, .( r = cor.test(alpha0, alpha1)$estimate,
+         p = cor.test(alpha0, alpha1)$p.value,
+         method = cor.test(alpha0, alpha1)$method,
+         df = cor.test(alpha0, alpha1)$parameter,
+         statisic = cor.test(alpha0, alpha1)$statistic),
+    by = c('task_version', 'real_iter')]
+```
+
 ## Higher a1 = lower estimate for bandit 2?
 
-### Pedlr
+### Pedlr {.tabset}
+
+#### Plot
 
 ```{r}
 ggplot(data_rat[model == 'Pedlr'],
        aes(x = alpha1,
-           y = corr_1v2)) +
+           y = corr_1v2,
+           group = real_iter)) +
   geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
   facet_wrap(~ task_version)
 ```
 
-## Pedlr_interdep
+#### Stats
+
+```{r}
+data_rat[model == 'Pedlr'] %>%
+  .[, .( r = cor.test(alpha1, corr_1v2)$estimate,
+         p = cor.test(alpha1, corr_1v2)$p.value,
+         method = cor.test(alpha1, corr_1v2)$method,
+         df = cor.test(alpha1, corr_1v2)$parameter,
+         statisic = cor.test(alpha1, corr_1v2)$statistic),
+    by = c('task_version', 'real_iter')]
+```
+
+
+### Pedlr_interdep {.tabset}
+
+#### Plot
 
 ```{r}
 ggplot(data_rat[model == 'Pedlr_interdep'],
        aes(x = alpha1,
-           y = corr_1v2)) +
+           y = corr_1v2,
+           group = real_iter)) +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
   geom_point() +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
   facet_wrap(~ task_version)
 ```
 
+#### Stats
+
 ```{r}
-# # does a model with higher alpha 1 have lower value estimates for bandit 2?
-# cor.test(modeldf$PEDLR_value2, modeldf$PEDLR_alpha1)
-# # do subjs with more evidence for the PEDLR model make more mistakes in bandit 2?
-# cor.test(modeldf$RW_LL - modeldf$PEDLR_LL, modeldf$Choice1v2)
-# cor.test(modeldf$RW_LL - modeldf$PEDLR_LL, modeldf$Choice1v2 - modeldf$Choice2v3)
-# 
-# # do subjs with more evidence for the PEDLR model have higher alpha1 learnig rates
-# cor.test(modeldf$RW_LL - modeldf$PEDLR_LL, modeldf$PEDLR_alpha1)
+data_rat[model == 'Pedlr_interdep'] %>%
+  .[, .( r = cor.test(alpha1, corr_1v2)$estimate,
+         p = cor.test(alpha1, corr_1v2)$p.value,
+         method = cor.test(alpha1, corr_1v2)$method,
+         df = cor.test(alpha1, corr_1v2)$parameter,
+         statisic = cor.test(alpha1, corr_1v2)$statistic),
+    by = c('task_version', 'real_iter')]
+```
+
+## More PEDLR evidence = less correct 1v2? {.tabset}
+
+```{r}
+data_stats = data_rat[model %in% c('Rw', 'Pedlr')] %>%
+  .[, ll := second_ll] %>%
+  data.table::dcast(.,
+                    participant_id + task_version + real_iter + corr_1v2 + corr_2v3 + mean_est_2 ~ model,
+                    value.var = c('ll', 'alpha1')) %>%
+  .[, ':='(diff_ll = ll_Rw - ll_Pedlr,
+           diff_corr = corr_1v2 - corr_2v3)]
+```
+
+### Plot
+
+```{r}
+ggplot(data_stats,
+       aes(x = diff_ll,
+           y = corr_1v2,
+           group = real_iter)) +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  geom_point() +
+  facet_wrap(~ task_version)
+```
+
+
+### Stats
+
+```{r}
+data_stats %>%
+  .[, .(r = cor.test(diff_ll, corr_1v2)$estimate,
+         p = cor.test(diff_ll, corr_1v2)$p.value,
+         method = cor.test(diff_ll, corr_1v2)$method,
+         df = cor.test(diff_ll, corr_1v2)$parameter,
+         statisic = cor.test(diff_ll, corr_1v2)$statistic),
+    by = c('task_version', 'real_iter')]
+```
+
+## More PEDLR evidence = more difference between 1v2 and 2v3? {.tabset}
+
+### Plot
+
+```{r}
+ggplot(data_stats,
+       aes(x = diff_ll,
+           y = diff_corr,
+           group = real_iter)) +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  geom_point() +
+  facet_wrap(~ task_version)
+```
+
+
+### Stats
+
+```{r}
+data_stats %>%
+  .[, .(r = cor.test(diff_ll, diff_corr)$estimate,
+        p = cor.test(diff_ll, diff_corr)$p.value,
+        method = cor.test(diff_ll, diff_corr)$method,
+        df = cor.test(diff_ll, diff_corr)$parameter,
+        statisic = cor.test(diff_ll, diff_corr)$statistic),
+    by = c('task_version', 'real_iter')]
+```
+
+## More evidence for Pedlr = higher alpha 1? {.tabset}
+
+### Plot
+
+```{r}
+ggplot(data_stats,
+       aes(x = diff_ll,
+           y = alpha1_Pedlr,
+           group = real_iter)) +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  geom_point() +
+  facet_wrap(~ task_version)
+```
+
+
+### Stats
+
+```{r}
+data_stats %>%
+  .[, .(r = cor.test(diff_ll, alpha1_Pedlr)$estimate,
+        p = cor.test(diff_ll, alpha1_Pedlr)$p.value,
+        method = cor.test(diff_ll, alpha1_Pedlr)$method,
+        df = cor.test(diff_ll, alpha1_Pedlr)$parameter,
+        statisic = cor.test(diff_ll, alpha1_Pedlr)$statistic),
+    by = c('task_version', 'real_iter')]
+```
+
+
+```{r}
 # # are differenes in estimates values for bandit 2 related to ratings ?
 # cor.test(modeldf$RW_value2 - modeldf$PEDLR_value2, modeldf$Rating2)
 # cor.test(modeldf$PEDLR_value2, modeldf$Rating2)
@@ -447,7 +604,7 @@ ggplot(data = data_plot,
        aes(x = value_alpha0,
            y = value_alpha1)) +
   geom_point() +
-  facet_grid(participant_id ~ task_version)
+  facet_grid( ~ task_version)
 ```
 
 
