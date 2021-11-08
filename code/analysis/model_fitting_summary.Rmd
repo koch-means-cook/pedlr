@@ -145,6 +145,17 @@ ggplot(data = data_plot,
 ```{r, warning=FALSE, fig.show='hold'}
 data_plot = Plot_prepare_consistency(data[model == 'Pedlr'])
 
+# Set axes names
+axx <- list(
+  title = "alpha0"
+)
+axy <- list(
+  title = 'alpha1'
+)
+axz <- list(
+  title = "temp"
+)
+
 for(pid in unique(data_plot$participant_id)){
   data_plot_i = data_plot[participant_id == pid]
   fig = plotly::plot_ly(x = data_plot_i$value_alpha0,
@@ -155,7 +166,8 @@ for(pid in unique(data_plot$participant_id)){
                         color = data_plot_i$variable,
                         size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1,
                         shape = data_plot$task_version) %>%
-    plotly::layout(title = unique(data_plot_i$participant_id))
+    plotly::layout(title = unique(data_plot_i$participant_id),
+                   scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
   
   print(fig)
 }
@@ -166,6 +178,17 @@ for(pid in unique(data_plot$participant_id)){
 ```{r, warning=FALSE, fig.show='hold'}
 data_plot = Plot_prepare_consistency(data[model == 'Pedlr_interdep'])
 
+# Set axes names
+axx <- list(
+  title = "alpha0"
+)
+axy <- list(
+  title = 'alpha1'
+)
+axz <- list(
+  title = "temp"
+)
+
 for(pid in unique(data_plot$participant_id)){
   data_plot_i = data_plot[participant_id == pid]
   fig = plotly::plot_ly(x = data_plot_i$value_alpha0,
@@ -175,7 +198,8 @@ for(pid in unique(data_plot$participant_id)){
                         mode = 'markers',
                         color = data_plot_i$variable,
                         size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1) %>%
-    plotly::layout(title = unique(data_plot_i$participant_id))
+    plotly::layout(title = unique(data_plot_i$participant_id),
+                   scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
   
   print(fig)
 }

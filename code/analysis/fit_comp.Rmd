@@ -1,0 +1,196 @@
+---
+title: "Model fitting Summary"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(plotly)
+library(plyr)
+```
+
+```{r}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+```
+
+
+```{r}
+# Load data
+chris_data = Load_model_fits()
+
+# Get number of participants
+n_participants = length(unique(chris_data$participant_id))
+
+# Get all designs
+all_designs = Load_data()
+```
+
+```{r}
+# Load data
+file = file.path(base_path, 'derivatives', 'model_fitting', 'nico', '*.tsv', fsep = .Platform$file.sep)
+files = Sys.glob(file)
+fit_data = data.table()
+for(i in seq(length(files))){
+  temp = data.table::fread(files[i], sep = '\t', na.strings = 'n/a')
+  temp$fit = i
+  fit_data = rbind(fit_data, temp)
+  
+}
+
+nico_data = fit_data %>%
+  data.table::melt(., id.vars = c('participant_id',
+                                  'task_version',
+                                  'fit',
+                                  'random_x0',
+                                  'Choice1v2',
+                                  'Choice2v3',
+                                  'Rating2',
+                                  'RatingSD2')) %>%
+  .[, ':='(model = unlist(strsplit(as.character(variable), split = '_'))[1],
+           var = unlist(strsplit(as.character(variable), split = '_'),)[2]),
+    by = c('participant_id', 'task_version', 'fit', 'variable')] %>%
+  .[, variable := NULL] %>%
+  data.table::dcast(.,
+                    participant_id + task_version + fit + random_x0 + Choice1v2 + Choice2v3 + Rating2 + RatingSD2 + model ~ var, value.var = 'value')
+```
+
+# Fitting consistency
+
+```{r}
+Plot_prepare_consistency = function(data){
+  data_plot = data %>%
+    data.table::melt(., id.vars = c('participant_id',
+                                    'file',
+                                    'iter',
+                                    'task_version',
+                                    'name_design_r1',
+                                    'name_design_r2',
+                                    'model',
+                                    'para',
+                                    'first_status',
+                                    'first_ll',
+                                    'second_status',
+                                    'second_ll'),
+                     measure.vars = c('first_x0',
+                                      'second_solution'),
+                     value.name = 'val') %>%
+    .[, variable := factor(variable, levels = c('first_x0',
+                                                'second_solution'))] %>%
+    # Join iterations of across jobs and within jobs
+    .[, real_iter := seq(.N),
+      by = c('participant_id',
+             'task_version',
+             'name_design_r1',
+             'name_design_r2',
+             'model',
+             'para',
+             'variable')] %>%
+    # Delete previous iteration columns
+    .[, ':='(iter = NULL,
+             file = NULL)] %>%
+    data.table::dcast(.,
+                      participant_id + 
+                        real_iter +
+                        task_version + 
+                        name_design_r1 + 
+                        name_design_r2 + 
+                        model +
+                        first_status + 
+                        first_ll + 
+                        second_status + 
+                        second_ll + 
+                        variable ~ paste0('value_', para), value.var = 'val')
+  
+  return(data_plot)
+}
+```
+
+```{r}
+comp_cols = c('participant_id', 'task_version', 'fit', 'model', 'LL', 'alpha', 'alpha0', 'alpha1', 'temp')
+
+chris_data = Plot_prepare_consistency(chris_data) %>%
+  .[model != 'Pedlr_interdep' & variable == 'second_solution'] %>%
+  .[, ':='(fit = real_iter,
+           LL = second_ll,
+           alpha = value_alpha,
+           alpha0 = value_alpha0,
+           alpha1 = value_alpha1,
+           temp = value_temperature)] %>%
+  .[, ..comp_cols]
+chris_data$person = 'chris'
+
+nico_data = nico_data %>%
+  .[, ..comp_cols]
+nico_data$person = 'nico'
+nico_data[model == 'PEDLR']$model = 'Pedlr'
+nico_data[model == 'RW']$model = 'Rw'
+
+data = rbind(nico_data, chris_data) %>%
+  .[order(participant_id, task_version, fit, person, model)]
+```
+
+# Rw
+
+```{r, out.width='100%', fig.height=n_participants}
+ggplot(data = data[model == 'Rw'],
+       aes(x = alpha,
+           y = temp,
+           color = person,
+           shape = person)) +
+  geom_point(alpha = 0.5) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(1,10)) +
+  facet_grid(participant_id~task_version)
+```
+
+## Pedlr
+
+```{r, out.width='100%', fig.height=n_participants}
+ggplot(data = data[model == 'Pedlr'],
+       aes(x = alpha0,
+           y = alpha1,
+           color = person,
+           shape = person)) +
+  geom_point(alpha = 0.5) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,1)) +
+  facet_grid(participant_id~task_version)
+```

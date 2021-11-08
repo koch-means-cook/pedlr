@@ -115,16 +115,16 @@ data_plot = data[model == 'PEDLR']
 
 axx <- list(
   nticks = 4,
-  range = c(0,1)
-)
+  range = c(0,1),
+  title = 'alpha0')
 axy <- list(
   nticks = 4,
-  range = c(0,1)
-)
+  range = c(0,1),
+  title = 'alpha1')
 axz <- list(
   nticks = 4,
-  range = c(0,10)
-)
+  range = c(0,10),
+  title = 'temp')
 
 for(pid in unique(data_plot$participant_id)){
   data_plot_i = data_plot[participant_id == pid]
@@ -132,8 +132,7 @@ for(pid in unique(data_plot$participant_id)){
                         y = data_plot_i$alpha1,
                         z = data_plot_i$temp,
                         type = "scatter3d",
-                        mode = 'markers',
-                        size = (data_plot_i$task_version * 10)) %>%
+                        mode = 'markers') %>%
     plotly::layout(title = unique(data_plot_i$participant_id),
                    scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
   

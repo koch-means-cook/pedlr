@@ -14,7 +14,7 @@ fit_nico = function(out_file,
   data_dir = file.path(base_path, 'data', fsep = .Platform$file.sep)
   # List of all data points
   data_list = Sys.glob(file.path(data_dir, '*.tsv', fsep = .Platform$file.sep))
-  ids = unname(sapply(data_list, function(x) unlist(strsplit(basename(x), split = '_'))[1]))[1:2]
+  ids = unname(sapply(data_list, function(x) unlist(strsplit(basename(x), split = '_'))[1]))
   nid = length(ids)
   # Load pre-written functions
   source_path = file.path(base_path, 'code', 'utils',
