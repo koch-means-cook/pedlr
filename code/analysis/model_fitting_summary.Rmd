@@ -173,6 +173,7 @@ for(pid in unique(data_plot$participant_id)){
 }
 ```
 
+
 ## Pedlr_interdep
 
 ```{r, warning=FALSE, fig.show='hold'}
@@ -487,6 +488,52 @@ data_stats %>%
 # cor.test(modeldf$RW_value2 - modeldf$PEDLR_value2, modeldf$Rating2)
 # cor.test(modeldf$PEDLR_value2, modeldf$Rating2)
 # cor.test(modeldf$RW_value2, modeldf$Rating2)
+```
+
+---
+
+# Model comparison {.tabset}
+
+```{r}
+data_aic = data %>%
+  # Join iterations of across jobs and within jobs
+    .[, real_iter := seq(.N),
+      by = c('participant_id',
+             'task_version',
+             'model',
+             'para')] %>%
+  .[,n_para := .N,
+    by = c('participant_id', 'task_version', 'real_iter', 'model')] %>%
+  data.table::dcast(.,
+                    participant_id + task_version + real_iter + second_ll + model + n_para ~ para,
+                    value.var = 'second_solution') %>%
+  # Calculate AIC
+  .[, AIC := (2*n_para) + (2*second_ll)] %>%
+  # Get min aic model
+  .[, .SD[which.min(AIC)],
+    by = c('participant_id', 'task_version', 'real_iter')] %>%
+  .[, model := as.factor(model)]
+```
+
+## Overall
+
+```{r}
+ggplot(data = data_aic[real_iter == 1],
+       aes(x = model)) +
+         geom_bar() +
+  facet_grid(~task_version)
+```
+
+
+## Consistency
+
+```{r, out.width='100%'}
+ggplot(data = data_aic,
+       aes(x = real_iter,
+           y = model)) +
+  geom_path() +
+  geom_point(size = 0.3) +
+  facet_grid(participant_id ~ task_version)
 ```
 
 
