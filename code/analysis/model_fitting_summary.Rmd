@@ -515,7 +515,7 @@ data_aic = data %>%
   .[, model := as.factor(model)]
 ```
 
-## Overall
+## Winning model
 
 ```{r}
 ggplot(data = data_aic[real_iter == 1],

@@ -120,7 +120,36 @@ p_tot
 ## Estimation track
 
 ```{r, fig.height=0.75*n_participants, out.width='100%'}
+Get_running_avg = function(choice_option, choice_outcome, stim){
+  # Initialize array keeping running average for all trials
+  running_avg = c()
+  
+  # Loop over trials
+  for(i in seq(length(choice_option))){
+    # Find all choices of option so far
+    idx = choice_option[1:i] == stim
+    # Create mean over all stim choices so far
+    trialwise_mean = mean(choice_outcome[1:i][idx], na.rm = TRUE)
+    # Append running average for each trial
+    running_avg = c(running_avg, trialwise_mean)
+  }
+  
+  # Set all trials in which option has not been chosen so far to NA
+  running_avg[is.nan(running_avg)] = NA
+  return(running_avg)
+}
+
 check_est = data %>%
+  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 1),
+           avg_2_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 2),
+           avg_3_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 3)),
+    by = c('participant_id', 'task_version')] %>%
   .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
   .[!is.na(est_1_reward),] %>%
   .[, est_trial := seq(.N), by = c('participant_id', 'task_version')] %>%
@@ -131,32 +160,25 @@ check_est = data %>%
                                'forced_rare'),
                    measure.vars = c('est_1_reward',
                                     'est_1_range',
+                                    'avg_1_running',
                                     'est_2_reward',
                                     'est_2_range',
+                                    'avg_2_running',
                                     'est_3_reward',
-                                    'est_3_range')) %>%
+                                    'est_3_range',
+                                    'avg_3_running')) %>%
   .[, est_stim := substr(variable, 5, 5)] %>%
   .[, type := substr(variable, 7, 9)] %>%
   .[type == 'rew', type := 'reward'] %>%
   .[type == 'ran', type := 'range'] %>%
+  .[type == 'run', type := 'r_avg'] %>%
   data.table::dcast(., participant_id + task_version + est_trial + forced_rare + est_stim ~ type, value.var = 'value')
-
-# Get true mean of options
-rewards = data %>%
-  .[, c('participant_id', 'task_version', 'option_left', 'reward_stim_1', 'option_right', 'reward_stim_2')]
-rewards_left = rewards[, c('participant_id', 'task_version', 'option_left', 'reward_stim_1')] %>%
-  setnames(., c('option_left', 'reward_stim_1'), c('est_stim', 'reward'))
-rewards_right = rewards[, c('participant_id', 'task_version', 'option_right', 'reward_stim_2')] %>%
-  setnames(., c('option_right', 'reward_stim_2'), c('est_stim', 'reward'))
-true_means = rbind(rewards_left, rewards_right) %>%
-  .[, .(mean = mean(reward)), by = c('participant_id', 'task_version', 'est_stim')]
 
 p_est = ggplot(data = check_est,
                aes(x = est_trial,
                    y = reward,
                    color = est_stim)) +
-  geom_hline(data = true_means,
-             aes(yintercept = mean),
+  geom_path(aes(y = r_avg),
              linetype = 'dashed') +
   geom_ribbon(aes(ymin = reward - range,
                   ymax = reward + range),
@@ -177,8 +199,7 @@ p_est
 p_ear = ggplot(data = check_est,
                aes(x = est_trial,
                    y = reward)) +
-  geom_hline(data = true_means,
-             aes(yintercept = mean),
+  geom_path(aes(y = r_avg),
              linetype = 'dashed') +
   geom_ribbon(aes(ymin = reward - range,
                   ymax = reward + range),
@@ -197,16 +218,10 @@ p_ear
 ## Estimating difference from truth
 
 ```{r, fig.height=0.75*n_participants, out.width='100%'}
-true_means$est_stim = as.factor(true_means$est_stim)
 # Merge true means with estimation
 check_est_diff = check_est %>%
-  data.table::merge.data.table(.,
-                               true_means,
-                               by = c('participant_id',
-                                      'task_version',
-                                      'est_stim')) %>%
   # Get difference between estimation and true mean
-  .[, diff_from_true := reward - mean]
+  .[, diff_from_true := reward - r_avg]
 
 p_est_diff = ggplot(data = check_est_diff,
                     aes(x = est_trial,
@@ -231,7 +246,7 @@ p_est_diff = ggplot(data = check_est_diff,
   geom_hline(yintercept = 0,
              linetype = 'dashed') +
   geom_path(alpha = 0.3, aes(group = participant_id)) +
-  stat_summary(fun = 'mean', geom = 'line', size = 1.5) +
+  stat_summary(fun = 'mean', geom = 'line', size = 1.5, na.rm = TRUE) +
   scale_color_viridis(option = 'D', discrete = TRUE) +
   facet_grid(task_version~ est_stim) +
   theme(legend.position = 'top')

@@ -8,13 +8,12 @@ source_files = list.files(source_path, pattern = "[.][rR]$",
 invisible(lapply(source_files, function(x) source(x)))
 
 
-Fit_Pedlr_interdep = function(data,
-                              params.alpha0,
-                              params.alpha1,
-                              params.temperature,
-                              params.reward_space_ub,
-                              choice_policy,
-                              init_values = c(50,50,50)){
+Fit_Pedlr = function(data,
+                     params.alpha1,
+                     params.temperature,
+                     params.reward_space_ub,
+                     choice_policy,
+                     init_values = c(50,50,50)){
   
   # Get other parameters from design
   # Number of trials
@@ -36,6 +35,7 @@ Fit_Pedlr_interdep = function(data,
   
   # Loop over trials
   for(trial_count in 1:params.ntrials){
+    #for(trial_count in 1:3){
     
     # Get current comparison (choice options as 2 entry vector)
     comp_stim = c(data$option_left[trial_count], data$option_right[trial_count])
@@ -56,7 +56,7 @@ Fit_Pedlr_interdep = function(data,
         forced_choice = 0
         model_choice = NA
         choice_prob = NA
-        
+
         # In case of forced choice left, chose left with 100% probability
       } else if(data$forced_left[trial_count] == 1){
         forced_choice = 1
@@ -75,7 +75,7 @@ Fit_Pedlr_interdep = function(data,
                    sep=''))
       }
       
-      # Normal trials (no time out): Choice and updating of model
+    # Normal trials (no time out): Choice and updating of model
     } else{
       # In case of free choice trial
       if(data$forced_left[trial_count] == 0 & data$forced_right[trial_count] == 0){
@@ -95,8 +95,7 @@ Fit_Pedlr_interdep = function(data,
           # Greedy
         } else if(choice_policy == 'greedy'){
           # Make greedy choice
-          model_choice_index = which(comp_value == max(comp_value))
-          model_choice = comp_stim[model_choice_index]
+          model_choice = which(comp_value == max(comp_value))
           # In case of same value take random choice
           if(length(choice) > 1){
             model_choice_index = sample(c(1,2), 1)
@@ -148,7 +147,7 @@ Fit_Pedlr_interdep = function(data,
       if(forced_choice == 1 & error){
         choice_reward = NA
         
-        # Otherwise get reward from choice
+      # Otherwise get reward from choice
       } else {
         choice_reward = comp_reward[subj_choice_index]
       }
@@ -159,13 +158,14 @@ Fit_Pedlr_interdep = function(data,
       if(is.na(choice_reward)){
         pe = NA
         fpe = NA
+        updated_value = choice_value + fpe * pe
+      
         
-        # Otherwise update
+      # Otherwise update
       } else {
         pe = choice_reward - choice_value
-        fixed_dependency = 0.5
-        fpe = fixed_dependency * params.alpha0 + (1 - fixed_dependency) * params.alpha1 * (abs(pe)/params.reward_space_ub)
-        updated_value = choice_value + fpe * pe 
+        fpe = params.alpha1 * (abs(pe)/params.reward_space_ub)
+        updated_value = choice_value + fpe * pe
       }
       
       

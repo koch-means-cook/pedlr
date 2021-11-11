@@ -28,9 +28,13 @@ Fit_model_wrapper = function(input_path,
   # Set parameter names for model
   if(model == 'Rw'){
     p_names = c('alpha', 'temperature')
-  } else if(model == 'Pedlr'){
+  } else if(model == 'Pedlr_simple'){
+    p_names = c('alpha1', 'temperature')
+  }else if(model == 'Pedlr'){
     p_names = c('alpha0', 'alpha1', 'temperature')
-  } else if(model == 'Pedlr_interdep'){
+  } else if(model == 'Pedlr_fixdep'){
+    p_names = c('alpha0', 'alpha1', 'temperature')
+  }else if(model == 'Pedlr_interdep'){
     p_names = c('alpha0', 'alpha1', 'interdep', 'temperature')
   }
   
