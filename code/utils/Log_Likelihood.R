@@ -8,6 +8,10 @@ source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_interdep.R',
                  fsep = .Platform$file.sep))
 source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr.R',
                  fsep = .Platform$file.sep))
+source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_fixdep.R',
+                 fsep = .Platform$file.sep))
+source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_simple.R',
+                 fsep = .Platform$file.sep))
 
 # LL function
 Log_Likelihood = function(x,
