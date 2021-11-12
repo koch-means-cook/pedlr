@@ -95,7 +95,9 @@ Pedlr_interdep = function(design,
     
     # dependency between alpha0 and alpha1 managed by extra parameter
     #fpe = params.interdep * params.alpha0 + (1 - params.interdep) * params.alpha1 * (abs(pe)/params.reward_space_ub)
-    max_pe_so_far = max(abs(df_pe[1:trial_count,]), na.rm = TRUE)
+    max_pe_so_far = max(abs(c(df_pe$stim_1[1:trial_count],
+                              df_pe$stim_2[1:trial_count],
+                              df_pe$stim_3[1:trial_count])), na.rm = TRUE)
     fpe = params.interdep * params.alpha0 + (1 - params.interdep) * params.alpha1 * (abs(pe)/max_pe_so_far)
     updated_value = choice_value + fpe * pe
     
