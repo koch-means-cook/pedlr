@@ -8,13 +8,13 @@ source_files = list.files(source_path, pattern = "[.][rR]$",
 invisible(lapply(source_files, function(x) source(x)))
 
 
-Fit_Pedlr_interdep = function(data,
-                              params.alpha0,
-                              params.alpha1,
-                              params.temperature,
-                              params.reward_space_ub,
-                              choice_policy,
-                              init_values = c(50,50,50)){
+Fit_Pedlr_fixdep = function(data,
+                            params.alpha0,
+                            params.alpha1,
+                            params.temperature,
+                            params.reward_space_ub,
+                            choice_policy,
+                            init_values = c(50,50,50)){
   
   # Get other parameters from design
   # Number of trials
