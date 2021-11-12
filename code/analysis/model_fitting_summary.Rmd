@@ -140,6 +140,33 @@ ggplot(data = data_plot,
   theme(legend.position = 'bottom')
 ```
 
+## Pedlr_simple
+
+```{r}
+data_plot = Plot_prepare_consistency(data[model == 'Pedlr_simple'])
+
+ggplot(data = data_plot,
+       aes(x = value_alpha1,
+           y = value_temperature,
+           fill = variable,
+           shape = variable,
+           group = real_iter)) +
+  scale_fill_manual(values = c('white', 'black')) +
+  scale_shape_manual(values = c(21, 24)) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,10)) +
+  # geom_path(color = 'black',
+  #           size = 0.2,
+  #           alpha = 0.3) +
+  geom_point(size = 0.8,
+             stroke = 0.3,
+             color = 'black',
+             alpha = 0.5) +
+  facet_grid(participant_id ~ task_version) +
+  theme(legend.position = 'bottom')
+```
+
+
 ## Pedlr
 
 ```{r, warning=FALSE, fig.show='hold'}
@@ -164,8 +191,39 @@ for(pid in unique(data_plot$participant_id)){
                         type = "scatter3d",
                         mode = 'markers',
                         color = data_plot_i$variable,
-                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1,
-                        shape = data_plot$task_version) %>%
+                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1) %>%
+    plotly::layout(title = unique(data_plot_i$participant_id),
+                   scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
+  
+  print(fig)
+}
+```
+
+## Pedlr_fixdep
+
+```{r, warning=FALSE, fig.show='hold'}
+data_plot = Plot_prepare_consistency(data[model == 'Pedlr_fixdep'])
+
+# Set axes names
+axx <- list(
+  title = "alpha0"
+)
+axy <- list(
+  title = 'alpha1'
+)
+axz <- list(
+  title = "temp"
+)
+
+for(pid in unique(data_plot$participant_id)){
+  data_plot_i = data_plot[participant_id == pid]
+  fig = plotly::plot_ly(x = data_plot_i$value_alpha0,
+                        y = data_plot_i$value_alpha1,
+                        z = data_plot_i$value_temperature,
+                        type = "scatter3d",
+                        mode = 'markers',
+                        color = data_plot_i$variable,
+                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1) %>%
     plotly::layout(title = unique(data_plot_i$participant_id),
                    scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
   
@@ -289,6 +347,37 @@ data_rat[model == 'Pedlr'] %>%
     by = c('task_version', 'real_iter')]
 ```
 
+### Pedlr_fixdep {.tabset}
+
+#### Plot
+
+```{r}
+data_plot = data_rel[model == 'Pedlr_fixdep']
+
+ggplot(data = data_plot,
+       aes(x = value_alpha0,
+           y = value_alpha1,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x, 
+              fill = NA,
+              size = 0.5,
+              alpha = 0.5) +
+  facet_wrap(~ task_version)
+```
+
+#### Stats
+
+```{r}
+data_rat[model == 'Pedlr_fixdep'] %>%
+  .[, .( r = cor.test(alpha0, alpha1)$estimate,
+         p = cor.test(alpha0, alpha1)$p.value,
+         method = cor.test(alpha0, alpha1)$method,
+         df = cor.test(alpha0, alpha1)$parameter,
+         statisic = cor.test(alpha0, alpha1)$statistic),
+    by = c('task_version', 'real_iter')]
+```
 
 ### Pedlr_interdep {.tabset}
 
@@ -324,6 +413,53 @@ data_rat[model == 'Pedlr_interdep'] %>%
 
 ## Higher a1 = lower estimate for bandit 2?
 
+### Reference
+
+```{r}
+ggplot(data_rat[model == 'Rw'],
+       aes(x = alpha,
+           y = corr_1v2,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,1)) +
+  facet_wrap(~ task_version)
+```
+
+
+### Pedlr_simple {.tabset}
+
+#### Plot
+
+```{r}
+ggplot(data_rat[model == 'Pedlr_simple'],
+       aes(x = alpha1,
+           y = corr_1v2,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,1)) +
+  facet_wrap(~ task_version)
+```
+
+#### Stats
+
+```{r}
+data_rat[model == 'Pedlr_simple'] %>%
+  .[, .( r = cor.test(alpha1, corr_1v2)$estimate,
+         p = cor.test(alpha1, corr_1v2)$p.value,
+         method = cor.test(alpha1, corr_1v2)$method,
+         df = cor.test(alpha1, corr_1v2)$parameter,
+         statisic = cor.test(alpha1, corr_1v2)$statistic),
+    by = c('task_version', 'real_iter')]
+```
+
 ### Pedlr {.tabset}
 
 #### Plot
@@ -354,6 +490,35 @@ data_rat[model == 'Pedlr'] %>%
     by = c('task_version', 'real_iter')]
 ```
 
+### Pedlr_fixdep {.tabset}
+
+#### Plot
+
+```{r}
+ggplot(data_rat[model == 'Pedlr_fixdep'],
+       aes(x = alpha1,
+           y = corr_1v2,
+           group = real_iter)) +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  geom_point() +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(0,1)) +
+  facet_wrap(~ task_version)
+```
+
+#### Stats
+
+```{r}
+data_rat[model == 'Pedlr_fixdep'] %>%
+  .[, .( r = cor.test(alpha1, corr_1v2)$estimate,
+         p = cor.test(alpha1, corr_1v2)$p.value,
+         method = cor.test(alpha1, corr_1v2)$method,
+         df = cor.test(alpha1, corr_1v2)$parameter,
+         statisic = cor.test(alpha1, corr_1v2)$statistic),
+    by = c('task_version', 'real_iter')]
+```
 
 ### Pedlr_interdep {.tabset}
 
