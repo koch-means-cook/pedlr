@@ -32,6 +32,9 @@ Fit_Pedlr_simple = function(data,
   colnames(df_values) = colnames(df_pe) = colnames(df_fpe) = paste('stim_',
                                                                    as.character(c(1:params.ndist)),
                                                                    sep='')
+  # Initialize df keeping max pe so far for each trial
+  df_max_pe = data.frame(matrix(NA, params.ntrials, 1))
+  colnames(df_max_pe) = 'pe_max'
   
   # Loop over trials
   for(trial_count in 1:params.ntrials){
@@ -157,6 +160,8 @@ Fit_Pedlr_simple = function(data,
       # Not if false choice
       if(is.na(choice_reward)){
         pe = NA
+        df_pe[trial_count, choice_stim] = pe
+        
         fpe = NA
         updated_value = choice_value + fpe * pe
       
@@ -164,7 +169,11 @@ Fit_Pedlr_simple = function(data,
       # Otherwise update
       } else {
         pe = choice_reward - choice_value
-        fpe = params.alpha1 * (abs(pe)/params.reward_space_ub)
+        df_pe[trial_count, choice_stim] = pe
+        
+        #fpe = params.alpha1 * (abs(pe)/params.reward_space_ub)
+        max_pe_so_far = max(abs(df_pe[1:trial_count,]), na.rm = TRUE)
+        fpe = params.alpha1 * (abs(pe)/max_pe_so_far)
         updated_value = choice_value + fpe * pe
       }
       
@@ -174,8 +183,8 @@ Fit_Pedlr_simple = function(data,
       df_choices$choice[trial_count] = choice_stim
       df_choices$choice_prob[trial_count] = choice_prob
       df_choices$forced_choice[trial_count] = forced_choice
-      df_pe[trial_count, choice_stim] = pe
       df_fpe[trial_count, choice_stim] = fpe
+      df_max_pe$pe_max[trial_count] = max_pe_so_far
       # Value is updated for all following trials (exception of last trial and false forced choices)
       if(trial_count != params.ntrials & !is.na(pe)){
         df_values[(trial_count + 1):nrow(df_values), choice_stim] = updated_value 
@@ -187,7 +196,8 @@ Fit_Pedlr_simple = function(data,
   model_data <- list('choices' = df_choices,
                      'values' = df_values[1:params.ntrials,],
                      'PE' = df_pe,
-                     'fPE' = df_fpe)
+                     'fPE' = df_fpe,
+                     'max_PE' = df_max_pe)
   return(model_data)
   
 }
