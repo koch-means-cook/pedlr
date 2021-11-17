@@ -4,16 +4,15 @@ library(jsonlite)
 library(data.table)
 library(magrittr)
 
-# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20210929_prolific_pedlr-pilot-03/raw'
+# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20210929_prolific_pedlr-pilot-03/raw/2021-10-07 16_49_20.json'
 # demo_path = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20210929_prolific_pedlr-pilot-03/raw/pedlr-pilot-03_demographic.csv'
-# out_dir = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20210929_prolific_pedlr-pilot-03'
 
-
-Preprocess_full_dir = function(input_path,
-                               demo_path,
-                               out_dir){
+# Wrapper for preprocessing function
+Preprocess_arc_data_wrapper = function(input_path,
+                                       demo_path,
+                                       out_dir){
   
-  # Load conversion function
+  # Load preprocessing function
   source_path = file.path(here::here(),
                           'code',
                           'preprocessing',
@@ -21,16 +20,12 @@ Preprocess_full_dir = function(input_path,
                           fsep = .Platform$file.sep)
   source(source_path)
   
-  files = file.path(input_path, '*.json', fsep = .Platform$file.sep)
-  files = Sys.glob(files)
+  # Call function
+  Preprocess_arc_data(input_path = input_path,
+                      demo_path = demo_path,
+                      out_dir = out_dir)
   
-  # Run preprocessing for complete folder
-  for(i in files){
-    Preprocess_arc_data(input_path = i,
-                        demo_path = demo_path,
-                        out_dir = out_dir)
-  }
-
+  
 }
 
 # Create options to pass to script
@@ -38,7 +33,7 @@ option_list = list(
   make_option(c('-i', '--input_path'),
               type='character',
               default = NULL,
-              help = 'Path to directory containing raw experiment results ',
+              help = 'Path to experiment result file that should be preprocessed',
               metavar = 'INPUT_PATH'),
   make_option(c('-d', '--demo_path'),
               type='character',
@@ -56,8 +51,8 @@ opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
 
 # Call main function
-Preprocess_full_dir(input_path = opt$input_path,
-                    demo_path = opt$demo_path,
-                    out_dir = opt$out_dir)
+Preprocess_arc_data_wrapper(input_path = opt$input_path,
+                            demo_path = opt$demo_path,
+                            out_dir = opt$out_dir)
 
 

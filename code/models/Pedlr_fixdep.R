@@ -4,13 +4,13 @@
 # - Updating of values only for chosen option
 # - Choice policy based on softmax
 
-Pedlr_interdep = function(design,
-                          params.alpha0,
-                          params.alpha1,
-                          params.temperature,
-                          params.reward_space_ub,
-                          choice_policy,
-                          init_values = c(50,50,50)){
+Pedlr_fixdep = function(design,
+                        params.alpha0,
+                        params.alpha1,
+                        params.temperature,
+                        params.reward_space_ub,
+                        choice_policy,
+                        init_values = c(50,50,50)){
   
   # Get other parameters from design
   # Number of trials

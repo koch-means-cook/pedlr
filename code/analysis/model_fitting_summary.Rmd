@@ -703,144 +703,144 @@ ggplot(data = data_aic,
 
 
 
-# Model vs. participants
+<!-- # Model vs. participants -->
 
-```{r}
-# Function to append model values as columns to design file
-Append_model_values = function(data, model_output){
-  data$model_choice = model_output$choices$choice
-  data$model_choice_prob = model_output$choices$choice_prob
-  data$model_value_1 = model_output$values$stim_1
-  data$model_value_2 = model_output$values$stim_2
-  data$model_value_3 = model_output$values$stim_3
-  data$model_pe_1 = model_output$PE$stim_1
-  data$model_pe_2 = model_output$PE$stim_2
-  data$model_pe_3 = model_output$PE$stim_3
-  data$model_fpe_1 = model_output$fPE$stim_1
-  data$model_fpe_2 = model_output$fPE$stim_2
-  data$model_fpe_3 = model_output$fPE$stim_3
-  
-  return(data)
-}
+<!-- ```{r} -->
+<!-- # Function to append model values as columns to design file -->
+<!-- Append_model_values = function(data, model_output){ -->
+<!--   data$model_choice = model_output$choices$choice -->
+<!--   data$model_choice_prob = model_output$choices$choice_prob -->
+<!--   data$model_value_1 = model_output$values$stim_1 -->
+<!--   data$model_value_2 = model_output$values$stim_2 -->
+<!--   data$model_value_3 = model_output$values$stim_3 -->
+<!--   data$model_pe_1 = model_output$PE$stim_1 -->
+<!--   data$model_pe_2 = model_output$PE$stim_2 -->
+<!--   data$model_pe_3 = model_output$PE$stim_3 -->
+<!--   data$model_fpe_1 = model_output$fPE$stim_1 -->
+<!--   data$model_fpe_2 = model_output$fPE$stim_2 -->
+<!--   data$model_fpe_3 = model_output$fPE$stim_3 -->
 
-# Get data for best fitting model
-data_best = Get_best_fit(data)
+<!--   return(data) -->
+<!-- } -->
 
-# Simulate data based on best fitting parameters
-data_best_fitting_paras = data.table()
-for(id in unique(all_designs$participant_id)){
-  for(run in unique(all_designs$task_version)){
-    # Rw
-    sim = Rw(design = all_designs[participant_id == id & task_version == run],
-             params.alpha = data_best[participant_id == id & task_version == run & model == 'Rw',
-                                      second_solution_alpha],
-             params.temperature = data_best[participant_id == id & task_version == run & model == 'Rw',
-                                            second_solution_temperature],
-             params.reward_space_ub = 100,
-             choice_policy = 'softmax',
-             init_values = c(50,50,50))
-    temp = all_designs[participant_id == id & task_version == run]
-    temp$model = 'Rw'
-    temp = Append_model_values(data = temp, model_output = sim)
-    data_best_fitting_paras = rbind(data_best_fitting_paras, temp)
-    
-    # Pedlr
-    sim = Pedlr(design = all_designs[participant_id == id & task_version == run],
-                params.alpha0 = data_best[participant_id == id & task_version == run & model == 'Pedlr',
-                                          second_solution_alpha0],
-                params.alpha1 = data_best[participant_id == id & task_version == run & model == 'Pedlr',
-                                          second_solution_alpha1],
-                params.temperature = data_best[participant_id == id & task_version == run & model == 'Pedlr',
-                                               second_solution_temperature],
-                params.reward_space_ub = 100,
-                choice_policy = 'softmax',
-                init_values = c(50,50,50))
-    temp = all_designs[participant_id == id & task_version == run]
-    temp$model = 'Pedlr'
-    temp = Append_model_values(data = temp, model_output = sim)
-    data_best_fitting_paras = rbind(data_best_fitting_paras, temp)
-    
-    # Pedlr_interdep
-    sim = Pedlr_interdep(design = all_designs[participant_id == id & task_version == run],
-                         params.alpha0 = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep',
-                                                   second_solution_alpha0],
-                         params.alpha1 = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep',
-                                                   second_solution_alpha1],
-                         params.interdep = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep',
-                                                     second_solution_interdep],
-                         params.temperature = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep',
-                                                        second_solution_temperature],
-                         params.reward_space_ub = 100,
-                         choice_policy = 'softmax',
-                         init_values = c(50,50,50))
-    temp = all_designs[participant_id == id & task_version == run]
-    temp$model = 'Pedlr_interdep'
-    temp = Append_model_values(data = temp, model_output = sim)
-    data_best_fitting_paras = rbind(data_best_fitting_paras, temp)
-  }
-}
-```
+<!-- # Get data for best fitting model -->
+<!-- data_best = Get_best_fit(data) -->
 
-```{r}
-Plot_prepare_correspondence = function(data){
-  # Get columns of estimations
-  est_cols = c('est_1_reward', 'est_2_reward', 'est_3_reward',
-               'model_value_1', 'model_value_2', 'model_value_3')
-  
-  data_plot = data %>%
-    .[, trial := seq(.N),
-      by = c('participant_id', 'task_version', 'model')] %>%
-    .[, (est_cols) := lapply(.SD, as.numeric), .SDcols = est_cols] %>%
-    data.table::melt(.,
-                     id.vars = c('participant_id', 'task_version', 'model', 'trial'),
-                     measure.vars = c('est_1_reward', 'est_2_reward', 'est_3_reward',
-                                      'model_value_1', 'model_value_2', 'model_value_3')) %>%
-    .[!is.na(value),] %>%
-    .[, ':='(type = unlist(strsplit(as.character(variable), split = '_'))[1],
-             stim = sort(unlist(strsplit(as.character(variable), split = '_')))[1]),
-      by = c('participant_id', 'task_version', 'model', 'trial', 'variable')] %>%
-    .[, ':='(type = as.factor(type),
-             stim = as.factor(stim))]
-  
-  return(data_plot)
-}
+<!-- # Simulate data based on best fitting parameters -->
+<!-- data_best_fitting_paras = data.table() -->
+<!-- for(id in unique(all_designs$participant_id)){ -->
+<!--   for(run in unique(all_designs$task_version)){ -->
+<!--     # Rw -->
+<!--     sim = Rw(design = all_designs[participant_id == id & task_version == run], -->
+<!--              params.alpha = data_best[participant_id == id & task_version == run & model == 'Rw', -->
+<!--                                       second_solution_alpha], -->
+<!--              params.temperature = data_best[participant_id == id & task_version == run & model == 'Rw', -->
+<!--                                             second_solution_temperature], -->
+<!--              params.reward_space_ub = 100, -->
+<!--              choice_policy = 'softmax', -->
+<!--              init_values = c(50,50,50)) -->
+<!--     temp = all_designs[participant_id == id & task_version == run] -->
+<!--     temp$model = 'Rw' -->
+<!--     temp = Append_model_values(data = temp, model_output = sim) -->
+<!--     data_best_fitting_paras = rbind(data_best_fitting_paras, temp) -->
 
-# Prepare all data for plotting correspondence
-data_plot = Plot_prepare_correspondence(data_best_fitting_paras)
-```
+<!--     # Pedlr -->
+<!--     sim = Pedlr(design = all_designs[participant_id == id & task_version == run], -->
+<!--                 params.alpha0 = data_best[participant_id == id & task_version == run & model == 'Pedlr', -->
+<!--                                           second_solution_alpha0], -->
+<!--                 params.alpha1 = data_best[participant_id == id & task_version == run & model == 'Pedlr', -->
+<!--                                           second_solution_alpha1], -->
+<!--                 params.temperature = data_best[participant_id == id & task_version == run & model == 'Pedlr', -->
+<!--                                                second_solution_temperature], -->
+<!--                 params.reward_space_ub = 100, -->
+<!--                 choice_policy = 'softmax', -->
+<!--                 init_values = c(50,50,50)) -->
+<!--     temp = all_designs[participant_id == id & task_version == run] -->
+<!--     temp$model = 'Pedlr' -->
+<!--     temp = Append_model_values(data = temp, model_output = sim) -->
+<!--     data_best_fitting_paras = rbind(data_best_fitting_paras, temp) -->
 
-```{r, out.width='100%', fig.height=n_participants}
-ggplot(data = data_plot[type == 'est'],
-       aes(x = trial,
-           y = value)) +
-  geom_line(color = 'black',
-            linetype = 'dashed') +
-  geom_point(color = 'black',
-             size = 0.3,
-             alpha = 0.5) +
-  geom_line(data = data_plot[type == 'model'],
-            aes(color = model),
-            linetype = 'solid',
-            alpha = 0.7) +
-  scale_color_manual(values = c('red', 'blue', 'yellow')) +
-  facet_grid(participant_id ~ task_version + stim) +
-  theme(legend.position = 'top')
-```
+<!--     # Pedlr_interdep -->
+<!--     sim = Pedlr_interdep(design = all_designs[participant_id == id & task_version == run], -->
+<!--                          params.alpha0 = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep', -->
+<!--                                                    second_solution_alpha0], -->
+<!--                          params.alpha1 = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep', -->
+<!--                                                    second_solution_alpha1], -->
+<!--                          params.interdep = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep', -->
+<!--                                                      second_solution_interdep], -->
+<!--                          params.temperature = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep', -->
+<!--                                                         second_solution_temperature], -->
+<!--                          params.reward_space_ub = 100, -->
+<!--                          choice_policy = 'softmax', -->
+<!--                          init_values = c(50,50,50)) -->
+<!--     temp = all_designs[participant_id == id & task_version == run] -->
+<!--     temp$model = 'Pedlr_interdep' -->
+<!--     temp = Append_model_values(data = temp, model_output = sim) -->
+<!--     data_best_fitting_paras = rbind(data_best_fitting_paras, temp) -->
+<!--   } -->
+<!-- } -->
+<!-- ``` -->
 
-# Parameter relations
+<!-- ```{r} -->
+<!-- Plot_prepare_correspondence = function(data){ -->
+<!--   # Get columns of estimations -->
+<!--   est_cols = c('est_1_reward', 'est_2_reward', 'est_3_reward', -->
+<!--                'model_value_1', 'model_value_2', 'model_value_3') -->
 
-## Pedlr
+<!--   data_plot = data %>% -->
+<!--     .[, trial := seq(.N), -->
+<!--       by = c('participant_id', 'task_version', 'model')] %>% -->
+<!--     .[, (est_cols) := lapply(.SD, as.numeric), .SDcols = est_cols] %>% -->
+<!--     data.table::melt(., -->
+<!--                      id.vars = c('participant_id', 'task_version', 'model', 'trial'), -->
+<!--                      measure.vars = c('est_1_reward', 'est_2_reward', 'est_3_reward', -->
+<!--                                       'model_value_1', 'model_value_2', 'model_value_3')) %>% -->
+<!--     .[!is.na(value),] %>% -->
+<!--     .[, ':='(type = unlist(strsplit(as.character(variable), split = '_'))[1], -->
+<!--              stim = sort(unlist(strsplit(as.character(variable), split = '_')))[1]), -->
+<!--       by = c('participant_id', 'task_version', 'model', 'trial', 'variable')] %>% -->
+<!--     .[, ':='(type = as.factor(type), -->
+<!--              stim = as.factor(stim))] -->
 
-### alpha0 vs. alpha1
+<!--   return(data_plot) -->
+<!-- } -->
 
-```{r, out.width='100%', fig.height=n_participants}
-data_plot = Plot_prepare_consistency(data[model == 'Pedlr']) %>%
-  .[variable == 'second_solution']
-ggplot(data = data_plot,
-       aes(x = value_alpha0,
-           y = value_alpha1)) +
-  geom_point() +
-  facet_grid( ~ task_version)
-```
+<!-- # Prepare all data for plotting correspondence -->
+<!-- data_plot = Plot_prepare_correspondence(data_best_fitting_paras) -->
+<!-- ``` -->
+
+<!-- ```{r, out.width='100%', fig.height=n_participants} -->
+<!-- ggplot(data = data_plot[type == 'est'], -->
+<!--        aes(x = trial, -->
+<!--            y = value)) + -->
+<!--   geom_line(color = 'black', -->
+<!--             linetype = 'dashed') + -->
+<!--   geom_point(color = 'black', -->
+<!--              size = 0.3, -->
+<!--              alpha = 0.5) + -->
+<!--   geom_line(data = data_plot[type == 'model'], -->
+<!--             aes(color = model), -->
+<!--             linetype = 'solid', -->
+<!--             alpha = 0.7) + -->
+<!--   scale_color_manual(values = c('red', 'blue', 'yellow')) + -->
+<!--   facet_grid(participant_id ~ task_version + stim) + -->
+<!--   theme(legend.position = 'top') -->
+<!-- ``` -->
+
+<!-- # Parameter relations -->
+
+<!-- ## Pedlr -->
+
+<!-- ### alpha0 vs. alpha1 -->
+
+<!-- ```{r, out.width='100%', fig.height=n_participants} -->
+<!-- data_plot = Plot_prepare_consistency(data[model == 'Pedlr']) %>% -->
+<!--   .[variable == 'second_solution'] -->
+<!-- ggplot(data = data_plot, -->
+<!--        aes(x = value_alpha0, -->
+<!--            y = value_alpha1)) + -->
+<!--   geom_point() + -->
+<!--   facet_grid( ~ task_version) -->
+<!-- ``` -->
 
 

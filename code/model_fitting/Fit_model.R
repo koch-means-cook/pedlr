@@ -52,7 +52,7 @@ Fit_model = function(data,
     stop('Chosen model is not specified. Check for typos')
   }
   
-  # See if number of parameter concerning values provided fits model
+  # See if number of parameters provided fits model
   n_parameters = model_list[model_name == model]$n_parameters
   if(length(start_values) != n_parameters |
      length(lb) != n_parameters | 
@@ -61,12 +61,12 @@ Fit_model = function(data,
   }
   
   # Give message to user
-  message('      ####### Options #######')
+  message('      ########### Options ###########')
   message('      LB: ', paste(lb, collapse = '  '))
   message('      UB: ', paste(ub, collapse = '  '))
   
   # Give message to user
-  message('      ##### First Optim #####')
+  message('      ######### First Optim #########')
   message('      x0: ', paste(start_values, collapse = '  '))
   message('      ', paste(names(opts1), opts1, collapse = '\n      ', sep = ': '))
   
@@ -91,7 +91,7 @@ Fit_model = function(data,
   message('      Solution: ', paste(round(first$solution, 3), collapse = '  '))
   
   # Give message to user
-  message('      ###### Sec Optim ######')
+  message('      ########## Sec Optim ##########')
   message('      x0: ', paste(round(first$solution, 3), collapse = '  '))
   message('      ', paste(names(opts2), opts2, collapse = '\n      ', sep = ': '))
   
