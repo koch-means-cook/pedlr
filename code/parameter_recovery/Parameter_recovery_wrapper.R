@@ -100,23 +100,21 @@ Parameter_recovery_wrapper = function(output_path,
     # Concatenate result of each iteration
     output = rbind(output, result)
     
-    # Give message to user
-    message('Writing output...')
-    
-    # Write output
-    data.table::fwrite(x = output,
-                       file = output_path,
-                       sep = '\t',
-                       na = 'n/a',
-                       row.names = FALSE,
-                       col.names = TRUE)
-    
-    # Give message to user
-    message('\n...Le Fin')
-    
-    
-    
   }
+  
+  # Give message to user
+  message('Writing output...')
+  
+  # Write output
+  data.table::fwrite(x = output,
+                     file = output_path,
+                     sep = '\t',
+                     na = 'n/a',
+                     row.names = FALSE,
+                     col.names = TRUE)
+  
+  # Give message to user
+  message('\n...Le Fin')
   
 }
 
