@@ -1,0 +1,288 @@
+---
+title: "Parameter recovery"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(plotly)
+library(plyr)
+library(patchwork)
+library(reshape2)
+```
+
+```{r}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+```
+
+
+```{r}
+file = file.path(base_path, 'derivatives', 'parameter_recovery', 'param_recov.tsv', fsep = .Platform$file.sep)
+data = data.table::fread(file, na.strings = 'n/a', sep = '\t') %>%
+  # Order models
+  .[, model := factor(model, levels = c('Rw',
+                                        'Pedlr_simple',
+                                        'Pedlr',
+                                        'Pedlr_fixdep',
+                                        'Pedlr_interdep'))] %>%
+  # Rename alpha (Rw) to alpha0 (for convenience of plotting)
+  .[para == 'alpha', para := 'alpha0']
+```
+
+# Correlation true and recovered
+
+```{r, out.width='100%', fig.height=8, fig.width=8}
+p1 = ggplot(data = data[para != 'temperature'],
+            aes(x = true,
+                y = second_solution)) +
+  geom_point(size = 0.5,
+             alpha = 0.7) +
+  coord_fixed() +
+  labs(title = 'LR paras',
+       y = 'best fit') +
+  facet_grid(model ~ para, scales = 'fixed') +
+  theme(plot.title = element_text(hjust = 0.5),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+p2 = ggplot(data = data[para == 'temperature'],
+            aes(x = true,
+                y = second_solution)) +
+  geom_point(size = 0.5,
+             alpha = 0.7) +
+  coord_fixed() +
+  labs(title = 'Temperature') +
+  facet_grid(model ~ para, scales = 'fixed') +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.title.y = element_blank(),
+        plot.margin = unit(c(0, 0, 0, 0), "cm"))
+
+p1 + p2 + patchwork::plot_layout(widths = c(3,1))
+```
+
+# Correlation between parameters {.tabset}
+
+```{r}
+# Function to plot correlation within parameter type (e.g. ground truth vs. ground truth)
+Get_cormat_within = function(data,
+                             model_name,
+                             colnames,
+                             plot_title){
+  # Prepare data for correlation
+  corr_data = data %>%
+    .[, recov := second_solution] %>%
+    data.table::dcast(model + design + file + iter ~ para, value.var = c('true', 'recov'))
+  
+  # Specify data to plot correlation of
+  data_plot = cor(corr_data[model == model_name, ..colnames]) %>%
+    reshape2::melt(.)
+  
+  # Plot correlation matrix
+  p = ggplot(data_plot,
+             aes(x = Var1, y = Var2, fill = value, label = round(value, 2))) +
+    theme_minimal()+ 
+    geom_tile() +
+    geom_label(fill = 'white', color = 'black') +
+    scale_fill_viridis(option='D') +
+    coord_fixed() +
+    labs(title = plot_title) +
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position = 'None',
+          axis.title = element_blank(),
+          axis.text.x = element_text(angle = 90))
+  
+  return(p)
+}
+
+# uUnction to plot recovery quality (correlation between true and recovered params)
+Get_cormat_across = function(data,
+                             model_name,
+                             colnames,
+                             plot_title){
+  # Prepare data for correlation
+  corr_data = data %>%
+    .[, recov := second_solution] %>%
+    data.table::dcast(model + design + file + iter ~ para, value.var = c('true', 'recov'))
+  
+  # Specify data to plot correlation of
+  data_plot = cor(corr_data[model == model_name, ..colnames]) %>%
+    reshape2::melt(.) %>%
+    as.data.table(.) %>%
+    .[, row := seq(.N)] %>%
+    # Only select correlation between true and recovered params (and not truth vs truth)
+    .[, need := unlist(strsplit(as.character(Var1), '_'))[1] != unlist(strsplit(as.character(Var2), '_'))[1],
+      by = 'row'] %>%
+    .[need == TRUE, c('Var1', 'Var2', 'value')]
+  # Eliminate duplicates (e.g. true_a1 vs. recov_a1 and recov_a1 vs. true_a1)
+  data_plot = data_plot[1:(nrow(data_plot)/2)]
+  # Eliminate levels
+  data_plot$Var1 = as.character(data_plot$Var1)
+  data_plot$Var2 = as.character(data_plot$Var2)
+  
+  
+  # Plot correlation matrix
+  p = ggplot(data_plot,
+             aes(x = Var1, y = Var2, fill = value, label = round(value, 2))) +
+    theme_minimal()+ 
+    geom_tile() +
+    geom_label(fill = 'white', color = 'black') +
+    scale_fill_viridis(option='D') +
+    coord_fixed() +
+    labs(title = plot_title) +
+    theme(plot.title = element_text(hjust = 0.5),
+          legend.position = 'None',
+          axis.title = element_blank(),
+          axis.text.x = element_text(angle = 90))
+  
+  return(p)
+}
+```
+
+## Rw
+
+```{r, out.width='100%', fig.height=4, fig.width=12}
+p1 = Get_cormat_within(data = data,
+                       model_name = 'Rw',
+                       colnames = c('true_alpha0', 'true_temperature'),
+                       plot_title = 'Rw: True')
+p2 = Get_cormat_within(data = data,
+                       model_name = 'Rw',
+                       colnames = c('recov_alpha0', 'recov_temperature'),
+                       plot_title = 'Rw: Recov')
+p3 = Get_cormat_across(data = data,
+                       model_name = 'Rw',
+                       colnames = c('true_alpha0', 'true_temperature',
+                                    'recov_alpha0', 'recov_temperature'),
+                       plot_title = 'Rw: Recovery')
+p_rw = cowplot::plot_grid(grid::textGrob('Rw', rot = 90, gp=grid::gpar(fontsize=24)), p1, p2, p3,
+                          rel_widths = c(0.2, 1, 1, 1),
+                   nrow = 1)
+p_rw
+```
+
+## Pedlr_simple
+
+```{r, out.width='100%', fig.height=4, fig.width=12}
+p1 = Get_cormat_within(data = data,
+                       model_name = 'Pedlr_simple',
+                       colnames = c('true_alpha1', 'true_temperature'),
+                       plot_title = 'Pedlr_simple: True')
+p2 = Get_cormat_within(data = data,
+                       model_name = 'Pedlr_simple',
+                       colnames = c('recov_alpha1', 'recov_temperature'),
+                       plot_title = 'Pedlr_simple: Recov')
+p3 = Get_cormat_across(data = data,
+                       model_name = 'Pedlr_simple',
+                       colnames = c('true_alpha1', 'true_temperature',
+                                    'recov_alpha1', 'recov_temperature'),
+                       plot_title = 'Pedlr_simple: Recovery')
+p_ps = cowplot::plot_grid(grid::textGrob('Pedlr_simple', rot = 90, gp=grid::gpar(fontsize=24)), p1, p2, p3,
+                          rel_widths = c(0.2, 1, 1, 1),
+                   nrow = 1)
+p_ps
+```
+
+## Pedlr
+
+```{r, out.width='100%', fig.height=4, fig.width=12}
+p1 = Get_cormat_within(data = data,
+                       model_name = 'Pedlr',
+                       colnames = c('true_alpha0', 'true_alpha1', 'true_temperature'),
+                       plot_title = 'Pedlr: True')
+p2 = Get_cormat_within(data = data,
+                       model_name = 'Pedlr',
+                       colnames = c('recov_alpha0', 'recov_alpha1', 'recov_temperature'),
+                       plot_title = 'Pedlr: Recov')
+p3 = Get_cormat_across(data = data,
+                       model_name = 'Pedlr',
+                       colnames = c('true_alpha0', 'true_alpha1', 'true_temperature',
+                                    'recov_alpha0', 'recov_alpha1', 'recov_temperature'),
+                       plot_title = 'Pedlr: Recovery')
+p_p = cowplot::plot_grid(grid::textGrob('Pedlr', rot = 90, gp=grid::gpar(fontsize=24)), p1, p2, p3,
+                         rel_widths = c(0.2, 1, 1, 1),
+                   nrow = 1)
+p_p
+```
+
+## Pedlr_fixdep
+
+```{r, out.width='100%', fig.height=4, fig.width=12}
+p1 = Get_cormat_within(data = data,
+                       model_name = 'Pedlr_fixdep',
+                       colnames = c('true_alpha0', 'true_alpha1', 'true_temperature'),
+                       plot_title = 'Pedlr_fixdep: True')
+p2 = Get_cormat_within(data = data,
+                       model_name = 'Pedlr_fixdep',
+                       colnames = c('recov_alpha0', 'recov_alpha1', 'recov_temperature'),
+                       plot_title = 'Pedlr_fixdep: Recov')
+p3 = Get_cormat_across(data = data,
+                       model_name = 'Pedlr_fixdep',
+                       colnames = c('true_alpha0', 'true_alpha1', 'true_temperature',
+                                    'recov_alpha0', 'recov_alpha1', 'recov_temperature'),
+                       plot_title = 'Pedlr_fixdep: Recovery')
+p_pf = cowplot::plot_grid(grid::textGrob('Pedlr_fixdep', rot = 90, gp=grid::gpar(fontsize=24)), p1, p2, p3,
+                          rel_widths = c(0.2, 1, 1, 1),
+                   nrow = 1)
+p_pf
+```
+
+## Pedlr_interdep
+
+```{r, out.width='100%', fig.height=4, fig.width=12}
+p1 = Get_cormat_within(data = data,
+                       model_name = 'Pedlr_interdep',
+                       colnames = c('true_alpha0', 'true_alpha1', 'true_interdep', 'true_temperature'),
+                       plot_title = 'Pedlr_interdep: True')
+p2 = Get_cormat_within(data = data,
+                       model_name = 'Pedlr_interdep',
+                       colnames = c('recov_alpha0', 'recov_alpha1', 'recov_interdep', 'recov_temperature'),
+                       plot_title = 'Pedlr_interdep: Recov')
+p3 = Get_cormat_across(data = data,
+                       model_name = 'Pedlr_interdep',
+                       colnames = c('true_alpha0', 'true_alpha1', 'true_interdep', 'true_temperature',
+                                    'recov_alpha0', 'recov_alpha1', 'recov_interdep', 'recov_temperature'),
+                       plot_title = 'Pedlr_interdep: Recovery')
+p_pi = cowplot::plot_grid(grid::textGrob('Pedlr_interdep', rot = 90, gp=grid::gpar(fontsize=24)), p1, p2, p3,
+                          rel_widths = c(0.2, 1, 1, 1),
+                   nrow = 1)
+p_pi
+```
+
+
