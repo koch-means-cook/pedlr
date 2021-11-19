@@ -36,6 +36,7 @@ library(magrittr)
 library(ggplot2)
 library(viridis)
 library(binhf)
+library(pwr)
 ```
 
 ```{r}
@@ -252,6 +253,55 @@ p_est_diff = ggplot(data = check_est_diff,
   theme(legend.position = 'top')
 p_est_diff
 ```
+
+## Power analysis
+
+### Within run
+
+```{r}
+pwr_within = check_est_diff %>%
+  # Get mean estimation for each participant per run
+  .[, .(mean_est = mean(diff_from_true, na.rm = TRUE),
+        sd_est = sd(diff_from_true, na.rm = TRUE)),
+    by = c('participant_id', 'task_version', 'est_stim')] %>%
+  # Get mean for whole sample
+  .[, .(mean_sample = mean(mean_est),
+        sd_est = sd(mean_est),
+        sample_size = .N),
+    by = c('task_version', 'est_stim')] %>%
+  .[, cohens_d := mean_sample/sd_est] %>%
+  .[, suggested_sample := pwr::pwr.t.test(d = cohens_d,
+                                          sig.level = 0.05,
+                                          power = 0.9,
+                                          type = 'one.sample',
+                                          alternative = 'two.sided')$n,
+    by = c('task_version', 'est_stim')]
+pwr_within
+```
+
+### Across run
+
+```{r}
+pwr_across = check_est_diff %>%
+  # Get mean estimation for each participant
+  .[, .(mean_est = mean(diff_from_true, na.rm = TRUE),
+        sd_est = sd(diff_from_true, na.rm = TRUE)),
+    by = c('participant_id', 'est_stim')] %>%
+  # Get mean for whole sample
+  .[, .(mean_sample = mean(mean_est),
+        sd_est = sd(mean_est),
+        sample_size = .N),
+    by = c('est_stim')] %>%
+  .[, cohens_d := mean_sample/sd_est] %>%
+  .[, suggested_sample := pwr::pwr.t.test(d = cohens_d,
+                                          sig.level = 0.05,
+                                          power = 0.9,
+                                          type = 'one.sample',
+                                          alternative = 'two.sided')$n,
+    by = c('est_stim')]
+pwr_across
+```
+
 
 # RT
 
