@@ -2,7 +2,12 @@
 # Function to sample from Gaussian distribution while equally sampling whole distirbution
 # This way you don't have to rely on chance to get all possible events
 
-Gaussian_pseudo_sim = function(n_sim, mean, sd, dist_name, reward_space_lb, reward_space_ub){
+Gaussian_pseudo_sim = function(n_sim,
+                               mean,
+                               sd,
+                               dist_name,
+                               reward_space_lb,
+                               reward_space_ub){
   
   # Set up data frame holding value and distribution value was sampled from
   data_sim = data.frame(matrix(0,nrow=n_sim,ncol=2))
@@ -46,9 +51,31 @@ Gaussian_pseudo_sim = function(n_sim, mean, sd, dist_name, reward_space_lb, rewa
     outcome = outcome[-sample(c(1:length(outcome)),abs(missing_samples), replace=FALSE)]
   }
   
+  # Check if samples touch edges and throw error in case
+  if(reward_space_lb %in% outcome | reward_space_ub %in% outcome){
+    stop('Edges of distribution are sampled. This indicates a sampled distribution that expands further than the edges of the reward space. In turn the distribution would have to be cut off and is not viable to be used in the experiment.')
+  }
+  
   # Fill output with results
   data_sim$outcome = outcome
   data_sim$dist = dist_name
   return(data_sim)
 
 }
+
+# n_sim = 240
+# mean = 1/6 * 100
+# sd = 1/6 * 100
+# dist_name = 'gaussian'
+# reward_space_lb = 1
+# reward_space_ub = 100
+
+bla = Gaussian_pseudo_sim(n_sim = 240,
+                    mean = 100 * 5/6,
+                    sd = (1/6 * 100) / 3,
+                    dist_name = 'gaussian',
+                    reward_space_lb = 1,
+                    reward_space_ub = 100)
+table(bla$outcome)
+
+

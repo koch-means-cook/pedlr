@@ -13,19 +13,26 @@ Bimodal_pseudo_sim = function(n_sim,
 
   # default values
   # n_sim = 240
-  # mean = 100 * 2/6
+  # mean = 100 * 1/6
   # rel_proportion = 0.2
-  # distance = 40
+  # distance = -35
   # main.sd = (100 * 1/6) / 3
   # second.sd = (100 * 1/6) / 3
   # dist_name = 'bimodal'
   # reward_space_lb = 1
   # reward_space_ub = 100
   
+  
+  
   # Calculate mean of distributions to combine if we want the specified mean 
   # (needs distance and relative proportion of samples)
   main.mean = mean - ((rel_proportion * distance) / (rel_proportion + 1))
   second.mean = main.mean + distance
+  
+  # Check if second mode lies in reward space
+  if(main.mean + distance <= reward_space_lb | main.mean + distance >= reward_space_ub){
+    stop('Second mode of bimodal distribution lies outside of reward space')
+  }
   
   # Calculate standard deviation of distirbutions to use if we want the specified SD
   # main.sd = sqrt(sqrt(
@@ -82,7 +89,7 @@ Bimodal_pseudo_sim = function(n_sim,
                                          1,
                                          prob=c((1-rel_proportion), rel_proportion)))
     }
-    # Go thourgh all amples individually in case one digit was sampled multiple times (which prohibits
+    # Go through all samples individually in case one digit was sampled multiple times (which prohibits
     # one-liners)
     for(i in samples){
       # In case sampling produces a 0 (because beta densities range from 0-1 this can happen)
@@ -93,6 +100,12 @@ Bimodal_pseudo_sim = function(n_sim,
       outcome[i] = outcome[i] +1
     }
   }
+  
+  # Check if distribution touches edges and throw error in case
+  if(outcome[reward_space_lb] > 0 | outcome[reward_space_ub] > 0){
+    stop('Edges of distribution are sampled. This indicates a sampled distribution that expands further than the edges of the reward space. In turn the distribution would have to be cut off and is not viable to be used in the experiment.')
+  }
+  
   # Create outcomes based on how often each reward was sampled
   outcome = unlist(mapply(function(x,y) rep(x,y), seq(from=reward_space_lb,to=reward_space_ub), outcome))
   
@@ -167,8 +180,28 @@ Bimodal_pseudo_sim = function(n_sim,
     outcome = outcome[-sample(c(1:length(outcome)),abs(missing_samples), replace=FALSE)]
   }
   
+  # Check if samples touch edges and throw error in case
+  if(reward_space_lb %in% outcome | reward_space_ub %in% outcome){
+    stop('Edges of distribution are sampled. This indicates a sampled distribution that expands further than the edges of the reward space. In turn the distribution would have to be cut off and is not viable to be used in the experiment.')
+  }
+  
   # Fill output with results
   data_sim$outcome = outcome
   data_sim$dist = dist_name
   return(data_sim)
 }
+
+
+
+# bla = Bimodal_pseudo_sim(n_sim = 240,
+#                          mean = 42,
+#                          rel_proportion = 0.2,
+#                          distance = -35,
+#                          main.sd = (100 * 1/6) / 3,
+#                          second.sd = (100 * 1/6) / 3,
+#                          dist_name = 'bimodal',
+#                          reward_space_lb = 1,
+#                          reward_space_ub = 100)
+# table(bla$outcome)
+
+

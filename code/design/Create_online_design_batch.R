@@ -22,13 +22,16 @@ source(file.path(source_path, 'design', 'Transform_design_online.R', fsep = .Pla
 n_blocks = 4
 perc_forced = 20
 blocks_per_task = 2
-dist_list = list(c('gaussian', 100 * 2/6, (100 * 1/6) / 3),
-                 c('bimodal', 100 * 3/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
-                 c('gaussian', 100 * 4/6, (100 * 1/6) / 3),
-                 c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
-                 c('bimodal', 100 * 4/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
-                 c('gaussian', 100 * 5/6, (100 * 1/6) / 3))
 
+# Get area of distributions
+sd = (100 * 1/6) / 3
+lowest_gauss_mean = 1/6 * 100
+highest_gauss_mean = 5/6 * 100
+distance = 1/6 * 100
+bimodal_mode_distance = -35
+bimodal_rel_proportion = 0.2
+
+# 
 all_designs = data.table()
 all_designs_online = list()
 
@@ -37,6 +40,27 @@ for(i in seq(20)){
   
   # Set seed for each iteration of design creation
   set.seed(i)
+  
+  # Create distributions
+  # run 1
+  mid_mean_1 = round(runif(n = 1,
+                           min = 42, # 42 ensures that the 2nd mode of the bimodal distribution does not touch the edges of the reward space 1-100
+                           max = mean(c(42, highest_gauss_mean - distance)) - distance/2))
+  low_mean_1 = mid_mean_1 - distance
+  high_mean_1 = mid_mean_1 + distance
+  # run 2
+  mid_mean_2 = round(runif(n = 1,
+                           min = mean(c(42, highest_gauss_mean - distance)) + distance/2,
+                           max = floor(highest_gauss_mean - distance)))
+  low_mean_2 = mid_mean_2 - distance
+  high_mean_2 = mid_mean_2 + distance
+  # Pass distribution parameters to sampling
+  dist_list = list(c('gaussian', low_mean_1, sd),
+                   c('bimodal', mid_mean_1, bimodal_rel_proportion, bimodal_mode_distance, sd, sd),
+                   c('gaussian', high_mean_1, sd),
+                   c('gaussian', low_mean_2, sd),
+                   c('bimodal', mid_mean_2, bimodal_rel_proportion, bimodal_mode_distance, sd, sd),
+                   c('gaussian', high_mean_2, sd))
   
   # Get task plan
   plan = Create_plan(n_blocks,
@@ -75,24 +99,24 @@ for(i in seq(20)){
                    paste('design-',
                          str_pad(as.character(i), width = 2, pad = '0'),
                          sep = ''))
-  for(json_count in seq(length(json_list))){
-    name = paste(file,
-                 paste('_run-', as.character(json_count), sep = ''),
-                 '.json',
-                 sep = '')
-    write(json_list[[json_count]], file = name)
-
-    # Save design alongside (in pedlr-task submodule)
-    name = paste(file,
-                 paste('_run-', as.character(json_count), sep = ''),
-                 '.tsv',
-                 sep = '')
-    write.table(design[design$task_version == json_count,],
-                file = name,
-                sep = '\t',
-                na = 'n/a',
-                row.names = FALSE)
-  }
+  # for(json_count in seq(length(json_list))){
+  #   name = paste(file,
+  #                paste('_run-', as.character(json_count), sep = ''),
+  #                '.json',
+  #                sep = '')
+  #   write(json_list[[json_count]], file = name)
+  # 
+  #   # Save design alongside (in pedlr-task submodule)
+  #   name = paste(file,
+  #                paste('_run-', as.character(json_count), sep = ''),
+  #                '.tsv',
+  #                sep = '')
+  #   write.table(design[design$task_version == json_count,],
+  #               file = name,
+  #               sep = '\t',
+  #               na = 'n/a',
+  #               row.names = FALSE)
+  # }
 }
 
 # # Get max and min points of each design

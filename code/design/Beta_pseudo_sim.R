@@ -2,7 +2,12 @@
 # Function to sample from Beta distribution while equally sampling whole distirbution
 # This way you don't have to rely on chance to get all possible events
 
-Beta_pseudo_sim = function(n_sim, a, b, dist_name, reward_space_lb, reward_space_ub){
+Beta_pseudo_sim = function(n_sim,
+                           a,
+                           b,
+                           dist_name,
+                           reward_space_lb,
+                           reward_space_ub){
   
   # Set up data frame holding value and distribution value was sampled from
   data_sim = data.frame(matrix(0,nrow=n_sim,ncol=2))
