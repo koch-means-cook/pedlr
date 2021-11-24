@@ -411,7 +411,7 @@ data_rat[model == 'Pedlr_interdep'] %>%
     by = c('task_version', 'real_iter')]
 ```
 
-## Higher a1 = lower estimate for bandit 2?
+## Higher a1 = more errors in 1v2?
 
 ### Reference
 
@@ -549,6 +549,100 @@ data_rat[model == 'Pedlr_interdep'] %>%
          statisic = cor.test(alpha1, corr_1v2)$statistic),
     by = c('task_version', 'real_iter')]
 ```
+
+## Higher a1 = Higher difference in correct responses 1v2 and 2v3?
+
+### Reference (Rw)
+
+#### Plot
+
+```{r}
+ggplot(data_rat[model == 'Rw'],
+       aes(x = alpha,
+           y = corr_2v3 - corr_1v2,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(-1,1)) +
+  facet_wrap(~ task_version)
+```
+
+
+### Pedlr_simple
+
+#### Plot
+
+```{r}
+ggplot(data_rat[model == 'Pedlr_simple'],
+       aes(x = alpha1,
+           y = corr_2v3 - corr_1v2,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(-1,1)) +
+  facet_wrap(~ task_version)
+```
+
+### Pedlr
+
+#### Plot
+
+```{r}
+ggplot(data_rat[model == 'Pedlr'],
+       aes(x = alpha1,
+           y = corr_2v3 - corr_1v2,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(-1,1)) +
+  facet_wrap(~ task_version)
+```
+
+### Pedlr_fixdep
+
+#### Plot
+
+```{r}
+ggplot(data_rat[model == 'Pedlr_fixdep'],
+       aes(x = alpha1,
+           y = corr_2v3 - corr_1v2,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(-1,1)) +
+  facet_wrap(~ task_version)
+```
+
+### Pedlr_interdep
+
+#### Plot
+
+```{r}
+ggplot(data_rat[model == 'Pedlr_interdep'],
+       aes(x = alpha1,
+           y = corr_2v3 - corr_1v2,
+           group = real_iter)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              fill = NA) +
+  scale_x_continuous(limits = c(0,1)) +
+  scale_y_continuous(limits = c(-1,1)) +
+  facet_wrap(~ task_version)
+```
+
 
 ## More PEDLR evidence = less correct 1v2? {.tabset}
 

@@ -181,11 +181,11 @@ Get_cormat_across = function(data,
 p1 = Get_cormat_within(data = data,
                        model_name = 'Rw',
                        colnames = c('true_alpha0', 'true_temperature'),
-                       plot_title = 'Rw: True')
+                       plot_title = 'Rw: True vs. True')
 p2 = Get_cormat_within(data = data,
                        model_name = 'Rw',
                        colnames = c('recov_alpha0', 'recov_temperature'),
-                       plot_title = 'Rw: Recov')
+                       plot_title = 'Rw: Recov vs. Recov')
 p3 = Get_cormat_across(data = data,
                        model_name = 'Rw',
                        colnames = c('true_alpha0', 'true_temperature',
@@ -203,11 +203,11 @@ p_rw
 p1 = Get_cormat_within(data = data,
                        model_name = 'Pedlr_simple',
                        colnames = c('true_alpha1', 'true_temperature'),
-                       plot_title = 'Pedlr_simple: True')
+                       plot_title = 'Pedlr_simple: True vs. True')
 p2 = Get_cormat_within(data = data,
                        model_name = 'Pedlr_simple',
                        colnames = c('recov_alpha1', 'recov_temperature'),
-                       plot_title = 'Pedlr_simple: Recov')
+                       plot_title = 'Pedlr_simple: Recov vs. Recov')
 p3 = Get_cormat_across(data = data,
                        model_name = 'Pedlr_simple',
                        colnames = c('true_alpha1', 'true_temperature',
@@ -225,11 +225,11 @@ p_ps
 p1 = Get_cormat_within(data = data,
                        model_name = 'Pedlr',
                        colnames = c('true_alpha0', 'true_alpha1', 'true_temperature'),
-                       plot_title = 'Pedlr: True')
+                       plot_title = 'Pedlr: True vs. True')
 p2 = Get_cormat_within(data = data,
                        model_name = 'Pedlr',
                        colnames = c('recov_alpha0', 'recov_alpha1', 'recov_temperature'),
-                       plot_title = 'Pedlr: Recov')
+                       plot_title = 'Pedlr: Recov vs. Recov')
 p3 = Get_cormat_across(data = data,
                        model_name = 'Pedlr',
                        colnames = c('true_alpha0', 'true_alpha1', 'true_temperature',
@@ -247,11 +247,11 @@ p_p
 p1 = Get_cormat_within(data = data,
                        model_name = 'Pedlr_fixdep',
                        colnames = c('true_alpha0', 'true_alpha1', 'true_temperature'),
-                       plot_title = 'Pedlr_fixdep: True')
+                       plot_title = 'Pedlr_fixdep: True vs. True')
 p2 = Get_cormat_within(data = data,
                        model_name = 'Pedlr_fixdep',
                        colnames = c('recov_alpha0', 'recov_alpha1', 'recov_temperature'),
-                       plot_title = 'Pedlr_fixdep: Recov')
+                       plot_title = 'Pedlr_fixdep: Recov vs. Recov')
 p3 = Get_cormat_across(data = data,
                        model_name = 'Pedlr_fixdep',
                        colnames = c('true_alpha0', 'true_alpha1', 'true_temperature',
@@ -269,11 +269,11 @@ p_pf
 p1 = Get_cormat_within(data = data,
                        model_name = 'Pedlr_interdep',
                        colnames = c('true_alpha0', 'true_alpha1', 'true_interdep', 'true_temperature'),
-                       plot_title = 'Pedlr_interdep: True')
+                       plot_title = 'Pedlr_interdep: True vs. True')
 p2 = Get_cormat_within(data = data,
                        model_name = 'Pedlr_interdep',
                        colnames = c('recov_alpha0', 'recov_alpha1', 'recov_interdep', 'recov_temperature'),
-                       plot_title = 'Pedlr_interdep: Recov')
+                       plot_title = 'Pedlr_interdep: Recov vs. Recov')
 p3 = Get_cormat_across(data = data,
                        model_name = 'Pedlr_interdep',
                        colnames = c('true_alpha0', 'true_alpha1', 'true_interdep', 'true_temperature',
