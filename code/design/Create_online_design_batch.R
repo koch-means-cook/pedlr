@@ -31,9 +31,8 @@ distance = 1/6 * 100
 bimodal_mode_distance = -35
 bimodal_rel_proportion = 0.2
 
-# 
-all_designs = data.table()
-all_designs_online = list()
+# Save all designs in one data frame
+# all_designs = data.table()
 
 # Twenty different designs
 for(i in seq(20)){
@@ -77,8 +76,8 @@ for(i in seq(20)){
                          min_forced_with_rare_per_block = 2,
                          min_rate_after_rare_forced_per_block = 2)
   
+  # Save all designs in one data frame
   # design$n_design = i
-  # 
   # all_designs = rbind(all_designs, design)
   
   # Port design for online task
@@ -99,24 +98,24 @@ for(i in seq(20)){
                    paste('design-',
                          str_pad(as.character(i), width = 2, pad = '0'),
                          sep = ''))
-  # for(json_count in seq(length(json_list))){
-  #   name = paste(file,
-  #                paste('_run-', as.character(json_count), sep = ''),
-  #                '.json',
-  #                sep = '')
-  #   write(json_list[[json_count]], file = name)
-  # 
-  #   # Save design alongside (in pedlr-task submodule)
-  #   name = paste(file,
-  #                paste('_run-', as.character(json_count), sep = ''),
-  #                '.tsv',
-  #                sep = '')
-  #   write.table(design[design$task_version == json_count,],
-  #               file = name,
-  #               sep = '\t',
-  #               na = 'n/a',
-  #               row.names = FALSE)
-  # }
+  for(json_count in seq(length(json_list))){
+    name = paste(file,
+                 paste('_run-', as.character(json_count), sep = ''),
+                 '.json',
+                 sep = '')
+    write(json_list[[json_count]], file = name)
+
+    # Save design alongside (in pedlr-task submodule)
+    name = paste(file,
+                 paste('_run-', as.character(json_count), sep = ''),
+                 '.tsv',
+                 sep = '')
+    write.table(design[design$task_version == json_count,],
+                file = name,
+                sep = '\t',
+                na = 'n/a',
+                row.names = FALSE)
+  }
 }
 
 # # Get max and min points of each design
@@ -137,5 +136,19 @@ for(i in seq(20)){
 # ggplot(data = data_plot, aes(x = variable, y = value)) +
 #   geom_point()
 
-
+# # Plot distributions of each design
+# data_plot = all_designs %>%
+#   .[, .(option = c(option_left, option_right),
+#         reward = c(reward_stim_1, reward_stim_2)),
+#     by = c('n_design', 'task_version')] %>%
+#   .[, option := as.factor(option)]
+# 
+# ggplot(data_plot,
+#        aes(x = reward,
+#            fill = option,
+#            color = option)) +
+#   geom_bar() +
+#   scale_x_binned(limits = c(1,100), n.breaks = 100) +
+#   facet_grid(n_design ~ task_version)
+  
 
