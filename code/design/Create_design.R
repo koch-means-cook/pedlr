@@ -83,6 +83,7 @@ Create_design <- function(n_blocks,
                            stim_1 = plan_block$stimuli[1],
                            stim_2 = plan_block$stimuli[2],
                            stim_3 = plan_block$stimuli[3])
+      # diff(which(block$with_rating == 1))
       # Append blocks of this version
       version = rbind(version, block)
       
@@ -287,6 +288,7 @@ Create_design <- function(n_blocks,
             }
           }
           
+          
           # - Put some estimates to after forced choice rare event
           # Find number of ratings after forced rare events
           n_crit_rate = nrow(curr_block[curr_block$is_rare == 1 &
@@ -300,18 +302,60 @@ Create_design <- function(n_blocks,
             # Randomly go through desired number of these trials to add rating
             crit_index = sample(crit_index, min_rate_after_rare_forced_per_block)
             for(i in crit_index){
-              # Find closes rating trial which is not after a rare event
-              rating_index = which(curr_block$with_rating == 1 & curr_block$is_rare == 0)
-              rating_index = rating_index[which(abs(rating_index - i) == min(abs(rating_index - i)))]
-              # Swap with closest rating
-              curr_block$with_rating[i] = 1
-              curr_block$with_rating[rating_index] = 0
+              # Find all rating trials
+              rating_index = which(curr_block$with_rating == 1)
+              # Find rating trials which are after rare events
+              other_forced_crit_ratings = which(curr_block$with_rating == 1 & curr_block$is_rare == 1 & curr_block$free_choice == 0)
+              # Also find adjacent ratings to avoid forced rare events with rating back to back
+              other_forced_crit_ratings = c(other_forced_crit_ratings,
+                                       rating_index[which(rating_index == other_forced_crit_ratings) -1],
+                                       rating_index[which(rating_index == other_forced_crit_ratings) +1])
+              other_forced_crit_ratings = other_forced_crit_ratings[!is.na(other_forced_crit_ratings)]
+              # Find first and last rating trial
+              fl = rating_index[c(1, length(rating_index))]
+              # Exclude from possible swap locations
+              rating_index = rating_index[!rating_index %in% c(other_forced_crit_ratings, fl)]
+              # If any possible swap points are left
+              if(length(rating_index) > 0){
+                # Find random rating trial out of possible swap points
+                replacement = sample(rating_index, 1)
+                # Swap location with closest rating
+                row_order = replace(seq(nrow(curr_block)), c(i, replacement), seq(nrow(curr_block))[c(replacement, i)])
+                curr_block = curr_block[row_order,]
+                # Swap rating to stay in same location (as if rows were not swapped)
+                rating = replace(curr_block$with_rating, c(i, replacement), curr_block$with_rating[c(replacement, i)])
+                curr_block$with_rating = rating 
+              }
             }
           }
-          
+
           # Overwrite block with new one containing required forced choices
           version[version$block_n == block_count,] = curr_block
           
+          # Check for conditions being fulfilled
+          # Forced choices with rare outcome
+          n_forced_with_rare_per_block = nrow(curr_block[curr_block$free_choice == 0 &
+                                                           curr_block$is_rare == 1 &
+                                                           curr_block$bad_forced == 0,])
+          if(n_forced_with_rare_per_block < min_forced_with_rare_per_block){
+            stop(paste('Minimum of n forced choices with rare ooutcome not fulfilled. n = ',
+                       n_forced_with_rare_per_block,
+                       ', min = ',
+                       min_forced_with_rare_per_block,
+                       sep = ''))
+          }
+          # Forced choices with rare outcome and rating afterwards
+          n_rate_after_rare_forced_per_block = nrow(curr_block[curr_block$free_choice == 0 &
+                                                                 curr_block$is_rare == 1 &
+                                                                 curr_block$bad_forced == 0 &
+                                                                 curr_block$with_rating == 1,])
+          if(n_rate_after_rare_forced_per_block < min_rate_after_rare_forced_per_block){
+            stop(paste('Minimum of n forced choices with rare outcome and followed by rating not fulfilled. n = ',
+                       n_rate_after_rare_forced_per_block,
+                       ', min = ',
+                       min_rate_after_rare_forced_per_block,
+                       sep = ''))
+          }
         }  
       }
     }
@@ -332,22 +376,56 @@ Create_design <- function(n_blocks,
   
 }
 
+
 # # Some checks
 # library(data.table)
-# bla = data.table(design)
+# library(magrittr)
+# bla = Create_design(n_blocks = 4,
+#                     perc_forced = 20,
+#                     blocks_per_task = 2,
+#                     dist_list = list(c('gaussian', 100 * 2/6, (100 * 1/6) / 3),
+#                                      c('bimodal', 100 * 3/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
+#                                      c('gaussian', 100 * 4/6, (100 * 1/6) / 3),
+#                                      c('gaussian', 100 * 3/6, (100 * 1/6) / 3),
+#                                      c('bimodal', 100 * 4/6, 0.2, -35, (100 * 1/6) / 3, (100 * 1/6) / 3),
+#                                      c('gaussian', 100 * 5/6, (100 * 1/6) / 3)),
+#                     prop_rare = 0.2,
+#                     min_forced_with_rare_per_block = 2,
+#                     min_rate_after_rare_forced_per_block = 2)
+# bla = data.table(bla)
+# # Still forced choices with a rare outcome on the false side?
 # if(nrow(bla[bad_forced == 1 & is_rare == 1]) != 0){
 #   stop('Still contains bad forced choices')
 # }
 # # Number of forced choices with rare outcomes
 # for(i in unique(bla$block_n)){
-#   if(nrow(bla[block_n == i & is_rare == 1 & free_choice == 0]) < 2){
+#   n = nrow(bla[block_n == i & is_rare == 1 & free_choice == 0])
+#   print(n)
+#   if(n < 2){
 #     stop(paste('Still too few forced choices with rare outcome per block in block ', as.character(i), sep = ''))
 #   }
 # }
-# # Print number of forced choices with rare outcomes with rating after
+# # Number of forced choices with rare outcomes with rating after
 # for(i in unique(bla$block_n)){
-#   if(nrow(bla[block_n == i & is_rare == 1 & free_choice == 0 & with_rating == 1]) < 2){
+#   n = nrow(bla[block_n == i & is_rare == 1 & free_choice == 0 & with_rating == 1])
+#   print(n)
+#   if(n < 2){
 #     stop(paste('Still too few ratings after forced choices with rare outcome per block in block ', as.character(i), sep = ''))
 #   }
 # }
+# # Trial numbers of rare forced choices with rating after
+# bla1 = bla %>%
+#   .[with_rating == 1, ] %>%
+#   .[, trial := seq(.N),
+#     by = 'block_n']
+# for(i in unique(bla$block_n)){
+#   rowr = bla1[block_n == i & is_rare == 1 & free_choice == 0 & with_rating == 1]
+#   n = nrow(rowr)
+#   loc = rowr$trial
+#   print(paste('n: ', n, ', Location: ', paste(loc, collapse = ' '), sep = ''))
+#   if(n < 2){
+#     stop(paste('Still too few ratings after forced choices with rare outcome per block in block ', as.character(i), sep = ''))
+#   }
+# }
+
 
