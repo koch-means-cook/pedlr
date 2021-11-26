@@ -38,7 +38,7 @@ bimodal_rel_proportion = 0.2
 for(i in seq(20)){
   
   # Set seed for each iteration of design creation
-  set.seed(i)
+  set.seed(i * 35)
   
   # Create distributions
   # run 1

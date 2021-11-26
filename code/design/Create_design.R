@@ -21,6 +21,7 @@ Create_design <- function(n_blocks,
                           prop_rare = 0.2,
                           min_forced_with_rare_per_block = 2,
                           min_rate_after_rare_forced_per_block = 2){
+
   
   # n_blocks = 4
   # perc_forced = 20
@@ -427,5 +428,6 @@ Create_design <- function(n_blocks,
 #     stop(paste('Still too few ratings after forced choices with rare outcome per block in block ', as.character(i), sep = ''))
 #   }
 # }
+
 
 
