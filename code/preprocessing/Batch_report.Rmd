@@ -37,8 +37,12 @@ library(viridis)
 library(knitr)
 library(kableExtra)
 
+# Get parameter variables form header
+base_path = params$base_path
+input = params$input
+
 # Load conversion function
-source_path = file.path(params$base_path,
+source_path = file.path(base_path,
                         'code',
                         'preprocessing',
                         'Raw_to_data.R',
@@ -46,7 +50,7 @@ source_path = file.path(params$base_path,
 source(source_path)
 
 # Load utility functions
-source_path = file.path(params$base_path,
+source_path = file.path(base_path,
                         'code',
                         'utils',
                         'Add_comp.R',
@@ -57,7 +61,7 @@ source(source_path)
 
 ```{r, include=FALSE}
 # Load participants data
-data = jsonlite::fromJSON(params$input) %>%
+data = jsonlite::fromJSON(input) %>%
   as.data.table() %>%
   # Convert to analysis data format
   Raw_to_data(data = .,
@@ -73,7 +77,7 @@ id = unique(data$prolific_id)
 
 ---
 
-# `r basename(params$input)` | `r id`
+# `r basename(input)` | `r id`
 
 ---
 

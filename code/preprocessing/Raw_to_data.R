@@ -11,22 +11,25 @@ Raw_to_data = function(data,
                        add_demo = FALSE,
                        delete_prolific = TRUE){
   
-  # Check if prolific_ID between experiment and demographic data are the same
-  exp_id = unique(data$prolific_id)
-  demo_id = demo_data$participant_id
-  if(!exp_id %in% demo_id){
-    best_idx = which(stringdist::stringsim(exp_id, demo_id) == max(stringdist::stringsim(exp_id, demo_id)))
-    best_match = demo_id[best_idx]
-    if(length(best_match) != 1){
-      stop('Prolific ID between demographic data and collected data do not match and cannot be inferred!')
+  # If demo data is given
+  if(!is.na(demo_data)){
+    # Check if prolific_ID between experiment and demographic data are the same
+    exp_id = unique(data$prolific_id)
+    demo_id = demo_data$participant_id
+    if(!exp_id %in% demo_id){
+      best_idx = which(stringdist::stringsim(exp_id, demo_id) == max(stringdist::stringsim(exp_id, demo_id)))
+      best_match = demo_id[best_idx]
+      if(length(best_match) != 1){
+        stop('Prolific ID between demographic data and collected data do not match and cannot be inferred!')
+      }
+      message('   Prolific ID of experiment and demographic data do not match!')
+      message(paste('      Exp ID: ', exp_id, sep = ''))
+      message(paste('      DemoID: ', best_match, sep = ''))
+      
+      # Update to trustworthy ID from demographic data (since no way to access that by participant)
+      data$prolific_id = best_match
+      message(paste('   Updated prolific ID of experiment to: ', unique(data$prolific_id), sep = ''))
     }
-    message('   Prolific ID of experiment and demographic data do not match!')
-    message(paste('      Exp ID: ', exp_id, sep = ''))
-    message(paste('      DemoID: ', best_match, sep = ''))
-    
-    # Update to trustworthy ID from demographic data (since no way to access that by participant)
-    data$prolific_id = best_match
-    message(paste('   Updated prolific ID of experiment to: ', unique(data$prolific_id), sep = ''))
   }
   
   # Check if participant has hiragana skills, add as variable
