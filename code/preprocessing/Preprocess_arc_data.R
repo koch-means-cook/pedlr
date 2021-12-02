@@ -4,8 +4,8 @@ library(jsonlite)
 library(data.table)
 library(magrittr)
 
-# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20210929_prolific_pedlr-pilot-03/raw/2021-10-07 16_49_20.json'
-# demo_path = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20210929_prolific_pedlr-pilot-03/raw/pedlr-pilot-03_demographic.csv'
+# input_path = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20211130_prolific_pedlr-main-younger-01/raw/2021-12-01 12_45_12.json'
+# demo_path = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20211130_prolific_pedlr-main-younger-01/raw/pedlr-main-younger-01_demographic.csv'
 
 
 Preprocess_arc_data = function(input_path,

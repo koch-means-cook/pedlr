@@ -91,17 +91,70 @@ data_plot = data %>%
   # Subtract the artificially added outcomes
   .[, count := count - 1]
 
+data_plot_mean = data %>%
+  .[, .(stim = c(option_left, option_right),
+        outcome = c(reward_stim_1, reward_stim_2)),
+    by = c('n_design', 'task_version')] %>%
+  .[, stim := as.factor(stim)] %>%
+  .[, .(mean_outcome = mean(outcome)),
+    by = c('n_design', 'task_version', 'stim')]
+
+data_plot_diff = data_plot_mean %>%
+  data.table::dcast(., n_design + task_version ~ paste0('mean_', stim), value.var = 'mean_outcome') %>%
+  .[, ':='(diff2m1 = mean_2 - mean_1,
+           diff3m2 = mean_3 - mean_2)] %>%
+  .[, ':='(loc2m1 = mean_1 + (diff2m1/2),
+           loc3m2 = mean_2 + (diff3m2/2))]
+           
+
 ggplot(data = data_plot,
        aes(x = outcome,
            y = count,
            color = stim,
            fill = stim,
            group = stim)) +
-  geom_line() +
-  scale_x_continuous(limits = c(1,100)) +
-  scale_y_continuous(limits = c(0,15)) +
+  theme_bw() +
+  #geom_line() +
+  geom_area(data = data_plot[stim == 1],
+            alpha = 0.7) +
+  geom_area(data = data_plot[stim == 3],
+            alpha = 0.7) +
+  geom_area(data = data_plot[stim == 2],
+            alpha = 0.7,
+            color = 'black') +
+  geom_label(data = data_plot_mean,
+             aes(x = mean_outcome,
+                 y = max(data_plot$count) + 3,
+                 label = round(mean_outcome,2),
+                 color = NA),
+             color = 'white',
+             size = 2) +
+  geom_label(data = data_plot_diff,
+             aes(x = loc2m1,
+                 y = max(data_plot$count) + 6,
+                 color = NA,
+                 fill = NA,
+                 group = NA,
+                 label = round(diff2m1, 2)),
+             color = 'white',
+             fill = 'black',
+             size = 1.5) +
+  geom_label(data = data_plot_diff,
+             aes(x = loc3m2,
+                 y = max(data_plot$count) + 6,
+                 color = NA,
+                 fill = NA,
+                 group = NA,
+                 label = round(diff3m2, 2)),
+             color = 'white',
+             fill = 'black',
+             size = 1.5) +
+  scale_x_continuous(limits = c(1,100), expand = c(0,0)) +
+  scale_y_continuous(limits = c(0,max(data_plot$count) + 8), expand = c(0,0)) +
   facet_grid(n_design ~ task_version) +
-  theme(legend.position = 'top')
+  theme(legend.position = 'none',
+        panel.grid = element_blank()) +
+  guides(alpha = FALSE)
 ```
 
 # Estimation trials
