@@ -10,6 +10,7 @@ library(magrittr)
 #input = '/Users/koch/Desktop/pedlr-pilot-01'
 # input = '/Volumes/MPRG-Neurocode/Data/pedlr/20210928_prolific_pedlr-pilot-01/raw'
 #input = '/Volumes/MPRG-Neurocode/Data/pedlr/20210929_prolific_pedlr-pilot-03/raw/2021-09-29 13_19_24.json'
+# input = '/Volumes/MPRG-Neurocode/Data/pedlr_2021_koch/20211130_prolific_pedlr-main-younger-01/raw'
 
 Calculate_bonus = function(input){
   
@@ -36,6 +37,11 @@ Calculate_bonus = function(input){
     # Set prolific id for all entries
     data$prolific_id = data$prolific_id[1]
     
+    # Get forced choices and clean up outcomes
+    data_forced = data[type == 'forced']
+    data_forced[outcome == 'n/a']$outcome = NA
+    data_forced$outcome = as.numeric(data_forced$outcome)
+    
     # Set data to only free choices (only free choices off performance measure)
     data = data[type == 'free']
     data$outcome_left = as.numeric(data$outcome_left)
@@ -44,50 +50,39 @@ Calculate_bonus = function(input){
     data = data[!is.na(comp_number)]
     # Get possible max points (optimal choice each time)
     data[, max_points := max(outcome_left, outcome_right), by = trial_index]
+    max_points = sum(data$max_points)
     
-    # Get chance points (multiple times to take mean after)
-    data[, ':='(chance_points_1 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_2 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_3 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_4 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_5 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_6 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_7 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_8 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_9 = sample(c(outcome_left, outcome_right), 1),
-                chance_points_10 = sample(c(outcome_left, outcome_right), 1)),
-         by = trial_index]
+    # Get 70% accuracy points (multiple times to take mean after)
+    p_70_cols = paste('p_70_points_', seq(20), sep = '')
+    for(col in p_70_cols){
+      data[, (col) := sample(c(max(outcome_left, outcome_right),
+                                min(outcome_left, outcome_right)),
+                              1,
+                              prob = c(0.7, 0.3)),
+           by = trial_index]
+    }
     
+    # Get mean of 70% accuracy points
+    mean_p_70 = mean(data[, sapply(.SD, sum), .SDcols = p_70_cols])
+    
+    # Set bonus hallmarks (max at absolute maximum of points, 50% of bonus at 70% performance)
+    bonus_100 = max_points
+    bonus_50 = mean_p_70
+    points_per_percent = (bonus_100 - bonus_50) / 50
+      
     # Get participants outcomes
     data[outcome == 'n/a']$outcome = NA
     data$outcome = as.numeric(data$outcome)
-    
-    # Compare max, chance, and actual points
-    max_points = sum(data$max_points)
-    chance_points = mean(c(sum(data$chance_points_1),
-                           sum(data$chance_points_2),
-                           sum(data$chance_points_3),
-                           sum(data$chance_points_4),
-                           sum(data$chance_points_5),
-                           sum(data$chance_points_6),
-                           sum(data$chance_points_7),
-                           sum(data$chance_points_8),
-                           sum(data$chance_points_9),
-                           sum(data$chance_points_10)))
     points = sum(data$outcome, na.rm = TRUE)
-    
-    # Set up scale between chance and max
-    max_points = round(max_points - chance_points, 2)
-    points = round(points - chance_points, 2)
-    
-    # Get percentage between chance and max points
-    bonus_perc = points / max_points
     
     # Bonus pool (possible max bonus pay, in pounds)
     bonus_pool = 3
     
-    # Get percentage of bonus pool
-    bonus = round(bonus_pool * bonus_perc, 2)
+    # Get bonus based on scale
+    surplus_50 = (points - bonus_50) / points_per_percent
+    perc_bonus = (50 + surplus_50) / 100
+    bonus = round(bonus_pool * perc_bonus, 2)
+
     # If bonus would be negative, bonus is 0
     if(bonus < 0){
       bonus = 0
