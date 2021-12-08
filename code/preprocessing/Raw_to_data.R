@@ -293,14 +293,23 @@ Raw_to_data = function(data,
     setnames(data, 'Employment.Status', 'employment_status')
     setnames(data, 'Nationality', 'nationality')
     setnames(data, 'Sex', 'sex')
+    
+    # Add group
+    if(unique(data$age) <= 30){
+      data$group = 'younger'
+    } else{
+      data$group = 'older'
+    }
+    
+    
   }
   
   # Delete prolific ID from data for anonymization
   if(delete_prolific){
     data[, prolific_id := NULL]
   }
-
   
+
   
   return(data)
 }
