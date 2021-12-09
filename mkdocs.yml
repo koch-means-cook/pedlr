@@ -12,8 +12,9 @@ nav:
       - Model: pedlr_models.md
       - Autopsy: pedlr_autopsy.md
   - Pipeline:
+    - Parameter recovery: pipeline/parameter_recovery.md
     - Preprocessing: pipeline/preprocessing.md
-    - Model fiting: pipeline/model_fitting.md
+    - Model fitting: pipeline/model_fitting.md
   - Simulation: sim_pe_dep_LR.html
 
 markdown_extensions:
