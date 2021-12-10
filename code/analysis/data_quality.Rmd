@@ -1,0 +1,326 @@
+---
+title: "Data quality"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(cowplot)
+```
+
+```{r}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+```
+
+```{r}
+# Load data
+data = Load_data() %>%
+  Add_comp(.) %>%
+  .[, task_version := as.factor(task_version)]
+
+# get number of participants (to adjust figure height)
+n_participants = length(unique(data$participant_id))
+
+# allocate table to hold suspicious participants
+sus_pool = data.table()
+```
+
+# Data quality
+
+## Errors in forced choices
+
+See if participants made a lot of errors in the forced choice trials.
+Forced choice trials were very simple: Choose the option that had a frame around it.
+A lot of errors in these trials indicate the participant did not pay attention to the task at hand.
+
+```{r, out.width='100%'}
+# Set target accuracy of forced choice trials
+target_accuracy = 75
+
+# Summary: Mistakes on forced choices
+check_fce = data %>%
+  .[trial_type == 'forced',] %>%
+  .[, forced_error := error] %>%
+  .[, .(n_forced = length(forced),
+        n_error = sum(as.numeric(forced_error)),
+        group = unique(group)), by = 'participant_id'] %>%
+  # Percentage false
+  .[, perc_forced_error := round((n_error/n_forced) * 100, 2)] %>%
+  .[, count := seq(.N), by = c('n_error', 'group')]
+
+check_fce$participant_id = factor(check_fce$participant_id,
+                                  levels = check_fce[order(-rank(perc_forced_error))]$participant_id)
+
+# Fill pool with sus participants
+sus_pool = check_fce[perc_forced_error > 100 - target_accuracy,
+                     c('participant_id', 'group')]
+sus_pool$task_version = NA
+sus_pool$reason = 'low_forced_accuracy'
+
+p = ggplot(data = check_fce,
+           aes(x = participant_id,
+               y = perc_forced_error,
+               fill = group)) +
+  # Add line to mark target of correct answers (everything over line is not accurate enough)
+  geom_hline(yintercept = 100 - target_accuracy,
+             linetype = 'dashed') +
+  geom_col() +
+  labs(y = '% of errors in forced choice trials') +
+  theme(axis.text.x = element_text(angle = 270, vjust = 0.5),
+        legend.position = 'top')
+p
+```
+
+## Difference estimation bandit 1 and 3
+
+```{r, warning=FALSE}
+Get_running_avg = function(choice_option, choice_outcome, stim){
+  # Initialize array keeping running average for all trials
+  running_avg = c()
+  
+  # Loop over trials
+  for(i in seq(length(choice_option))){
+    # Find all choices of option so far
+    idx = choice_option[1:i] == stim
+    # Create mean over all stim choices so far
+    trialwise_mean = mean(choice_outcome[1:i][idx], na.rm = TRUE)
+    # Append running average for each trial
+    running_avg = c(running_avg, trialwise_mean)
+  }
+  
+  # Set all trials in which option has not been chosen so far to NA
+  running_avg[is.nan(running_avg)] = NA
+  return(running_avg)
+}
+
+check_est = data %>%
+  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 1),
+           avg_2_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 2),
+           avg_3_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 3)),
+    by = c('participant_id', 'task_version')] %>%
+  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
+  .[!is.na(est_1_reward),] %>%
+  .[, est_trial := seq(.N), by = c('participant_id', 'task_version')] %>%
+  data.table::melt(.,
+                   id.vars = c('participant_id',
+                               'group',
+                               'task_version',
+                               'est_trial',
+                               'forced_rare'),
+                   measure.vars = c('est_1_reward',
+                                    'est_1_range',
+                                    'avg_1_running',
+                                    'est_2_reward',
+                                    'est_2_range',
+                                    'avg_2_running',
+                                    'est_3_reward',
+                                    'est_3_range',
+                                    'avg_3_running')) %>%
+  .[, est_stim := substr(variable, 5, 5)] %>%
+  .[, type := substr(variable, 7, 9)] %>%
+  .[type == 'rew', type := 'reward'] %>%
+  .[type == 'ran', type := 'range'] %>%
+  .[type == 'run', type := 'r_avg'] %>%
+  data.table::dcast(., participant_id + group + task_version + est_trial + forced_rare + est_stim ~ type,
+                    value.var = 'value')
+
+# Create custom t-test that does not throw an error in case all values are the same
+# Allows to still run without an error even if participant ALWAYS estimated the same value
+my.t.test = function(x, y, alternative, paired){
+  obj = try(t.test(x, y, alternative, paired = paired), silent = TRUE)
+  if(is(obj, 'try-error')){
+    result = list(statistic = as.numeric(NA),
+                  parameter = as.numeric(NA),
+                  p.value = as.numeric(1))
+    return(result)
+  } else{
+    result = list(statistic = obj$statistic,
+                  parameter = obj$parameter,
+                  p.value = obj$p.value)
+    return(result)
+  }
+}
+
+# t-test for difference in estimation between bandit 1 and 3
+# check_est_1v3 = check_est %>%
+#   .[est_stim != 2,] %>%
+#   data.table::dcast(participant_id + group + task_version + est_trial ~ paste0('est_', est_stim),
+#                     value.var = 'reward') %>%
+#   .[, .(mean_1 = mean(est_1),
+#         mean_3 = mean(est_3),
+#         # Test for sig difference between estimate of bandit 1 and 3 (skip first 3 trials to give time to learn)
+#         statistic = my.t.test(x = est_1,
+#                               y = est_3,
+#                               alternative = 'two.sided',
+#                               paired = TRUE)$statistic,
+#         parameter = my.t.test(x = est_1,
+#                               y = est_3,
+#                               alternative = 'two.sided',
+#                               paired = TRUE)$parameter,
+#         p.value = round(my.t.test(x = est_1,
+#                                   y = est_3,
+#                                   alternative = 'two.sided',
+#                                   paired = TRUE)$p.value, 3)),
+#     by = c('participant_id', 'group', 'task_version')]
+
+check_est_1v3 = check_est %>%
+  .[est_stim != 2,] %>%
+  data.table::dcast(participant_id + group + task_version + est_trial ~ paste0('est_', est_stim),
+                    value.var = 'reward') %>%
+  .[, .(mean_1 = mean(est_1),
+        mean_3 = mean(est_3),
+        # Test for sig difference between estimate of bandit 1 and 3 (across task versions is okay because of paired)
+        statistic = t.test(x = est_1,
+                              y = est_3,
+                              alternative = 'less',
+                              paired = TRUE)$statistic,
+        parameter = t.test(x = est_1,
+                              y = est_3,
+                              alternative = 'less',
+                              paired = TRUE)$parameter,
+        p.value = round(t.test(x = est_1,
+                                  y = est_3,
+                                  alternative = 'less',
+                                  paired = TRUE)$p.value, 3)),
+    by = c('participant_id', 'group')]
+
+# # Add results to plot
+# check_est_diff = check_est %>%
+#   .[participant_id %in% check_est_1v3[p.value >= 0.05 & task_version == 1]$participant_id &
+#       task_version == 1,
+#     diff_est_1v3 := 'no_diff'] %>%
+#   .[participant_id %in% check_est_1v3[p.value >= 0.05 & task_version == 2]$participant_id &
+#       task_version == 2,
+#     diff_est_1v3 := 'no_diff'] %>%
+#   .[participant_id %in% check_est_1v3[p.value < 0.05 & task_version == 1]$participant_id &
+#       task_version == 1,
+#     diff_est_1v3 := 'valid'] %>%
+#   .[participant_id %in% check_est_1v3[p.value < 0.05 & task_version == 2]$participant_id &
+#       task_version == 2,
+#     diff_est_1v3 := 'valid'] %>%
+#   .[est_stim != 2]
+
+# Add results to plot
+check_est_diff = check_est %>%
+  .[participant_id %in% check_est_1v3[p.value >= 0.05]$participant_id,
+    diff_est_1v3 := 'no_diff'] %>%
+  .[participant_id %in% check_est_1v3[p.value < 0.05]$participant_id,
+    diff_est_1v3 := 'valid'] %>%
+  .[est_stim != 2]
+
+# add suspicious participants
+temp = check_est_1v3[p.value > 0.05,
+                      c('participant_id', 'group')]
+temp$task_version = NA
+temp$reason = 'est_1v3_not_different'
+sus_pool = rbind(sus_pool, temp)
+```
+
+See if participants can't accurately estimate that bandit 1 and 3 are different.
+The distributions of bandit 1 and 3 are very different and don't touch.
+Not being able to estimate a difference between them indicates the participant did not pay attention to the task at hand.
+
+```{r}
+p = ggplot(data = check_est_diff,
+               aes(x = est_trial,
+                   y = reward,
+                   color = est_stim)) +
+  geom_path(aes(y = r_avg),
+             linetype = 'dashed',
+            alpha = 0.5) +
+  geom_point(size = 0.8) +
+  geom_path() +
+  labs(x = 'Estimation Trial',
+       y = 'Estimate') +
+  facet_grid(participant_id ~ diff_est_1v3 + task_version) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  theme(legend.position = 'top')
+```
+
+```{r}
+# Add accuracy of 1v3 choices
+check_corr_1v3 = data %>%
+  .[comp == '1v3' & trial_type == 'choice',] %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'group', 'task_version')] %>%
+  .[, corr_outcome := max(c(reward_stim_1, reward_stim_2)),
+    by = c('participant_id', 'group', 'task_version', 'trial')] %>%
+  .[, corr := corr_outcome == outcome,
+    by = c('participant_id', 'group', 'task_version', 'trial')] %>%
+  # get accuracy for valid 1v3 trials (timeouts and forced choices excluded)
+  .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr)),
+    by = c('participant_id', 'group', 'task_version')]
+
+p_ext = ggplot(data = check_corr_1v3,
+               aes(x = task_version,
+                   y = corr_1v3)) +
+  geom_hline(yintercept = 0.5, linetype = 'dashed') +
+  geom_point() +
+  facet_grid(participant_id ~ 'corr_1v3')
+```
+
+```{r, out.width='100%', fig.height=n_participants}
+p_full = cowplot::plot_grid(p_ext,p,
+                            rel_widths = c(0.3,1),
+                            ncol = 2,
+                            axis = 'bt',
+                            align = 'h')
+p_full
+```
+
+# Percentage of suspicious participants
+
+With at least 1 run being suspicious
+
+```{r}
+length(unique(sus_pool$participant_id)) / length(unique(data$participant_id)) * 100
+```
+

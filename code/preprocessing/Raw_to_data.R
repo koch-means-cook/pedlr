@@ -12,7 +12,7 @@ Raw_to_data = function(data,
                        delete_prolific = TRUE){
   
   # If demo data is given
-  if(nrow(demo_data) > 0){
+  if(!is.null(nrow(demo_data))){
     # Check if prolific_ID between experiment and demographic data are the same
     exp_id = unique(data$prolific_id)
     demo_id = demo_data$participant_id

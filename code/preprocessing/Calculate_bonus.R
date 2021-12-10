@@ -52,22 +52,22 @@ Calculate_bonus = function(input){
     data[, max_points := max(outcome_left, outcome_right), by = trial_index]
     max_points = sum(data$max_points)
     
-    # Get 70% accuracy points (multiple times to take mean after)
-    p_70_cols = paste('p_70_points_', seq(20), sep = '')
-    for(col in p_70_cols){
+    # Get 75% accuracy points (multiple times to take mean after)
+    p_75_cols = paste('p_75_points_', seq(20), sep = '')
+    for(col in p_75_cols){
       data[, (col) := sample(c(max(outcome_left, outcome_right),
                                 min(outcome_left, outcome_right)),
                               1,
-                              prob = c(0.7, 0.3)),
+                              prob = c(0.75, 0.25)),
            by = trial_index]
     }
     
     # Get mean of 70% accuracy points
-    mean_p_70 = mean(data[, sapply(.SD, sum), .SDcols = p_70_cols])
+    mean_p_75 = mean(data[, sapply(.SD, sum), .SDcols = p_75_cols])
     
-    # Set bonus hallmarks (max at absolute maximum of points, 50% of bonus at 70% performance)
+    # Set bonus hallmarks (max at absolute maximum of points, 50% of bonus at 75% performance)
     bonus_100 = max_points
-    bonus_50 = mean_p_70
+    bonus_50 = mean_p_75
     points_per_percent = (bonus_100 - bonus_50) / 50
       
     # Get participants outcomes
