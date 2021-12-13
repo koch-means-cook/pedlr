@@ -41,6 +41,8 @@ library(knitr)
 library(kableExtra)
 library(maps)
 library(mapproj)
+library(rgeos)
+library(rworldmap)
 ```
 
 ```{r}
@@ -76,8 +78,8 @@ group_info = data %>%
         group = unique(group)),
     by = participant_id] %>%
   .[, .(n = .N,
-        mean_age = mean(age),
-        sd_age = sd(age),
+        mean_age = round(mean(age), 2),
+        sd_age = round(sd(age), 2),
         min_age = min(age),
         max_age = max(age)),
     by = group]
@@ -88,10 +90,34 @@ knitr::kable(group_info) %>%
 
 ## Countries
 
+```{r}
+# Get location stats of participants based on prolific data
+loc_data = data %>%
+  .[, c('participant_id', 'group', 'age', 'curent_country_of_residence')] %>%
+  .[, .(age_group = unique(group),
+        age = unique(age),
+        curent_country_of_residence = unique(curent_country_of_residence)),
+    by = participant_id] %>%
+  .[, region := curent_country_of_residence] %>%
+  .[, .(n = .N,
+        n_younger = length(grep('younger', age_group)),
+        n_older = length(grep('older', age_group)),
+        mean_age = round(mean(age), 2)),
+    by = region] %>%
+  .[order(-rank(n))]
+
+# Display as table
+knitr::kable(loc_data) %>%
+  kableExtra::kable_styling()
+```
+
+
 ```{r, out.width='100%'}
+# Get polygons of world map
 geo_data = data.table(map_data('world')) %>%
   .[, curent_country_of_residence := region]
 
+# Get location of participants based on prolific data
 loc_data = data %>%
   .[, c('participant_id', 'group', 'age', 'curent_country_of_residence')] %>%
   .[, .(age_group = unique(group),
@@ -101,15 +127,59 @@ loc_data = data %>%
   .[, region := curent_country_of_residence] %>%
   .[, .(n = .N),
     by = region] %>%
-  merge(.,
-        geo_data) %>%
-  # Get single point for each country
+  # Rename locations that mismatch with worldmap data
+  .[region == 'United Kingdom', region := 'UK'] %>%
+  .[region == 'United States', region := 'USA']
+
+# Get central points of countries
+wmap = rworldmap::getMap(resolution = 'low')
+centroids = as.data.frame(rgeos::gCentroid(wmap, byid=TRUE))
+centroids$region = rownames(centroids)
+centroids = as.data.table(centroids) %>%
+  .[, ':='(long_cent = x,
+           lat_cent = y)] %>%
+  # Rename locations that mismatch with worldmap data
+  .[region == 'United States of America', region := 'USA'] %>%
+  .[region == 'United Kingdom', region := 'UK']
+
+# Check if country names in centroid data deviate from country names in prolific data
+name_dev = !unique(loc_data$region) %in% unique(centroids$region)
+if(any(name_dev)){
+  devs = unique(loc_data$region)[name_dev]
+  stop(paste('Deviation in country names between Prolific data and country centers: c(',
+             paste(devs, collapse = ', '),
+             ')',
+             sep = ''))
+}
+
+# Check if country names in prolific data deviate from country names on world map
+name_dev = !unique(loc_data$region) %in% unique(geo_data$region)
+if(any(name_dev)){
+  devs = unique(loc_data$region)[name_dev]
+  stop(paste('Deviation in country names between Prolific data and world map: c(',
+             paste(devs, collapse = ', '),
+             ')',
+             sep = ''))
+}
+
+# Add location data to participant counts
+loc_data = merge(loc_data, geo_data)
+# For the included countries switch location data from polygon data to central 
+# points of country
+for(country in unique(loc_data$region)){
+  loc_data[region == country, ':='(long = centroids[region == country]$long_cent,
+                                   lat = centroids[region == country]$lat_cent)]
+}
+
+# Get single point for each country
+loc_data = loc_data %>%
   .[, .(n = unique(n),
         long = mean(long),
         lat = mean(lat),
         group = group[1]),
     by = region]
 
+# Plot worldmap
 ggplot(geo_data,
        aes(x = long,
            y = lat,
@@ -118,6 +188,7 @@ ggplot(geo_data,
   geom_polygon(color = 'grey',
                fill = 'transparent',
                size = 0.1) +
+  # Add location of participants (size and fill of dot scale with count)
   geom_point(data = loc_data,
              aes(fill = n,
                  size = n),
@@ -126,17 +197,25 @@ ggplot(geo_data,
              alpha = 0.5) +
   scale_fill_viridis(option='D',
                      guide = 'legend',
-                     breaks = unique(loc_data$n)) +
+                     breaks = sort(unique(loc_data$n))) +
   scale_size_continuous(range = c(0.5,5),
-                        breaks = unique(loc_data$n)) +
+                        breaks = sort(unique(loc_data$n))) +
+  # Add map projection
   coord_map('mercator') +
   scale_y_continuous(limits = c(-180, 180)) +
   scale_x_continuous(limits = c(-200, 200),
                      expand = c(0,0)) +
+  # Add complete count of participants
+  annotate('label',
+           x = -160,
+           y = -73,
+           label = paste('Total N = ', as.character(sum(loc_data$n)), sep = '')) +
   theme(panel.grid = element_blank(),
         axis.title = element_blank(),
         axis.text = element_blank(),
         axis.ticks = element_blank(),
         legend.position = 'top')
+
+
 ```
 

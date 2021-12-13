@@ -327,12 +327,11 @@ Participants where we cannot find a significant difference between these two ban
 These participants estimated similar means for two separate, not-crossing Gaussian distributions.
 This makes it likely they did not pay attention to the estimation trials.
 The left plot shows accuracy in comparisons between bandit 1 and 3 in choice trials.
-Bad performance in estimation and bad performance in choices are mostly aligned, meaning bad performance in estimation seems to not be independent of bad performance in choices.
 
 # Percentage of suspicious participants
 
 ```{r}
-length(unique(sus_pool$participant_id)) / length(unique(data$participant_id)) * 100
+perc_sus = length(unique(sus_pool$participant_id)) / length(unique(data$participant_id)) * 100
 ```
 
-Roughly 20% of the 39 participants in this half-way quality assessment get flagged as suspicious (probably did not pay attention).
+Roughly `r round(perc_sus,2)`% of the `r n_participants` participants get flagged as suspicious (probably did not pay attention).
