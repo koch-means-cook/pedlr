@@ -29,7 +29,7 @@ logs/*
 *.html
 
 # Except in documentation folder
-!/documentation/*.html
+!/documentation/**/*.html
 
 # Ignore picture files
 *.png
