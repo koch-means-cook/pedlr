@@ -1,0 +1,142 @@
+---
+title: "Demographic data"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(maps)
+library(mapproj)
+```
+
+```{r}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+```
+
+```{r}
+# Load data
+data = Load_data() %>%
+  Add_comp(.) %>%
+  .[, task_version := as.factor(task_version)]
+
+# get number of participants (to adjust figure height)
+n_participants = length(unique(data$participant_id))
+```
+
+# Demographic
+
+## Groups
+
+```{r}
+group_info = data %>%
+  .[, .(age = unique(age),
+        sex = unique(sex),
+        group = unique(group)),
+    by = participant_id] %>%
+  .[, .(n = .N,
+        mean_age = mean(age),
+        sd_age = sd(age),
+        min_age = min(age),
+        max_age = max(age)),
+    by = group]
+
+knitr::kable(group_info) %>%
+  kableExtra::kable_styling()
+```
+
+## Countries
+
+```{r, out.width='100%'}
+geo_data = data.table(map_data('world')) %>%
+  .[, curent_country_of_residence := region]
+
+loc_data = data %>%
+  .[, c('participant_id', 'group', 'age', 'curent_country_of_residence')] %>%
+  .[, .(age_group = unique(group),
+        age = unique(age),
+        curent_country_of_residence = unique(curent_country_of_residence)),
+    by = participant_id] %>%
+  .[, region := curent_country_of_residence] %>%
+  .[, .(n = .N),
+    by = region] %>%
+  merge(.,
+        geo_data) %>%
+  # Get single point for each country
+  .[, .(n = unique(n),
+        long = mean(long),
+        lat = mean(lat),
+        group = group[1]),
+    by = region]
+
+ggplot(geo_data,
+       aes(x = long,
+           y = lat,
+           group = group)) +
+  theme_bw() +
+  geom_polygon(color = 'grey',
+               fill = 'transparent',
+               size = 0.1) +
+  geom_point(data = loc_data,
+             aes(fill = n,
+                 size = n),
+             color = 'black',
+             shape = 21,
+             alpha = 0.5) +
+  scale_fill_viridis(option='D',
+                     guide = 'legend',
+                     breaks = unique(loc_data$n)) +
+  scale_size_continuous(range = c(0.5,5),
+                        breaks = unique(loc_data$n)) +
+  coord_map('mercator') +
+  scale_y_continuous(limits = c(-180, 180)) +
+  scale_x_continuous(limits = c(-200, 200),
+                     expand = c(0,0)) +
+  theme(panel.grid = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = 'top')
+```
+
