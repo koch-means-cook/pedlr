@@ -28,6 +28,9 @@ logs/*
 # Ignore knitted notbooks
 *.html
 
+# Except in documentation folder
+!/documentation/*.html
+
 # Ignore picture files
 *.png
 *.jpeg

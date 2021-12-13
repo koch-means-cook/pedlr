@@ -5,6 +5,9 @@ docs_dir: documentation/docs
 copyright: 'Copyright &copy; 2019 - Christoph Koch'
 nav:
   - Home: index.md
+  - Half-way data quality assessment:
+    - Half-way data quality assessment: half-way-quality-assessment/half_way_data_quality_assessment.md
+    - Data sheet: half-way-quality-assessment/20211213_half_way_data_quality.html
   - Issues:
     - ProblemChase: problem_chase.md
   - Models:

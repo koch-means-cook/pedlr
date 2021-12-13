@@ -1,5 +1,5 @@
 ---
-title: "Data quality"
+title: "Half-way data quality assessment"
 output:
   html_document:
     toc: yes
@@ -112,6 +112,11 @@ p = ggplot(data = check_fce,
         legend.position = 'top')
 p
 ```
+
+**Above:** Amount of errors in 'guided' choice trials.
+Dashed line shows 25% errors (75% accuracy).
+Most participants stay way below this critical error rate.
+Additionally, older adults don't seem much worse in this measure.
 
 ## Difference estimation bandit 1 and 3
 
@@ -316,11 +321,18 @@ p_full = cowplot::plot_grid(p_ext,p,
 p_full
 ```
 
-# Percentage of suspicious participants
+**Above:** Suspicious and valid estimation patterns of participants.
+We did a paired t-test across ALL estimation trials (also across task runs) between estimations of bandit 1 and 3.
+Participants where we cannot find a significant difference between these two bandits using this test are listed in the leftmost two columns of the right plot.
+These participants estimated similar means for two separate, not-crossing Gaussian distributions.
+This makes it likely they did not pay attention to the estimation trials.
+The left plot shows accuracy in comparisons between bandit 1 and 3 in choice trials.
+Bad performance in estimation and bad performance in choices are mostly aligned, meaning bad performance in estimation seems to not be independent of bad performance in choices.
 
-With at least 1 run being suspicious
+# Percentage of suspicious participants
 
 ```{r}
 length(unique(sus_pool$participant_id)) / length(unique(data$participant_id)) * 100
 ```
 
+Roughly 20% of the 39 participants in this half-way quality assessment get flagged as suspicious (probably did not pay attention).
