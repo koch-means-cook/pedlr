@@ -186,7 +186,7 @@ ggplot(geo_data,
            group = group)) +
   theme_bw() +
   geom_polygon(color = 'grey',
-               fill = 'transparent',
+               fill = 'white',
                size = 0.1) +
   # Add location of participants (size and fill of dot scale with count)
   geom_point(data = loc_data,
@@ -211,6 +211,7 @@ ggplot(geo_data,
            y = -73,
            label = paste('Total N = ', as.character(sum(loc_data$n)), sep = '')) +
   theme(panel.grid = element_blank(),
+        panel.background = element_rect(fill = 'lightblue'),
         axis.title = element_blank(),
         axis.text = element_blank(),
         axis.ticks = element_blank(),

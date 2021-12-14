@@ -128,7 +128,7 @@ p_tot
 
 ## Estimation track
 
-```{r, fig.height=0.75*n_participants, out.width='100%'}
+```{r, fig.height=0.75*n_participants, out.width='100%', warning=FALSE}
 Get_running_avg = function(choice_option, choice_outcome, stim){
   # Initialize array keeping running average for all trials
   running_avg = c()
@@ -249,17 +249,38 @@ p_est_diff
 
 ## Mean difference from truth in estimation {.tabset}
 
-### Across groups
+### Across groups {.tabset}
+
+#### Mean
 
 ```{r, out.width='100%'}
 p_est_diff = ggplot(data = check_est_diff,
                     aes(x = est_trial,
                         y = diff_from_true,
                         color = est_stim)) +
-  geom_hline(yintercept = 0,
-             linetype = 'dashed') +
   geom_path(alpha = 0.3, aes(group = participant_id)) +
-  stat_summary(fun = 'mean', geom = 'line', size = 1.5, na.rm = TRUE) +
+  stat_summary(fun = 'mean', geom = 'line', size = 1, na.rm = TRUE, color = 'black') +
+  stat_summary(fun = 'mean', geom = 'point', size = 1.5, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
+    geom_hline(yintercept = 0,
+               size = 0.3) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  facet_grid(task_version~ est_stim) +
+  theme(legend.position = 'top')
+p_est_diff
+```
+
+#### Median
+
+```{r, out.width='100%'}
+p_est_diff = ggplot(data = check_est_diff,
+                    aes(x = est_trial,
+                        y = diff_from_true,
+                        color = est_stim)) +
+  geom_path(alpha = 0.3, aes(group = participant_id)) +
+  stat_summary(fun = 'median', geom = 'line', size = 1, na.rm = TRUE, color = 'black') +
+  stat_summary(fun = 'median', geom = 'point', size = 1.5, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
+    geom_hline(yintercept = 0,
+               size = 0.3) +
   scale_color_viridis(option = 'D', discrete = TRUE) +
   facet_grid(task_version~ est_stim) +
   theme(legend.position = 'top')
@@ -273,10 +294,11 @@ p_est_diff = ggplot(data = check_est_diff,
                     aes(x = est_trial,
                         y = diff_from_true,
                         color = est_stim)) +
-  geom_hline(yintercept = 0,
-             linetype = 'dashed') +
   geom_path(alpha = 0.3, aes(group = participant_id)) +
-  stat_summary(fun = 'mean', geom = 'line', size = 1.5, na.rm = TRUE) +
+  stat_summary(fun = 'median', geom = 'line', size = 0.5, na.rm = TRUE, color = 'black') +
+  stat_summary(fun = 'median', geom = 'point', size = 1, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
+  geom_hline(yintercept = 0,
+             size = 0.3) +
   scale_color_viridis(option = 'D', discrete = TRUE) +
   facet_grid(task_version ~ group + est_stim) +
   theme(legend.position = 'top')
