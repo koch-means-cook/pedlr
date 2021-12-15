@@ -41,7 +41,7 @@ library(knitr)
 library(kableExtra)
 ```
 
-```{r}
+```{r, message=FALSE}
 # Get directory of repository
 base_path = here::here()
 
@@ -79,21 +79,19 @@ check_fce = data %>%
   .[, count := seq(.N), by = c('n_error', 'group')]
 
 # Plot errors for each participant
-p_fce = ggplot(data = check_fce,
+data_plot = Prepare_data_for_plot(check_fce)
+p_fce = ggplot(data = data_plot,
                aes(x = n_error,
-                   y = count,
                    label = participant_id,
                    fill = group)) +
-  geom_label(size = 0.5) +
+  geom_bar() +
   labs(x = 'Number of errors during forced choices',
        y = 'N') +
-  scale_x_continuous(limits = c(0,max(check_fce$n_error)),
-                     breaks = seq(0,max(check_fce$n_error, by = 1))) +
-  scale_y_continuous(limits = c(1,max(check_fce$count)),
-                     breaks = seq(max(check_fce$count, by = 1))) +
+  scale_x_continuous(breaks = seq(0,max(data_plot$n_error), by = 2)) +
+  scale_y_continuous(breaks = seq(max(data_plot$count, by = 2))) +
   facet_wrap(~ group) +
   theme(legend.position = 'none')
-p_fce
+Neurocodify_plot(p_fce)
 ```
 
 ## Number of time out trials
@@ -107,28 +105,25 @@ check_tot = data %>%
   .[, count := seq(.N), by = c('n_timeout', 'group')]
 
 # Plot errors for each participant
-p_tot = ggplot(data = check_tot,
+data_plot = Prepare_data_for_plot(check_tot)
+p_tot = ggplot(data = data_plot,
                aes(x = n_timeout,
-                   y = count,
                    label = participant_id,
                    fill = group)) +
-  geom_label(size = 0.5) +
+  geom_bar() +
   labs(x = 'Number of timeouts across all trials',
        y = 'N') +
-  scale_x_continuous(limits = c(0,max(check_tot$n_timeout)),
-                     breaks = seq(0,max(check_tot$n_timeout, by = 1))) +
-  scale_y_continuous(limits = c(1,max(check_tot$count)),
-                     breaks = seq(max(check_tot$count, by = 1))) +
+  scale_x_continuous(breaks = seq(0,max(data_plot$n_timeout), by = 5)) +
+  scale_y_continuous(breaks = seq(0, max(data_plot$count), by = 2)) +
   facet_wrap(~group) +
   theme(legend.position = 'none')
-p_tot
+Neurocodify_plot(p_tot)
 ```
 
 # Estimation
 
-## Estimation track
-
-```{r, fig.height=0.75*n_participants, out.width='100%', warning=FALSE}
+```{r, fig.height=0.75*n_participants, out.width='100%', message=FALSE}
+# Function to get running average
 Get_running_avg = function(choice_option, choice_outcome, stim){
   # Initialize array keeping running average for all trials
   running_avg = c()
@@ -185,7 +180,116 @@ check_est = data %>%
   data.table::dcast(., participant_id + group + task_version + est_trial + forced_rare + est_stim ~ type,
                     value.var = 'value')
 
-p_est = ggplot(data = check_est,
+# Merge true means with estimation
+check_est_diff = check_est %>%
+  # Get difference between estimation and true mean
+  .[, diff_from_true := reward - r_avg]
+```
+
+## Difference from truth in estimation {.tabset}
+
+### Across groups {.tabset}
+
+#### Mean
+
+```{r, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_est_diff)
+p_est_diff = ggplot(data = data_plot,
+                    aes(x = est_trial,
+                        y = diff_from_true,
+                        color = est_stim)) +
+  geom_path(alpha = 0.3, aes(group = participant_id)) +
+  stat_summary(fun = 'mean', geom = 'line', size = 1, na.rm = TRUE, color = 'black') +
+  stat_summary(fun = 'mean', geom = 'point', size = 1.5, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
+    geom_hline(yintercept = 0,
+               size = 0.3) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  facet_grid(task_version~ est_stim) +
+  theme(legend.position = 'top')
+Neurocodify_plot(p_est_diff)
+```
+
+#### Median
+
+```{r, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_est_diff)
+p_est_diff = ggplot(data = data_plot,
+                    aes(x = est_trial,
+                        y = diff_from_true,
+                        color = est_stim)) +
+  geom_path(alpha = 0.3, aes(group = participant_id)) +
+  stat_summary(fun = 'median', geom = 'line', size = 1, na.rm = TRUE, color = 'black') +
+  stat_summary(fun = 'median', geom = 'point', size = 1.5, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
+    geom_hline(yintercept = 0,
+               size = 0.3) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  facet_grid(task_version~ est_stim) +
+  theme(legend.position = 'top')
+Neurocodify_plot(p_est_diff)
+```
+
+### Within group {.tabset}
+
+#### Mean
+
+```{r}
+data_plot = Prepare_data_for_plot(check_est_diff)
+p_est_diff = ggplot(data = data_plot,
+                    aes(x = est_trial,
+                        y = diff_from_true,
+                        color = est_stim)) +
+  geom_path(alpha = 0.3, aes(group = participant_id)) +
+  stat_summary(fun = 'mean', geom = 'line', size = 0.5, na.rm = TRUE, color = 'black') +
+  stat_summary(fun = 'mean', geom = 'point', size = 1, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
+  geom_hline(yintercept = 0,
+             size = 0.3) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  facet_grid(task_version ~ group + est_stim) +
+  theme(legend.position = 'top')
+Neurocodify_plot(p_est_diff)
+```
+
+#### Median
+
+```{r}
+data_plot = Prepare_data_for_plot(check_est_diff)
+p_est_diff = ggplot(data = data_plot,
+                    aes(x = est_trial,
+                        y = diff_from_true,
+                        color = est_stim)) +
+  geom_path(alpha = 0.3, aes(group = participant_id)) +
+  stat_summary(fun = 'median', geom = 'line', size = 0.5, na.rm = TRUE, color = 'black') +
+  stat_summary(fun = 'median', geom = 'point', size = 1, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
+  geom_hline(yintercept = 0,
+             size = 0.3) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  facet_grid(task_version ~ group + est_stim) +
+  theme(legend.position = 'top')
+Neurocodify_plot(p_est_diff)
+```
+
+### Individual difference from truth
+
+```{r, fig.height=0.75*n_participants, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_est_diff)
+p_est_diff = ggplot(data = data_plot,
+                    aes(x = est_trial,
+                        y = diff_from_true,
+                        color = as.factor(task_version))) +
+  geom_hline(yintercept = 0,
+             linetype = 'dashed') +
+  geom_path() +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  facet_grid(group + participant_id ~ est_stim) +
+  theme(legend.position = 'top')
+Neurocodify_plot(p_est_diff)
+```
+
+### Individual estimates
+
+```{r, fig.height=0.75*n_participants, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_est)
+p_est = ggplot(data = data_plot,
                aes(x = est_trial,
                    y = reward,
                    color = est_stim)) +
@@ -201,13 +305,15 @@ p_est = ggplot(data = check_est,
   facet_grid(group + participant_id ~ task_version + est_stim) +
   scale_color_viridis(option = 'D', discrete = TRUE) +
   theme(legend.position = 'none')
-p_est
+Neurocodify_plot(p_est)
 ```
 
-## Estimates after rare
+
+### Individual estimates after rare
 
 ```{r, fig.height=0.75*n_participants, out.width='100%'}
-p_ear = ggplot(data = check_est,
+data_plot = Prepare_data_for_plot(check_est)
+p_ear = ggplot(data = data_plot,
                aes(x = est_trial,
                    y = reward)) +
   geom_path(aes(y = r_avg),
@@ -223,91 +329,10 @@ p_ear = ggplot(data = check_est,
   facet_grid(group + participant_id ~ task_version + est_stim) +
   scale_color_viridis(option = 'D', discrete = TRUE) +
   theme(legend.position = 'top')
-p_ear
-```
-
-## Estimating difference from truth
-
-```{r, fig.height=0.75*n_participants, out.width='100%'}
-# Merge true means with estimation
-check_est_diff = check_est %>%
-  # Get difference between estimation and true mean
-  .[, diff_from_true := reward - r_avg]
-
-p_est_diff = ggplot(data = check_est_diff,
-                    aes(x = est_trial,
-                        y = diff_from_true,
-                        color = as.factor(task_version))) +
-  geom_hline(yintercept = 0,
-             linetype = 'dashed') +
-  geom_path() +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
-  facet_grid(group + participant_id ~ est_stim) +
-  theme(legend.position = 'top')
-p_est_diff
-```
-
-## Mean difference from truth in estimation {.tabset}
-
-### Across groups {.tabset}
-
-#### Mean
-
-```{r, out.width='100%'}
-p_est_diff = ggplot(data = check_est_diff,
-                    aes(x = est_trial,
-                        y = diff_from_true,
-                        color = est_stim)) +
-  geom_path(alpha = 0.3, aes(group = participant_id)) +
-  stat_summary(fun = 'mean', geom = 'line', size = 1, na.rm = TRUE, color = 'black') +
-  stat_summary(fun = 'mean', geom = 'point', size = 1.5, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
-    geom_hline(yintercept = 0,
-               size = 0.3) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
-  facet_grid(task_version~ est_stim) +
-  theme(legend.position = 'top')
-p_est_diff
-```
-
-#### Median
-
-```{r, out.width='100%'}
-p_est_diff = ggplot(data = check_est_diff,
-                    aes(x = est_trial,
-                        y = diff_from_true,
-                        color = est_stim)) +
-  geom_path(alpha = 0.3, aes(group = participant_id)) +
-  stat_summary(fun = 'median', geom = 'line', size = 1, na.rm = TRUE, color = 'black') +
-  stat_summary(fun = 'median', geom = 'point', size = 1.5, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
-    geom_hline(yintercept = 0,
-               size = 0.3) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
-  facet_grid(task_version~ est_stim) +
-  theme(legend.position = 'top')
-p_est_diff
-```
-
-### Within groupd
-
-```{r}
-p_est_diff = ggplot(data = check_est_diff,
-                    aes(x = est_trial,
-                        y = diff_from_true,
-                        color = est_stim)) +
-  geom_path(alpha = 0.3, aes(group = participant_id)) +
-  stat_summary(fun = 'median', geom = 'line', size = 0.5, na.rm = TRUE, color = 'black') +
-  stat_summary(fun = 'median', geom = 'point', size = 1, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
-  geom_hline(yintercept = 0,
-             size = 0.3) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
-  facet_grid(task_version ~ group + est_stim) +
-  theme(legend.position = 'top')
-p_est_diff
+Neurocodify_plot(p_ear)
 ```
 
 # RT
-
-## RT (median)
 
 ```{r, fig.height=0.75*n_participants, out.width='100%'}
 check_rt = data %>%
@@ -322,7 +347,88 @@ check_rt = data %>%
                                'trial_type',
                                'comp'),
                    measure.vars = 'rt')
-p_rt = ggplot(data = check_rt,
+```
+
+## RT difference 1v2 and 2v3 {.tabset}
+
+### Line plot
+
+```{r, out.width='100%', fig.show='hold'}
+check_rt_diff = check_rt %>%
+  .[, .(median_rt = median(value),
+        mean_rt = mean(value)),
+    by = c('participant_id', 'group', 'task_version', 'trial_type', 'comp')] %>%
+  .[comp %in% c('1v2', '2v3')]
+
+data_plot = Prepare_data_for_plot(check_rt_diff)
+p_rtd_median = ggplot(data = data_plot,
+                      aes(x = comp,
+                          y = median_rt,
+                          color = group)) +
+  geom_point() +
+  geom_line(aes(group = participant_id)) +
+  labs(title = 'Median') +
+  facet_grid(task_version ~ trial_type + group)
+Neurocodify_plot(p_rtd_median)
+
+data_plot = Prepare_data_for_plot(check_rt_diff)
+p_rtd_mean = ggplot(data = data_plot,
+                    aes(x = comp,
+                        y = mean_rt,
+                        color = group)) +
+  geom_point() +
+  geom_line(aes(group = participant_id)) +
+  labs(title = 'Mean') +
+  facet_grid(task_version ~ trial_type + group)
+Neurocodify_plot(p_rtd_mean)
+```
+
+Time-outs excluded from calculation.
+
+### Difference
+
+```{r, out.width='100%', fig.show='hold'}
+check_rt_diff_comp = check_rt_diff %>%
+  data.table::dcast(participant_id + group + task_version + trial_type ~ comp,
+                    value.var = c('median_rt', 'mean_rt')) %>%
+  .[, ':='(median_1v2m2v3 = median_rt_1v2 - median_rt_2v3,
+           mean_1v2m2v3 = mean_rt_1v2 - mean_rt_2v3)] %>%
+  .[, task_version := as.factor(task_version)]
+
+data_plot = Prepare_data_for_plot(check_rt_diff_comp)
+p_rtc_median = ggplot(data = data_plot,
+                      aes(x = task_version,
+                          y = median_1v2m2v3,
+                          color = group)) +
+  geom_hline(yintercept = 0,
+             linetype = 'dashed') +
+  geom_point() +
+  scale_y_continuous(limits = c(-max(abs(data_plot$median_1v2m2v3)),
+                                max(abs(data_plot$median_1v2m2v3)))) +
+  labs(title = 'Difference Median (1v2 - 2v3)') +
+  facet_wrap(~group + trial_type)
+Neurocodify_plot(p_rtc_median)
+
+data_plot = Prepare_data_for_plot(check_rt_diff_comp)
+p_rtc_mean = ggplot(data = data_plot,
+                      aes(x = task_version,
+                          y = mean_1v2m2v3,
+                          color = group)) +
+  geom_hline(yintercept = 0,
+             linetype = 'dashed') +
+  geom_point() +
+  scale_y_continuous(limits = c(-max(abs(data_plot$mean_1v2m2v3)),
+                                max(abs(data_plot$mean_1v2m2v3)))) +
+  labs(title = 'Difference Mean (1v2 - 2v3)') +
+  facet_wrap(~group + trial_type)
+Neurocodify_plot(p_rtc_mean)
+```
+
+### Individual RT
+
+```{r, fig.height=0.75*n_participants, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_rt)
+p_rt = ggplot(data = data_plot,
        aes(x = comp,
            y = value)) +
   geom_jitter(width = 0.1,
@@ -341,81 +447,11 @@ p_rt = ggplot(data = check_rt,
   labs(x = 'Trial Type',
        y = 'RT') +
   facet_grid(group + participant_id ~ trial_type + task_version)
-p_rt
+Neurocodify_plot(p_rt)
 ```
 
-## RT difference 1v2 and 2v3 {.tabset}
-
-### Line plot
-
-```{r, out.width='100%', fig.show='hold'}
-check_rt_diff = check_rt %>%
-  .[, .(median_rt = median(value),
-        mean_rt = mean(value)),
-    by = c('participant_id', 'group', 'task_version', 'trial_type', 'comp')] %>%
-  .[comp %in% c('1v2', '2v3')]
-
-p_rtd_median = ggplot(data = check_rt_diff,
-                      aes(x = comp,
-                          y = median_rt,
-                          color = group)) +
-  geom_point() +
-  geom_line(aes(group = participant_id)) +
-  labs(title = 'Median') +
-  facet_wrap(~trial_type + task_version, nrow = 1)
-p_rtd_median
-
-p_rtd_mean = ggplot(data = check_rt_diff,
-                    aes(x = comp,
-                        y = mean_rt,
-                        color = group)) +
-  geom_point() +
-  geom_line(aes(group = participant_id)) +
-  labs(title = 'Mean') +
-  facet_wrap(~trial_type + task_version, nrow = 1)
-p_rtd_mean
-```
-
-Time-outs excluded from calculation.
-
-### Difference
-
-```{r, out.width='100%', fig.show='hold'}
-check_rt_diff_comp = check_rt_diff %>%
-  data.table::dcast(participant_id + group + task_version + trial_type ~ comp,
-                    value.var = c('median_rt', 'mean_rt')) %>%
-  .[, ':='(median_1v2m2v3 = median_rt_1v2 - median_rt_2v3,
-           mean_1v2m2v3 = mean_rt_1v2 - mean_rt_2v3)] %>%
-  .[, task_version := as.factor(task_version)]
-
-p_rtc_median = ggplot(data = check_rt_diff_comp,
-                      aes(x = task_version,
-                          y = median_1v2m2v3)) +
-  geom_hline(yintercept = 0,
-             linetype = 'dashed') +
-  geom_point() +
-  scale_y_continuous(limits = c(-max(abs(check_rt_diff_comp$median_1v2m2v3)),
-                                max(abs(check_rt_diff_comp$median_1v2m2v3)))) +
-  labs(title = 'Difference Median (1v2 - 2v3)') +
-  facet_wrap(~group + trial_type)
-p_rtc_median
-
-p_rtc_mean = ggplot(data = check_rt_diff_comp,
-                      aes(x = task_version,
-                          y = mean_1v2m2v3)) +
-  geom_hline(yintercept = 0,
-             linetype = 'dashed') +
-  geom_point() +
-  scale_y_continuous(limits = c(-max(abs(check_rt_diff_comp$mean_1v2m2v3)),
-                                max(abs(check_rt_diff_comp$mean_1v2m2v3)))) +
-  labs(title = 'Difference Mean (1v2 - 2v3)') +
-  facet_wrap(~group + trial_type)
-p_rtc_mean
-```
 
 # Correctness
-
-## Percent of non-optimal choices
 
 ```{r, fig.height=0.75*n_participants, out.width='100%'}
 check_noc = data %>%
@@ -426,18 +462,6 @@ check_noc = data %>%
   # Get percentage of correct choices (exclude timeouts from overall trials)
   .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
     by = c('participant_id', 'group', 'task_version', 'comp')]
-
-p_noc = ggplot(data = check_noc,
-               aes(x = comp,
-                   y = perc_correct,
-                   group = participant_id,
-                   color = group)) +
-  geom_line() +
-  geom_point() +
-  labs(x = '%-correct',
-       y = 'Comparison') +
-  facet_grid(group + participant_id ~ task_version)
-p_noc
 ```
 
 ## Difference between comparisons including asymmetric stimulus {.tabset}
@@ -448,14 +472,15 @@ p_noc
 check_noc_crit = check_noc %>%
   .[comp %in% c('1v2', '2v3'),]
 
-p_noc_diff_comp_line = ggplot(data = check_noc_crit,
+data_plot = Prepare_data_for_plot(check_noc_crit)
+p_noc_diff_comp_line = ggplot(data = data_plot,
                               aes(x = comp,
                                   y = perc_correct,
                                   color = group)) +
   geom_point() +
   geom_line(aes(group = participant_id)) +
-  facet_wrap(~task_version)
-p_noc_diff_comp_line
+  facet_grid(task_version ~ group)
+Neurocodify_plot(p_noc_diff_comp_line)
 ```
 
 ### Difference
@@ -468,30 +493,51 @@ check_noc_diff = check_noc %>%
                     value.var = 'perc_correct') %>%
   .[, diff_1v2m2v3 := mean_1v2 - mean_2v3]
 
-p_noc_diff_comp_diff = ggplot(data = check_noc_diff,
+data_plot = Prepare_data_for_plot(check_noc_diff)
+p_noc_diff_comp_diff = ggplot(data = data_plot,
                          aes(x = task_version,
                              y = diff_1v2m2v3,
                              color = group)) +
   geom_hline(yintercept = 0,
              linetype = 'dashed') +
   geom_point() +
-  scale_y_continuous(limits = c(-max(abs(check_noc_diff$diff_1v2m2v3)),
-                                max(abs(check_noc_diff$diff_1v2m2v3)))) +
+  scale_y_continuous(limits = c(-max(abs(data_plot$diff_1v2m2v3)),
+                                max(abs(data_plot$diff_1v2m2v3)))) +
   facet_wrap(~group) +
   labs(title = 'Difference between crit comparisons (1v2 - 2v3)')
-p_noc_diff_comp_diff
+Neurocodify_plot(p_noc_diff_comp_diff)
 ```
+
+### Individual correctness
+
+```{r, fig.height=0.75*n_participants, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_noc)
+p_noc = ggplot(data = data_plot,
+               aes(x = comp,
+                   y = perc_correct,
+                   group = participant_id,
+                   color = group)) +
+  geom_line() +
+  geom_point() +
+  labs(x = '%-correct',
+       y = 'Comparison') +
+  facet_grid(group + participant_id ~ task_version) +
+  theme(legend.position = 'top')
+Neurocodify_plot(p_noc)
+```
+
 
 ## Non-optimal between run 1 and 2
 
 ```{r, out.width='100%'}
-p_noc_diff_run = ggplot(data = check_noc,
+data_plot = Prepare_data_for_plot(check_noc)
+p_noc_diff_run = ggplot(data = data_plot,
                         aes(x = task_version,
                             y = perc_correct,
                             group = participant_id,
                             color = group)) +
   geom_point() +
   geom_line() +
-  facet_wrap(group~comp)
-p_noc_diff_run
+  facet_grid(comp ~ group)
+Neurocodify_plot(p_noc_diff_run)
 ```

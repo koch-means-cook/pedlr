@@ -42,7 +42,7 @@ library(kableExtra)
 library(cowplot)
 ```
 
-```{r}
+```{r, message=FALSE}
 # Get directory of repository
 base_path = here::here()
 
@@ -99,7 +99,8 @@ sus_pool = check_fce[perc_forced_error > 100 - target_accuracy,
 sus_pool$task_version = NA
 sus_pool$reason = 'low_forced_accuracy'
 
-p = ggplot(data = check_fce,
+data_plot = Prepare_data_for_plot(check_fce)
+p = ggplot(data = data_plot,
            aes(x = participant_id,
                y = perc_forced_error,
                fill = group)) +
@@ -108,9 +109,12 @@ p = ggplot(data = check_fce,
              linetype = 'dashed') +
   geom_col() +
   labs(y = '% of errors in forced choice trials') +
-  theme(axis.text.x = element_text(angle = 270, vjust = 0.5),
+  theme(axis.text.x = element_text(angle = 270,
+                                   vjust = 0.5,
+                                   hjust = 0,
+                                   size = 5),
         legend.position = 'top')
-p
+Neurocodify_plot(p)
 ```
 
 **Above:** Amount of errors in 'guided' choice trials.
@@ -288,6 +292,7 @@ p = ggplot(data = check_est_diff,
   facet_grid(participant_id ~ diff_est_1v3 + task_version) +
   scale_color_viridis(option = 'D', discrete = TRUE) +
   theme(legend.position = 'top')
+p = Neurocodify_plot(p)
 ```
 
 ```{r}
@@ -307,13 +312,15 @@ check_corr_1v3 = data %>%
 p_ext = ggplot(data = check_corr_1v3,
                aes(x = task_version,
                    y = corr_1v3)) +
-  geom_hline(yintercept = 0.5, linetype = 'dashed') +
+  geom_hline(yintercept = 0.5,
+             linetype = 'dashed') +
   geom_point() +
   facet_grid(participant_id ~ 'corr_1v3')
+p_ext = Neurocodify_plot(p_ext)
 ```
 
 ```{r, out.width='100%', fig.height=n_participants}
-p_full = cowplot::plot_grid(p_ext,p,
+p_full = cowplot::plot_grid(p_ext, p,
                             rel_widths = c(0.3,1),
                             ncol = 2,
                             axis = 'bt',
