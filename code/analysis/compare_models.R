@@ -18,7 +18,7 @@ source_files = list(file.path(base_path, 'code', 'RW_nico.R', fsep = .Platform$f
 invisible(lapply(source_files, function(x) source(x)))
 
 data = Load_data() %>%
-  .[participant_id == 'IRDNG4E' & task_version == 1] %>%
+  .[participant_id == 'IRDNG4E' & run == 1] %>%
   Prepare_data_for_fit(.)
 
 nico_fit = PEDLR_nico(data = data,

@@ -10,7 +10,7 @@ source(source_path)
 
 # data = Load_data()
 # data = Prepare_data_for_fit(data)
-# data = data[participant_id == 'G5RTD96' & task_version == 2]
+# data = data[participant_id == 'G5RTD96' & run == 2]
 # model = 'Pedlr_fixdep'
 # start_values = c(0.2,0.2,5)
 # lb = c(0,0,1)

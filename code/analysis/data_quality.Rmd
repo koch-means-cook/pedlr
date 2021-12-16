@@ -58,7 +58,7 @@ invisible(lapply(source_files, function(x) source(x)))
 # Load data
 data = Load_data() %>%
   Add_comp(.) %>%
-  .[, task_version := as.factor(task_version)]
+  .[, run := as.factor(run)]
 
 # get number of participants (to adjust figure height)
 n_participants = length(unique(data$participant_id))
@@ -96,7 +96,7 @@ check_fce$participant_id = factor(check_fce$participant_id,
 # Fill pool with sus participants
 sus_pool = check_fce[perc_forced_error > 100 - target_accuracy,
                      c('participant_id', 'group')]
-sus_pool$task_version = NA
+sus_pool$run = NA
 sus_pool$reason = 'low_forced_accuracy'
 
 data_plot = Prepare_data_for_plot(check_fce)
@@ -154,14 +154,14 @@ check_est = data %>%
            avg_3_running = Get_running_avg(choice_option = option_choice,
                                      choice_outcome = outcome,
                                      stim = 3)),
-    by = c('participant_id', 'task_version')] %>%
+    by = c('participant_id', 'run')] %>%
   .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
   .[!is.na(est_1_reward),] %>%
-  .[, est_trial := seq(.N), by = c('participant_id', 'task_version')] %>%
+  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
   data.table::melt(.,
                    id.vars = c('participant_id',
                                'group',
-                               'task_version',
+                               'run',
                                'est_trial',
                                'forced_rare'),
                    measure.vars = c('est_1_reward',
@@ -178,7 +178,7 @@ check_est = data %>%
   .[type == 'rew', type := 'reward'] %>%
   .[type == 'ran', type := 'range'] %>%
   .[type == 'run', type := 'r_avg'] %>%
-  data.table::dcast(., participant_id + group + task_version + est_trial + forced_rare + est_stim ~ type,
+  data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
                     value.var = 'value')
 
 # Create custom t-test that does not throw an error in case all values are the same
@@ -201,7 +201,7 @@ my.t.test = function(x, y, alternative, paired){
 # t-test for difference in estimation between bandit 1 and 3
 # check_est_1v3 = check_est %>%
 #   .[est_stim != 2,] %>%
-#   data.table::dcast(participant_id + group + task_version + est_trial ~ paste0('est_', est_stim),
+#   data.table::dcast(participant_id + group + run + est_trial ~ paste0('est_', est_stim),
 #                     value.var = 'reward') %>%
 #   .[, .(mean_1 = mean(est_1),
 #         mean_3 = mean(est_3),
@@ -218,11 +218,11 @@ my.t.test = function(x, y, alternative, paired){
 #                                   y = est_3,
 #                                   alternative = 'two.sided',
 #                                   paired = TRUE)$p.value, 3)),
-#     by = c('participant_id', 'group', 'task_version')]
+#     by = c('participant_id', 'group', 'run')]
 
 check_est_1v3 = check_est %>%
   .[est_stim != 2,] %>%
-  data.table::dcast(participant_id + group + task_version + est_trial ~ paste0('est_', est_stim),
+  data.table::dcast(participant_id + group + run + est_trial ~ paste0('est_', est_stim),
                     value.var = 'reward') %>%
   .[, .(mean_1 = mean(est_1),
         mean_3 = mean(est_3),
@@ -243,17 +243,17 @@ check_est_1v3 = check_est %>%
 
 # # Add results to plot
 # check_est_diff = check_est %>%
-#   .[participant_id %in% check_est_1v3[p.value >= 0.05 & task_version == 1]$participant_id &
-#       task_version == 1,
+#   .[participant_id %in% check_est_1v3[p.value >= 0.05 & run == 1]$participant_id &
+#       run == 1,
 #     diff_est_1v3 := 'no_diff'] %>%
-#   .[participant_id %in% check_est_1v3[p.value >= 0.05 & task_version == 2]$participant_id &
-#       task_version == 2,
+#   .[participant_id %in% check_est_1v3[p.value >= 0.05 & run == 2]$participant_id &
+#       run == 2,
 #     diff_est_1v3 := 'no_diff'] %>%
-#   .[participant_id %in% check_est_1v3[p.value < 0.05 & task_version == 1]$participant_id &
-#       task_version == 1,
+#   .[participant_id %in% check_est_1v3[p.value < 0.05 & run == 1]$participant_id &
+#       run == 1,
 #     diff_est_1v3 := 'valid'] %>%
-#   .[participant_id %in% check_est_1v3[p.value < 0.05 & task_version == 2]$participant_id &
-#       task_version == 2,
+#   .[participant_id %in% check_est_1v3[p.value < 0.05 & run == 2]$participant_id &
+#       run == 2,
 #     diff_est_1v3 := 'valid'] %>%
 #   .[est_stim != 2]
 
@@ -268,7 +268,7 @@ check_est_diff = check_est %>%
 # add suspicious participants
 temp = check_est_1v3[p.value > 0.05,
                       c('participant_id', 'group')]
-temp$task_version = NA
+temp$run = NA
 temp$reason = 'est_1v3_not_different'
 sus_pool = rbind(sus_pool, temp)
 ```
@@ -289,7 +289,7 @@ p = ggplot(data = check_est_diff,
   geom_path() +
   labs(x = 'Estimation Trial',
        y = 'Estimate') +
-  facet_grid(participant_id ~ diff_est_1v3 + task_version) +
+  facet_grid(participant_id ~ diff_est_1v3 + run) +
   scale_color_viridis(option = 'D', discrete = TRUE) +
   theme(legend.position = 'top')
 p = Neurocodify_plot(p)
@@ -300,17 +300,17 @@ p = Neurocodify_plot(p)
 check_corr_1v3 = data %>%
   .[comp == '1v3' & trial_type == 'choice',] %>%
   .[, trial := seq(.N),
-    by = c('participant_id', 'group', 'task_version')] %>%
+    by = c('participant_id', 'group', 'run')] %>%
   .[, corr_outcome := max(c(reward_stim_1, reward_stim_2)),
-    by = c('participant_id', 'group', 'task_version', 'trial')] %>%
+    by = c('participant_id', 'group', 'run', 'trial')] %>%
   .[, corr := corr_outcome == outcome,
-    by = c('participant_id', 'group', 'task_version', 'trial')] %>%
+    by = c('participant_id', 'group', 'run', 'trial')] %>%
   # get accuracy for valid 1v3 trials (timeouts and forced choices excluded)
   .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr)),
-    by = c('participant_id', 'group', 'task_version')]
+    by = c('participant_id', 'group', 'run')]
 
 p_ext = ggplot(data = check_corr_1v3,
-               aes(x = task_version,
+               aes(x = run,
                    y = corr_1v3)) +
   geom_hline(yintercept = 0.5,
              linetype = 'dashed') +

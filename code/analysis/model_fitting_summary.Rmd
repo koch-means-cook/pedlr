@@ -71,7 +71,7 @@ Plot_prepare_consistency = function(data){
     data.table::melt(., id.vars = c('participant_id',
                                     'file',
                                     'iter',
-                                    'task_version',
+                                    'run',
                                     'name_design_r1',
                                     'name_design_r2',
                                     'model',
@@ -88,7 +88,7 @@ Plot_prepare_consistency = function(data){
     # Join iterations of across jobs and within jobs
     .[, real_iter := seq(.N),
       by = c('participant_id',
-             'task_version',
+             'run',
              'name_design_r1',
              'name_design_r2',
              'model',
@@ -100,7 +100,7 @@ Plot_prepare_consistency = function(data){
     data.table::dcast(.,
                       participant_id + 
                         real_iter +
-                        task_version + 
+                        run + 
                         name_design_r1 + 
                         name_design_r2 + 
                         model +
@@ -136,7 +136,7 @@ ggplot(data = data_plot,
              stroke = 0.3,
              color = 'black',
              alpha = 0.5) +
-  facet_grid(participant_id ~ task_version) +
+  facet_grid(participant_id ~ run) +
   theme(legend.position = 'bottom')
 ```
 
@@ -162,7 +162,7 @@ ggplot(data = data_plot,
              stroke = 0.3,
              color = 'black',
              alpha = 0.5) +
-  facet_grid(participant_id ~ task_version) +
+  facet_grid(participant_id ~ run) +
   theme(legend.position = 'bottom')
 ```
 
@@ -191,7 +191,7 @@ for(pid in unique(data_plot$participant_id)){
                         type = "scatter3d",
                         mode = 'markers',
                         color = data_plot_i$variable,
-                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1) %>%
+                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$run) * 0.1) %>%
     plotly::layout(title = unique(data_plot_i$participant_id),
                    scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
   
@@ -223,7 +223,7 @@ for(pid in unique(data_plot$participant_id)){
                         type = "scatter3d",
                         mode = 'markers',
                         color = data_plot_i$variable,
-                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1) %>%
+                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$run) * 0.1) %>%
     plotly::layout(title = unique(data_plot_i$participant_id),
                    scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
   
@@ -256,7 +256,7 @@ for(pid in unique(data_plot$participant_id)){
                         type = "scatter3d",
                         mode = 'markers',
                         color = data_plot_i$variable,
-                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$task_version) * 0.1) %>%
+                        size = (nchar(as.character(data_plot_i$variable)) + data_plot_i$run) * 0.1) %>%
     plotly::layout(title = unique(data_plot_i$participant_id),
                    scene = list(xaxis=axx,yaxis=axy,zaxis=axz))
   
@@ -275,27 +275,27 @@ data_rel = Plot_prepare_consistency(data) %>%
 data_corr = all_designs %>%
   Add_comp(.) %>%
   .[, trial := seq(.N),
-    by = c('participant_id', 'task_version')] %>%
+    by = c('participant_id', 'run')] %>%
   .[trial_type == 'choice',] %>%
   .[, correct_choice := if(option_left > option_right) 'left' else 'right',
-    by = c('participant_id', 'task_version', 'trial')] %>%
+    by = c('participant_id', 'run', 'trial')] %>%
   .[, correct := correct_choice == choice] %>%
   # Get percentage of correct choices (exclude timeouts from overall trials)
   .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
-    by = c('participant_id', 'task_version', 'comp')] %>%
-  data.table::dcast(., participant_id + task_version ~ paste0('corr_', comp), value.var = 'perc_correct') %>%
+    by = c('participant_id', 'run', 'comp')] %>%
+  data.table::dcast(., participant_id + run ~ paste0('corr_', comp), value.var = 'perc_correct') %>%
   # Add correctness of choices to model fit
-  data.table::merge.data.table(data, ., by = c('participant_id', 'task_version')) %>%
+  data.table::merge.data.table(data, ., by = c('participant_id', 'run')) %>%
   # Join iterations for each file
   .[, real_iter := seq(.N),
       by = c('participant_id',
-             'task_version',
+             'run',
              'name_design_r1',
              'name_design_r2',
              'model',
              'para')] %>%
   # parse to wide format for plotting
-  data.table::dcast(., participant_id + task_version + real_iter + model + corr_1v2 + corr_2v3 + corr_1v3 + second_ll ~ para,
+  data.table::dcast(., participant_id + run + real_iter + model + corr_1v2 + corr_2v3 + corr_1v3 + second_ll ~ para,
                     value.var = 'second_solution')
 
 # Get mean ratings of participants
@@ -303,14 +303,14 @@ data_rat = all_designs %>%
   # Filter for trials in which rating was done
   .[!is.na(est_1_reward),] %>%
   .[, rating_trial := seq(.N),
-    by = c('participant_id', 'task_version')] %>%
+    by = c('participant_id', 'run')] %>%
   # Get mean of ratings
   .[, .(mean_est_1 = mean(est_1_reward),
         mean_est_2 = mean(est_2_reward),
         mean_est_3 = mean(est_3_reward)),
-    by = c('participant_id', 'task_version')] %>%
+    by = c('participant_id', 'run')] %>%
   # Merge with correctness data
-  data.table::merge.data.table(data_corr, ., by = c('participant_id', 'task_version'))
+  data.table::merge.data.table(data_corr, ., by = c('participant_id', 'run'))
 
 ```
 
@@ -332,7 +332,7 @@ ggplot(data = data_plot,
               fill = NA,
               size = 0.5,
               alpha = 0.5) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 #### Stats
@@ -344,7 +344,7 @@ data_rat[model == 'Pedlr'] %>%
          method = cor.test(alpha0, alpha1)$method,
          df = cor.test(alpha0, alpha1)$parameter,
          statisic = cor.test(alpha0, alpha1)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ### Pedlr_fixdep {.tabset}
@@ -364,7 +364,7 @@ ggplot(data = data_plot,
               fill = NA,
               size = 0.5,
               alpha = 0.5) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 #### Stats
@@ -376,7 +376,7 @@ data_rat[model == 'Pedlr_fixdep'] %>%
          method = cor.test(alpha0, alpha1)$method,
          df = cor.test(alpha0, alpha1)$parameter,
          statisic = cor.test(alpha0, alpha1)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ### Pedlr_interdep {.tabset}
@@ -396,7 +396,7 @@ ggplot(data = data_plot,
               fill = NA,
               size = 0.5,
               alpha = 0.5) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 #### Stats
@@ -408,7 +408,7 @@ data_rat[model == 'Pedlr_interdep'] %>%
          method = cor.test(alpha0, alpha1)$method,
          df = cor.test(alpha0, alpha1)$parameter,
          statisic = cor.test(alpha0, alpha1)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ## Higher a1 = more errors in 1v2?
@@ -426,7 +426,7 @@ ggplot(data_rat[model == 'Rw'],
               fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 
@@ -445,7 +445,7 @@ ggplot(data_rat[model == 'Pedlr_simple'],
               fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 #### Stats
@@ -457,7 +457,7 @@ data_rat[model == 'Pedlr_simple'] %>%
          method = cor.test(alpha1, corr_1v2)$method,
          df = cor.test(alpha1, corr_1v2)$parameter,
          statisic = cor.test(alpha1, corr_1v2)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ### Pedlr {.tabset}
@@ -475,7 +475,7 @@ ggplot(data_rat[model == 'Pedlr'],
               fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 #### Stats
@@ -487,7 +487,7 @@ data_rat[model == 'Pedlr'] %>%
          method = cor.test(alpha1, corr_1v2)$method,
          df = cor.test(alpha1, corr_1v2)$parameter,
          statisic = cor.test(alpha1, corr_1v2)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ### Pedlr_fixdep {.tabset}
@@ -505,7 +505,7 @@ ggplot(data_rat[model == 'Pedlr_fixdep'],
   geom_point() +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 #### Stats
@@ -517,7 +517,7 @@ data_rat[model == 'Pedlr_fixdep'] %>%
          method = cor.test(alpha1, corr_1v2)$method,
          df = cor.test(alpha1, corr_1v2)$parameter,
          statisic = cor.test(alpha1, corr_1v2)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ### Pedlr_interdep {.tabset}
@@ -535,7 +535,7 @@ ggplot(data_rat[model == 'Pedlr_interdep'],
   geom_point() +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 #### Stats
@@ -547,7 +547,7 @@ data_rat[model == 'Pedlr_interdep'] %>%
          method = cor.test(alpha1, corr_1v2)$method,
          df = cor.test(alpha1, corr_1v2)$parameter,
          statisic = cor.test(alpha1, corr_1v2)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ## Higher a1 = Higher difference in correct responses 1v2 and 2v3?
@@ -567,7 +567,7 @@ ggplot(data_rat[model == 'Rw'],
               fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(-1,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 
@@ -586,7 +586,7 @@ ggplot(data_rat[model == 'Pedlr_simple'],
               fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(-1,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 ### Pedlr
@@ -604,7 +604,7 @@ ggplot(data_rat[model == 'Pedlr'],
               fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(-1,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 ### Pedlr_fixdep
@@ -622,7 +622,7 @@ ggplot(data_rat[model == 'Pedlr_fixdep'],
               fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(-1,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 ### Pedlr_interdep
@@ -640,7 +640,7 @@ ggplot(data_rat[model == 'Pedlr_interdep'],
               fill = NA) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(-1,1)) +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 
@@ -650,7 +650,7 @@ ggplot(data_rat[model == 'Pedlr_interdep'],
 data_stats = data_rat[model %in% c('Rw', 'Pedlr')] %>%
   .[, ll := second_ll] %>%
   data.table::dcast(.,
-                    participant_id + task_version + real_iter + corr_1v2 + corr_2v3 + mean_est_2 ~ model,
+                    participant_id + run + real_iter + corr_1v2 + corr_2v3 + mean_est_2 ~ model,
                     value.var = c('ll', 'alpha1')) %>%
   .[, ':='(diff_ll = ll_Rw - ll_Pedlr,
            diff_corr = corr_1v2 - corr_2v3)]
@@ -667,7 +667,7 @@ ggplot(data_stats,
               formula = y ~ x,
               fill = NA) +
   geom_point() +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 
@@ -680,7 +680,7 @@ data_stats %>%
          method = cor.test(diff_ll, corr_1v2)$method,
          df = cor.test(diff_ll, corr_1v2)$parameter,
          statisic = cor.test(diff_ll, corr_1v2)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ## More PEDLR evidence = more difference between 1v2 and 2v3? {.tabset}
@@ -696,7 +696,7 @@ ggplot(data_stats,
               formula = y ~ x,
               fill = NA) +
   geom_point() +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 
@@ -709,7 +709,7 @@ data_stats %>%
         method = cor.test(diff_ll, diff_corr)$method,
         df = cor.test(diff_ll, diff_corr)$parameter,
         statisic = cor.test(diff_ll, diff_corr)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 ## More evidence for Pedlr = higher alpha 1? {.tabset}
@@ -725,7 +725,7 @@ ggplot(data_stats,
               formula = y ~ x,
               fill = NA) +
   geom_point() +
-  facet_wrap(~ task_version)
+  facet_wrap(~ run)
 ```
 
 
@@ -738,7 +738,7 @@ data_stats %>%
         method = cor.test(diff_ll, alpha1_Pedlr)$method,
         df = cor.test(diff_ll, alpha1_Pedlr)$parameter,
         statisic = cor.test(diff_ll, alpha1_Pedlr)$statistic),
-    by = c('task_version', 'real_iter')]
+    by = c('run', 'real_iter')]
 ```
 
 
@@ -758,19 +758,19 @@ data_aic = data %>%
   # Join iterations of across jobs and within jobs
     .[, real_iter := seq(.N),
       by = c('participant_id',
-             'task_version',
+             'run',
              'model',
              'para')] %>%
   .[,n_para := .N,
-    by = c('participant_id', 'task_version', 'real_iter', 'model')] %>%
+    by = c('participant_id', 'run', 'real_iter', 'model')] %>%
   data.table::dcast(.,
-                    participant_id + task_version + real_iter + second_ll + model + n_para ~ para,
+                    participant_id + run + real_iter + second_ll + model + n_para ~ para,
                     value.var = 'second_solution') %>%
   # Calculate AIC
   .[, AIC := (2*n_para) + (2*second_ll)] %>%
   # Get min aic model
   .[, .SD[which.min(AIC)],
-    by = c('participant_id', 'task_version', 'real_iter')] %>%
+    by = c('participant_id', 'run', 'real_iter')] %>%
   .[, model := as.factor(model)]
 ```
 
@@ -780,7 +780,7 @@ data_aic = data %>%
 ggplot(data = data_aic[real_iter == 1],
        aes(x = model)) +
          geom_bar() +
-  facet_grid(~task_version)
+  facet_grid(~run)
 ```
 
 
@@ -792,7 +792,7 @@ ggplot(data = data_aic,
            y = model)) +
   geom_path() +
   geom_point(size = 0.3) +
-  facet_grid(participant_id ~ task_version)
+  facet_grid(participant_id ~ run)
 ```
 
 
@@ -823,51 +823,51 @@ ggplot(data = data_aic,
 <!-- # Simulate data based on best fitting parameters -->
 <!-- data_best_fitting_paras = data.table() -->
 <!-- for(id in unique(all_designs$participant_id)){ -->
-<!--   for(run in unique(all_designs$task_version)){ -->
+<!--   for(run in unique(all_designs$run)){ -->
 <!--     # Rw -->
-<!--     sim = Rw(design = all_designs[participant_id == id & task_version == run], -->
-<!--              params.alpha = data_best[participant_id == id & task_version == run & model == 'Rw', -->
+<!--     sim = Rw(design = all_designs[participant_id == id & run == run], -->
+<!--              params.alpha = data_best[participant_id == id & run == run & model == 'Rw', -->
 <!--                                       second_solution_alpha], -->
-<!--              params.temperature = data_best[participant_id == id & task_version == run & model == 'Rw', -->
+<!--              params.temperature = data_best[participant_id == id & run == run & model == 'Rw', -->
 <!--                                             second_solution_temperature], -->
 <!--              params.reward_space_ub = 100, -->
 <!--              choice_policy = 'softmax', -->
 <!--              init_values = c(50,50,50)) -->
-<!--     temp = all_designs[participant_id == id & task_version == run] -->
+<!--     temp = all_designs[participant_id == id & run == run] -->
 <!--     temp$model = 'Rw' -->
 <!--     temp = Append_model_values(data = temp, model_output = sim) -->
 <!--     data_best_fitting_paras = rbind(data_best_fitting_paras, temp) -->
 
 <!--     # Pedlr -->
-<!--     sim = Pedlr(design = all_designs[participant_id == id & task_version == run], -->
-<!--                 params.alpha0 = data_best[participant_id == id & task_version == run & model == 'Pedlr', -->
+<!--     sim = Pedlr(design = all_designs[participant_id == id & run == run], -->
+<!--                 params.alpha0 = data_best[participant_id == id & run == run & model == 'Pedlr', -->
 <!--                                           second_solution_alpha0], -->
-<!--                 params.alpha1 = data_best[participant_id == id & task_version == run & model == 'Pedlr', -->
+<!--                 params.alpha1 = data_best[participant_id == id & run == run & model == 'Pedlr', -->
 <!--                                           second_solution_alpha1], -->
-<!--                 params.temperature = data_best[participant_id == id & task_version == run & model == 'Pedlr', -->
+<!--                 params.temperature = data_best[participant_id == id & run == run & model == 'Pedlr', -->
 <!--                                                second_solution_temperature], -->
 <!--                 params.reward_space_ub = 100, -->
 <!--                 choice_policy = 'softmax', -->
 <!--                 init_values = c(50,50,50)) -->
-<!--     temp = all_designs[participant_id == id & task_version == run] -->
+<!--     temp = all_designs[participant_id == id & run == run] -->
 <!--     temp$model = 'Pedlr' -->
 <!--     temp = Append_model_values(data = temp, model_output = sim) -->
 <!--     data_best_fitting_paras = rbind(data_best_fitting_paras, temp) -->
 
 <!--     # Pedlr_interdep -->
-<!--     sim = Pedlr_interdep(design = all_designs[participant_id == id & task_version == run], -->
-<!--                          params.alpha0 = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep', -->
+<!--     sim = Pedlr_interdep(design = all_designs[participant_id == id & run == run], -->
+<!--                          params.alpha0 = data_best[participant_id == id & run == run & model == 'Pedlr_interdep', -->
 <!--                                                    second_solution_alpha0], -->
-<!--                          params.alpha1 = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep', -->
+<!--                          params.alpha1 = data_best[participant_id == id & run == run & model == 'Pedlr_interdep', -->
 <!--                                                    second_solution_alpha1], -->
-<!--                          params.interdep = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep', -->
+<!--                          params.interdep = data_best[participant_id == id & run == run & model == 'Pedlr_interdep', -->
 <!--                                                      second_solution_interdep], -->
-<!--                          params.temperature = data_best[participant_id == id & task_version == run & model == 'Pedlr_interdep', -->
+<!--                          params.temperature = data_best[participant_id == id & run == run & model == 'Pedlr_interdep', -->
 <!--                                                         second_solution_temperature], -->
 <!--                          params.reward_space_ub = 100, -->
 <!--                          choice_policy = 'softmax', -->
 <!--                          init_values = c(50,50,50)) -->
-<!--     temp = all_designs[participant_id == id & task_version == run] -->
+<!--     temp = all_designs[participant_id == id & run == run] -->
 <!--     temp$model = 'Pedlr_interdep' -->
 <!--     temp = Append_model_values(data = temp, model_output = sim) -->
 <!--     data_best_fitting_paras = rbind(data_best_fitting_paras, temp) -->
@@ -883,16 +883,16 @@ ggplot(data = data_aic,
 
 <!--   data_plot = data %>% -->
 <!--     .[, trial := seq(.N), -->
-<!--       by = c('participant_id', 'task_version', 'model')] %>% -->
+<!--       by = c('participant_id', 'run', 'model')] %>% -->
 <!--     .[, (est_cols) := lapply(.SD, as.numeric), .SDcols = est_cols] %>% -->
 <!--     data.table::melt(., -->
-<!--                      id.vars = c('participant_id', 'task_version', 'model', 'trial'), -->
+<!--                      id.vars = c('participant_id', 'run', 'model', 'trial'), -->
 <!--                      measure.vars = c('est_1_reward', 'est_2_reward', 'est_3_reward', -->
 <!--                                       'model_value_1', 'model_value_2', 'model_value_3')) %>% -->
 <!--     .[!is.na(value),] %>% -->
 <!--     .[, ':='(type = unlist(strsplit(as.character(variable), split = '_'))[1], -->
 <!--              stim = sort(unlist(strsplit(as.character(variable), split = '_')))[1]), -->
-<!--       by = c('participant_id', 'task_version', 'model', 'trial', 'variable')] %>% -->
+<!--       by = c('participant_id', 'run', 'model', 'trial', 'variable')] %>% -->
 <!--     .[, ':='(type = as.factor(type), -->
 <!--              stim = as.factor(stim))] -->
 
@@ -917,7 +917,7 @@ ggplot(data = data_aic,
 <!--             linetype = 'solid', -->
 <!--             alpha = 0.7) + -->
 <!--   scale_color_manual(values = c('red', 'blue', 'yellow')) + -->
-<!--   facet_grid(participant_id ~ task_version + stim) + -->
+<!--   facet_grid(participant_id ~ run + stim) + -->
 <!--   theme(legend.position = 'top') -->
 <!-- ``` -->
 
@@ -934,7 +934,7 @@ ggplot(data = data_aic,
 <!--        aes(x = value_alpha0, -->
 <!--            y = value_alpha1)) + -->
 <!--   geom_point() + -->
-<!--   facet_grid( ~ task_version) -->
+<!--   facet_grid( ~ run) -->
 <!-- ``` -->
 
 

@@ -77,7 +77,7 @@ for(i in seq(length(files))){
 
 nico_data = fit_data %>%
   data.table::melt(., id.vars = c('participant_id',
-                                  'task_version',
+                                  'run',
                                   'fit',
                                   'random_x0',
                                   'Choice1v2',
@@ -86,10 +86,10 @@ nico_data = fit_data %>%
                                   'RatingSD2')) %>%
   .[, ':='(model = unlist(strsplit(as.character(variable), split = '_'))[1],
            var = unlist(strsplit(as.character(variable), split = '_'),)[2]),
-    by = c('participant_id', 'task_version', 'fit', 'variable')] %>%
+    by = c('participant_id', 'run', 'fit', 'variable')] %>%
   .[, variable := NULL] %>%
   data.table::dcast(.,
-                    participant_id + task_version + fit + random_x0 + Choice1v2 + Choice2v3 + Rating2 + RatingSD2 + model ~ var, value.var = 'value')
+                    participant_id + run + fit + random_x0 + Choice1v2 + Choice2v3 + Rating2 + RatingSD2 + model ~ var, value.var = 'value')
 ```
 
 # Fitting consistency
@@ -100,7 +100,7 @@ Plot_prepare_consistency = function(data){
     data.table::melt(., id.vars = c('participant_id',
                                     'file',
                                     'iter',
-                                    'task_version',
+                                    'run',
                                     'name_design_r1',
                                     'name_design_r2',
                                     'model',
@@ -117,7 +117,7 @@ Plot_prepare_consistency = function(data){
     # Join iterations of across jobs and within jobs
     .[, real_iter := seq(.N),
       by = c('participant_id',
-             'task_version',
+             'run',
              'name_design_r1',
              'name_design_r2',
              'model',
@@ -129,7 +129,7 @@ Plot_prepare_consistency = function(data){
     data.table::dcast(.,
                       participant_id + 
                         real_iter +
-                        task_version + 
+                        run + 
                         name_design_r1 + 
                         name_design_r2 + 
                         model +
@@ -144,7 +144,7 @@ Plot_prepare_consistency = function(data){
 ```
 
 ```{r}
-comp_cols = c('participant_id', 'task_version', 'fit', 'model', 'LL', 'alpha', 'alpha0', 'alpha1', 'temp')
+comp_cols = c('participant_id', 'run', 'fit', 'model', 'LL', 'alpha', 'alpha0', 'alpha1', 'temp')
 
 chris_data = Plot_prepare_consistency(chris_data) %>%
   .[model != 'Pedlr_interdep' & variable == 'second_solution'] %>%
@@ -164,7 +164,7 @@ nico_data[model == 'PEDLR']$model = 'Pedlr'
 nico_data[model == 'RW']$model = 'Rw'
 
 data = rbind(nico_data, chris_data) %>%
-  .[order(participant_id, task_version, fit, person, model)]
+  .[order(participant_id, run, fit, person, model)]
 ```
 
 # Rw
@@ -178,7 +178,7 @@ ggplot(data = data[model == 'Rw'],
   geom_point(alpha = 0.5) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(1,10)) +
-  facet_grid(participant_id~task_version)
+  facet_grid(participant_id~run)
 ```
 
 ## Pedlr
@@ -192,5 +192,5 @@ ggplot(data = data[model == 'Pedlr'],
   geom_point(alpha = 0.5) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,1)) +
-  facet_grid(participant_id~task_version)
+  facet_grid(participant_id~run)
 ```

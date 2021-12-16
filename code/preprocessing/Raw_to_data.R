@@ -11,7 +11,7 @@ Raw_to_data = function(data,
                        add_demo = FALSE,
                        delete_prolific = TRUE){
   
-  # If demo data is given
+  # If demographic data is given
   if(!is.null(nrow(demo_data))){
     # Check if prolific_ID between experiment and demographic data are the same
     exp_id = unique(data$prolific_id)
@@ -309,7 +309,10 @@ Raw_to_data = function(data,
     data[, prolific_id := NULL]
   }
   
-
+  # Rename confusing variables
+  data = data %>%
+    # 'task_version' is just the run of the experiment so we can keep it simple
+    data.table::setnames(., 'task_version', 'run')
   
   return(data)
 }

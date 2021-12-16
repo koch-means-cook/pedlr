@@ -72,7 +72,7 @@ source(source_path)
 # Load data
 data = Load_data() %>%
   Add_comp(.) %>%
-  .[participant_id == '158HUXE' & task_version == 1, ] %>%
+  .[participant_id == '158HUXE' & run == 1, ] %>%
   Prepare_data_for_fit(.)
 ```
 

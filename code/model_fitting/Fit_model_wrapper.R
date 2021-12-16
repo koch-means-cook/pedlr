@@ -67,12 +67,12 @@ Fit_model_wrapper = function(input_path,
     
     
     # Separate fits for runs (each iteration)
-    for(i_version in unique(data$task_version)){
+    for(i_run in unique(data$run)){
       
-      message('   Fitting Run: ', i_version, '...')
+      message('   Fitting Run: ', i_run, '...')
       
       # Subset single run of data
-      fit_data = data[task_version == i_version]
+      fit_data = data[run == i_run]
       # Fit selected model
       result = Fit_model(data = fit_data,
                          model = model,
@@ -84,11 +84,11 @@ Fit_model_wrapper = function(input_path,
         .[, ':='(para = p_names,
                  iter = i_iter,
                  participant_id = unique(data$participant_id),
-                 task_version = i_version,
+                 run = i_run,
                  name_design_r1 = unique(data$name_design_r1),
                  name_design_r2 = unique(data$name_design_r2))] %>%
         .[, data.table::setcolorder(., c("participant_id",
-                                         "task_version",
+                                         "run",
                                          "name_design_r1",
                                          "name_design_r2",
                                          "para"))]

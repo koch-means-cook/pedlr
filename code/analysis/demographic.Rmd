@@ -61,7 +61,7 @@ invisible(lapply(source_files, function(x) source(x)))
 # Load data
 data = Load_data() %>%
   Add_comp(.) %>%
-  .[, task_version := as.factor(task_version)]
+  .[, run := as.factor(run)]
 
 # get number of participants (to adjust figure height)
 n_participants = length(unique(data$participant_id))

@@ -66,7 +66,7 @@ invisible(lapply(source_files, function(x) source(x)))
 # Load data
 data = Load_data() %>%
   Add_comp(.) %>%
-  .[, task_version := as.factor(task_version)]
+  .[, run := as.factor(run)]
 
 # get number of participants (to adjust figure height)
 n_participants = length(unique(data$participant_id))
@@ -120,14 +120,14 @@ check_est = data %>%
            avg_3_running = Get_running_avg(choice_option = option_choice,
                                      choice_outcome = outcome,
                                      stim = 3)),
-    by = c('participant_id', 'task_version')] %>%
+    by = c('participant_id', 'run')] %>%
   .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
   .[!is.na(est_1_reward),] %>%
-  .[, est_trial := seq(.N), by = c('participant_id', 'task_version')] %>%
+  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
   data.table::melt(.,
                    id.vars = c('participant_id',
                                'group',
-                               'task_version',
+                               'run',
                                'est_trial',
                                'forced_rare'),
                    measure.vars = c('est_1_reward',
@@ -144,7 +144,7 @@ check_est = data %>%
   .[type == 'rew', type := 'reward'] %>%
   .[type == 'ran', type := 'range'] %>%
   .[type == 'run', type := 'r_avg'] %>%
-  data.table::dcast(., participant_id + group + task_version + est_trial + forced_rare + est_stim ~ type,
+  data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
                     value.var = 'value')
 
 # Merge true means with estimation to get difference from truth
@@ -171,19 +171,19 @@ pwr_within = check_est_diff %>%
   # Get mean estimation for each participant per run
   .[, .(mean_est = mean(diff_from_true, na.rm = TRUE),
         sd_est = sd(diff_from_true, na.rm = TRUE)),
-    by = c('participant_id', 'task_version', 'est_stim')] %>%
+    by = c('participant_id', 'run', 'est_stim')] %>%
   # Get mean for whole sample
   .[, .(mean_sample = mean(mean_est),
         sd_est = sd(mean_est),
         sample_size = .N),
-    by = c('task_version', 'est_stim')] %>%
+    by = c('run', 'est_stim')] %>%
   .[, cohens_d := mean_sample/sd_est] %>%
   .[, suggested_sample := pwr::pwr.t.test(d = cohens_d,
                                           sig.level = 0.05,
                                           power = 0.9,
                                           type = 'one.sample',
                                           alternative = 'two.sided')$n,
-    by = c('task_version', 'est_stim')]
+    by = c('run', 'est_stim')]
 knitr::kable(pwr_within) %>%
   kableExtra::kable_styling()
 ```
@@ -221,19 +221,19 @@ pwr_within = check_est_diff %>%
   # Get mean estimation for each participant per run
   .[, .(mean_est = mean(diff_from_true, na.rm = TRUE),
         sd_est = sd(diff_from_true, na.rm = TRUE)),
-    by = c('participant_id', 'task_version', 'est_stim')] %>%
-  data.table::dcast(participant_id + task_version ~ paste0('mean_est_',est_stim), value.var = 'mean_est') %>%
+    by = c('participant_id', 'run', 'est_stim')] %>%
+  data.table::dcast(participant_id + run ~ paste0('mean_est_',est_stim), value.var = 'mean_est') %>%
   .[, diff_3m2 := mean_est_3 - mean_est_2] %>%
   .[, .(mean_diff_3m2 = mean(diff_3m2),
         sd_diff_3m2 = sd(diff_3m2)),
-    by = 'task_version'] %>%
+    by = 'run'] %>%
   .[, cohens_d := mean_diff_3m2/sd_diff_3m2] %>%
   .[, suggested_sample := pwr::pwr.t.test(d = cohens_d,
                                           sig.level = 0.05,
                                           power = 0.9,
                                           type = 'one.sample',
                                           alternative = 'two.sided')$n,
-    by = 'task_version']
+    by = 'run']
 knitr::kable(pwr_within) %>%
   kableExtra::kable_styling()
 ```
@@ -266,20 +266,20 @@ knitr::kable(pwr_across) %>%
 # Percent of non-optimal choices
 check_noc = data %>%
   .[, trial := seq(.N),
-    by = c('participant_id', 'task_version')] %>%
+    by = c('participant_id', 'run')] %>%
   .[trial_type == 'choice',] %>%
   .[, correct_choice := if(option_left > option_right) 'left' else 'right',
-    by = c('participant_id', 'task_version', 'trial')] %>%
+    by = c('participant_id', 'run', 'trial')] %>%
   .[, correct := correct_choice == choice] %>%
   # Get percentage of correct choices (exclude timeouts from overall trials)
   .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
-    by = c('participant_id', 'group', 'task_version', 'comp')]
+    by = c('participant_id', 'group', 'run', 'comp')]
 
 # Difference between 1v2 and 2v3
 check_noc_diff = check_noc %>%
   # Only select critical comparisons
   .[comp %in% c('1v2', '2v3'),] %>%
-  data.table::dcast(participant_id + group + task_version ~ paste('mean_', comp, sep = ''),
+  data.table::dcast(participant_id + group + run ~ paste('mean_', comp, sep = ''),
                     value.var = 'perc_correct') %>%
   .[, diff_1v2m2v3 := mean_1v2 - mean_2v3]
 ```
@@ -290,14 +290,14 @@ check_noc_diff = check_noc %>%
 pwr_within = check_noc_diff %>%
   .[, .(mean_diff_1v2m2v3 = mean(diff_1v2m2v3),
         sd_diff_1v2m2v3 = sd(diff_1v2m2v3)),
-    by = 'task_version'] %>%
+    by = 'run'] %>%
   .[, cohens_d := mean_diff_1v2m2v3 / sd_diff_1v2m2v3] %>%
   .[, suggested_sample := pwr::pwr.t.test(d = cohens_d,
                                           sig.level = 0.05,
                                           power = 0.9,
                                           type = 'one.sample',
                                           alternative = 'two.sided')$n,
-    by = 'task_version']
+    by = 'run']
 knitr::kable(pwr_within) %>%
   kableExtra::kable_styling()
 ```
