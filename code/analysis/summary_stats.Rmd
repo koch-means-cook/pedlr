@@ -39,6 +39,8 @@ library(binhf)
 library(pwr)
 library(knitr)
 library(kableExtra)
+library(sdamr)
+library(gghalves)
 ```
 
 ```{r, message=FALSE}
@@ -365,8 +367,9 @@ p_rtd_median = ggplot(data = data_plot,
                       aes(x = comp,
                           y = median_rt,
                           color = group)) +
-  geom_point() +
-  geom_line(aes(group = participant_id)) +
+  geom_point(alpha = 0.3) +
+  geom_line(aes(group = participant_id),
+            alpha = 0.3) +
   labs(title = 'Median') +
   facet_grid(run ~ trial_type + group)
 Neurocodify_plot(p_rtd_median)
@@ -376,8 +379,9 @@ p_rtd_mean = ggplot(data = data_plot,
                     aes(x = comp,
                         y = mean_rt,
                         color = group)) +
-  geom_point() +
-  geom_line(aes(group = participant_id)) +
+  geom_point(alpha = 0.3) +
+  geom_line(aes(group = participant_id),
+            alpha = 0.3) +
   labs(title = 'Mean') +
   facet_grid(run ~ trial_type + group)
 Neurocodify_plot(p_rtd_mean)
@@ -399,28 +403,78 @@ data_plot = Prepare_data_for_plot(check_rt_diff_comp)
 p_rtc_median = ggplot(data = data_plot,
                       aes(x = run,
                           y = median_1v2m2v3,
-                          color = group)) +
+                          color = trial_type,
+                          fill = trial_type)) +
   geom_hline(yintercept = 0,
              linetype = 'dashed') +
-  geom_point() +
+  geom_point(size = 0.5,
+             position = position_jitterdodge(jitter.width = 0.08,
+                                             jitter.height = 0,
+                                             dodge.width = 0.3)) +
+  geom_boxplot(width = 0.15,
+               color = 'black',
+               outlier.shape = NA,
+               show.legend = FALSE,
+               position = position_dodge(width = 0.3)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.3),
+               show.legend = FALSE) +
+  gghalves::geom_half_violin(side = 1,
+                             color = 'transparent',
+                             width = 0.5,
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.2),
+                             show.legend = FALSE) +
   scale_y_continuous(limits = c(-max(abs(data_plot$median_1v2m2v3)),
                                 max(abs(data_plot$median_1v2m2v3)))) +
   labs(title = 'Difference Median (1v2 - 2v3)') +
-  facet_wrap(~group + trial_type)
+  facet_grid(~group)
 Neurocodify_plot(p_rtc_median)
 
 data_plot = Prepare_data_for_plot(check_rt_diff_comp)
 p_rtc_mean = ggplot(data = data_plot,
                       aes(x = run,
                           y = mean_1v2m2v3,
-                          color = group)) +
+                          color = trial_type,
+                          fill = trial_type)) +
   geom_hline(yintercept = 0,
              linetype = 'dashed') +
-  geom_point() +
+  geom_point(size = 0.5,
+             position = position_jitterdodge(jitter.width = 0.08,
+                                             jitter.height = 0,
+                                             dodge.width = 0.3)) +
+  geom_boxplot(width = 0.15,
+               color = 'black',
+               outlier.shape = NA,
+               show.legend = FALSE,
+               position = position_dodge(width = 0.3)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.3),
+               show.legend = FALSE) +
+  gghalves::geom_half_violin(side = 1,
+                             color = 'transparent',
+                             width = 0.5,
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.2),
+                             show.legend = FALSE) +
   scale_y_continuous(limits = c(-max(abs(data_plot$mean_1v2m2v3)),
                                 max(abs(data_plot$mean_1v2m2v3)))) +
   labs(title = 'Difference Mean (1v2 - 2v3)') +
-  facet_wrap(~group + trial_type)
+  facet_grid(~ group)
 Neurocodify_plot(p_rtc_mean)
 ```
 
@@ -477,8 +531,9 @@ p_noc_diff_comp_line = ggplot(data = data_plot,
                               aes(x = comp,
                                   y = perc_correct,
                                   color = group)) +
-  geom_point() +
-  geom_line(aes(group = participant_id)) +
+  geom_point(alpha = 0.3) +
+  geom_line(aes(group = participant_id),
+            alpha = 0.3) +
   facet_grid(run ~ group)
 Neurocodify_plot(p_noc_diff_comp_line)
 ```
@@ -495,12 +550,35 @@ check_noc_diff = check_noc %>%
 
 data_plot = Prepare_data_for_plot(check_noc_diff)
 p_noc_diff_comp_diff = ggplot(data = data_plot,
-                         aes(x = run,
-                             y = diff_1v2m2v3,
-                             color = group)) +
+                              aes(x = run,
+                                  y = diff_1v2m2v3,
+                                  color = group,
+                                  fill = group)) +
   geom_hline(yintercept = 0,
              linetype = 'dashed') +
-  geom_point() +
+  geom_point(size = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.08,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.15)) +
+  geom_boxplot(width = 0.1,
+               color = 'black',
+               outlier.shape = NA,
+               position = position_nudge(x = 0),
+               show.legend = FALSE) +
+ stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               color = 'black',
+               size = 1.5,
+               stroke = 0.5) +
+  gghalves::geom_half_violin(side = 1,
+                             color = 'transparent',
+                             width = 0.3,
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.15),
+                             show.legend = FALSE) +
   scale_y_continuous(limits = c(-max(abs(data_plot$diff_1v2m2v3)),
                                 max(abs(data_plot$diff_1v2m2v3)))) +
   facet_wrap(~group) +
@@ -536,8 +614,8 @@ p_noc_diff_run = ggplot(data = data_plot,
                             y = perc_correct,
                             group = participant_id,
                             color = group)) +
-  geom_point() +
-  geom_line() +
+  geom_point(alpha = 0.3) +
+  geom_line(alpha = 0.3) +
   facet_grid(comp ~ group)
 Neurocodify_plot(p_noc_diff_run)
 ```
