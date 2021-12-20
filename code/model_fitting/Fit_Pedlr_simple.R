@@ -8,6 +8,13 @@ source_files = list.files(source_path, pattern = "[.][rR]$",
 invisible(lapply(source_files, function(x) source(x)))
 
 
+# params.alpha1 = 0.1
+# params.temperature = 7
+# params.reward_space_ub = 100
+# choice_policy = 'softmax'
+# init_values = c(50,50,50)
+
+
 Fit_Pedlr_simple = function(data,
                             params.alpha1,
                             params.temperature,
@@ -35,6 +42,9 @@ Fit_Pedlr_simple = function(data,
   # Initialize df keeping max pe so far for each trial
   df_max_pe = data.frame(matrix(NA, params.ntrials, 1))
   colnames(df_max_pe) = 'pe_max'
+  
+  # Initialize running maximum of PE (to scale alpha1, see model)
+  max_pe_so_far = NA
   
   # Loop over trials
   for(trial_count in 1:params.ntrials){
@@ -157,7 +167,7 @@ Fit_Pedlr_simple = function(data,
       
       
       # Calculate prediction error according to subjects choice
-      # Not if false choice
+      # Not if no reward (wrong choice in forced choice trials, timeout)
       if(is.na(choice_reward)){
         pe = NA
         df_pe[trial_count, choice_stim] = pe
@@ -166,12 +176,14 @@ Fit_Pedlr_simple = function(data,
         updated_value = choice_value + fpe * pe
       
         
+        
       # Otherwise update
       } else {
         pe = choice_reward - choice_value
         df_pe[trial_count, choice_stim] = pe
         
         #fpe = params.alpha1 * (abs(pe)/params.reward_space_ub)
+        # Scale contribution of alpha1 by maximum of PE so far
         max_pe_so_far = max(abs(c(df_pe$stim_1[1:trial_count],
                                   df_pe$stim_2[1:trial_count],
                                   df_pe$stim_3[1:trial_count])), na.rm = TRUE)

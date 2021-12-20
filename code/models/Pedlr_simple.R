@@ -32,6 +32,9 @@ Pedlr_simple = function(design,
   df_max_pe = data.frame(matrix(NA, params.ntrials, 1))
   colnames(df_max_pe) = 'pe_max'
   
+  # Initialize running maximum of PE (to scale alpha1, see model)
+  max_pe_so_far = NA
+  
   # Loop over trials
   for(trial_count in 1:params.ntrials){
     
