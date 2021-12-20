@@ -1,9 +1,10 @@
+# Specify inheritance
 FROM ubuntu:18.04
 
 # Turn off interactive mode (so e.g. R installation does not ask you for your location)
 ENV DEBIAN_FRONTEND noninteractive
 
-# Get all packages that could be downloaded
+# Update package database for OS
 RUN apt-get update
 
 # Configure package installation

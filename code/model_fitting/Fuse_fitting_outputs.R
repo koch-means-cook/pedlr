@@ -1,5 +1,6 @@
 library(here)
 library(data.table)
+library(optparse)
 
 # Load functions
 source_path = file.path(here::here(), 'code', 'utils',
@@ -8,7 +9,7 @@ source_files = list.files(source_path, pattern = "[.][rR]$",
                           full.names = TRUE, recursive = TRUE)
 invisible(lapply(source_files, function(x) source(x)))
 
-Fuse_fitting_outputs = function(){
+Fuse_fitting_outputs = function(delete_source = FALSE){
   
   # Get repo dir
   base_path = here::here()
@@ -62,7 +63,17 @@ Fuse_fitting_outputs = function(){
                            row.names = FALSE,
                            sep = '\t')
         
+        # Give message to user
         message(paste('Created ', out_file, '...', sep = ''))
+        
+        # If source files should be deleted
+        if(delete_source){
+          unlink(data)
+          
+          # Give message to user
+          message(paste('   Deleted source for ', basename(out_file), '...', sep = ''))
+        }
+        
       }
     }
   }
@@ -71,6 +82,18 @@ Fuse_fitting_outputs = function(){
   
 }
 
+# Create options to pass to script
+option_list = list(
+  make_option(c('-d', '--delete_source'),
+              type='character',
+              default = FALSE,
+              help = 'TRUE if files that are fused together to create output should be deleted',
+              metavar = 'DELETE_SOURCE'))
+
+# provide options in list to be callable by script
+opt_parser = OptionParser(option_list = option_list)
+opt = parse_args(opt_parser)
+
 # Call function
-Fuse_fitting_outputs()
+Fuse_fitting_outputs(delete_source = opt$delete_source)
 

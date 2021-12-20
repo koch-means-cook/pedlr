@@ -36,25 +36,25 @@ RFreeze = function(path,
   
 }
 
-# Create options to pass to script
-option_list = list(
-  make_option(c('-p', '--path'),
-              type='character',
-              default = NULL,
-              help = 'Path to output dir (file will always be called r_requirements.txt)',
-              metavar = 'PATH'),
-  make_option(c('-s', '--save_to_path'),
-              type='character',
-              default = NULL,
-              help = 'TRUE if file should be saved',
-              metavar = 'SAVE'))
-
-# provide options in list to be callable by script
-opt_parser = OptionParser(option_list = option_list)
-opt = parse_args(opt_parser)
-
-# Cal wrapper with command line inputs
-RFreeze(path = opt$path,
-        save_to_path = opt$save_to_path)
+# # Create options to pass to script
+# option_list = list(
+#   make_option(c('-p', '--path'),
+#               type='character',
+#               default = NULL,
+#               help = 'Path to output dir (file will always be called r_requirements.txt)',
+#               metavar = 'PATH'),
+#   make_option(c('-s', '--save_to_path'),
+#               type='character',
+#               default = NULL,
+#               help = 'TRUE if file should be saved',
+#               metavar = 'SAVE'))
+# 
+# # provide options in list to be callable by script
+# opt_parser = OptionParser(option_list = option_list)
+# opt = parse_args(opt_parser)
+# 
+# # Call with command line inputs
+# RFreeze(path = opt$path,
+#         save_to_path = opt$save_to_path)
 
 
