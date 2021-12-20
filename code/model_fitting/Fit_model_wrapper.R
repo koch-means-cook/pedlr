@@ -8,8 +8,8 @@ source(file.path(here::here(), 'code', 'model_fitting', 'Fit_model.R',
 source(file.path(here::here(), 'code', 'utils', 'Prepare_data_for_fit.R',
                  fsep = .Platform$file.sep))
 
-# input_path = '/Users/koch/Docs/pedlr/data/0IUKYRW_exp_data.tsv'
-# model = 'Rw'
+# input_path = '/Users/koch/Docs/pedlr/data/UKHJGRA_exp_data.tsv'
+# model = 'Pedlr_simple'
 # start_values = c(runif(1,0,1),runif(1,1,10))
 # lb = c(0,1)
 # ub = c(1,10)

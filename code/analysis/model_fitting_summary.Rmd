@@ -37,6 +37,7 @@ library(ggplot2)
 library(viridis)
 library(plotly)
 library(plyr)
+library(gghalves)
 ```
 
 ```{r}
@@ -55,13 +56,178 @@ invisible(lapply(source_files, function(x) source(x)))
 ```{r}
 # Load data
 data = Load_model_fits()
+bla = Load_data()
+data$group = ''
+for(id in unique(bla$participant_id)){
+  data[participant_id == id]$group = unique(bla[participant_id == id]$group)
+}
+data = data %>%
+  # Join iterations of across jobs and within jobs
+    .[, real_iter := seq(.N),
+      by = c('participant_id',
+             'group',
+             'run',
+             'model',
+             'para')]
 
 # Get number of participants
 n_participants = length(unique(data$participant_id))
 
 # Get all designs
 all_designs = Load_data()
+
+
+# Get model comparison data
+data_aic = data %>%
+  .[,n_para := .N,
+    by = c('participant_id', 'group', 'run', 'real_iter', 'model')] %>%
+  data.table::dcast(.,
+                    participant_id + group + run + real_iter + second_ll + model + n_para ~ para,
+                    value.var = 'second_solution') %>%
+  # Calculate AIC
+  .[, AIC := (2*n_para) + (2*second_ll)] %>%
+  # Get min aic model
+  .[, .SD[which.min(AIC)],
+    by = c('participant_id', 'group', 'run', 'real_iter')] %>%
+  .[, model := as.factor(model)]
 ```
+
+```{r}
+# Get mean fits
+data_mean = data %>%
+  .[, .(mean_solution = mean(second_solution),
+        sd_solution = sd(second_solution),
+        mean_ll = mean(second_ll),
+        sd_ll = sd(second_ll)),
+    by = c('participant_id', 'group', 'run', 'model', 'para')]
+
+# Get AIC scores of mean fits
+data_mean_aic = data_mean %>%
+  .[,n_para := .N,
+    by = c('participant_id', 'group', 'run', 'model')] %>%
+  data.table::dcast(.,
+                    participant_id + group + run + mean_ll + model + n_para ~ para,
+                    value.var = 'mean_solution') %>%
+  # Calculate AIC
+  .[, AIC := (2*n_para) + (2*mean_ll)] %>%
+  # Get min aic model
+  .[, .SD[which.min(AIC)],
+    by = c('participant_id', 'group', 'run')] %>%
+  .[, model := as.factor(model)]
+```
+
+
+# Parameter distributions
+
+Over within-subject mean of all fitting iterations
+
+```{r, out.width='100%'}
+data_plot = data_mean %>%
+  .[para == 'alpha', para := 'alpha0'] %>%
+  Prepare_data_for_plot()
+
+p_dist_para = ggplot(data = data_plot[para != 'temperature'],
+       aes(x = mean_solution,
+           fill = group)) +
+  geom_density(alpha = 0.7,
+                color = 'transparent') +
+  scale_color_viridis(option = 'D',
+                      discrete = TRUE) +
+  scale_fill_viridis(option = 'D',
+                      discrete = TRUE) +
+  facet_grid(para ~ model,
+             scales = 'free_y') +
+  theme(legend.position = 'top',
+        axis.title.x = element_blank())
+p_dist_para = Neurocodify_plot(p_dist_para)
+
+p_dist_temp = ggplot(data = data_plot[para == 'temperature'],
+       aes(x = mean_solution,
+           fill = group)) +
+  geom_density(alpha = 0.7,
+                color = 'transparent') +
+  scale_color_viridis(option = 'D',
+                      discrete = TRUE) +
+  scale_fill_viridis(option = 'D',
+                      discrete = TRUE) +
+  facet_grid(para ~ model) +
+  theme(legend.position = 'none',
+        strip.background.x = element_blank(),
+        strip.text.x = element_blank())
+p_dist_temp = Neurocodify_plot(p_dist_temp)
+
+p_dist = cowplot::plot_grid(p_dist_para, p_dist_temp,
+                   ncol = 1,
+                   rel_heights = c(3,1),
+                   axis = 'rl',
+                   align = 'v')
+p_dist
+```
+
+# Best fitting model
+
+```{r}
+# Count best fitting models
+setkey(data_mean_aic, group, run, model)
+data_plot = data_mean_aic %>%
+    .[data.table::CJ(group, run, model, unique = TRUE), .(count = .N),
+    by = .EACHI] %>%
+  Prepare_data_for_plot()
+
+# Plot best fiting models for both age groups
+p_best_fit = ggplot(data = data_plot,
+                    aes(x = model,
+                        y = count,
+                        fill = group,
+                        color = group)) +
+  geom_col(color = NA,
+           position = position_dodge()) +
+  facet_wrap(~run)
+p_best_fit
+```
+
+
+# Age comparison
+
+```{r}
+data_plot = data_mean %>%
+  .[para == 'alpha', para := 'alpha0'] %>%
+  Prepare_data_for_plot()
+
+ggplot(data = data_plot[para != 'temperature',],
+       aes(x = run,
+           y = mean_solution,
+           fill = group,
+           color = group)) +
+  geom_point(size = 0.5,
+             position = position_jitterdodge(jitter.width = 0.08,
+                                             jitter.height = 0,
+                                             dodge.width = 0.3)) +
+  geom_boxplot(width = 0.15,
+               color = 'black',
+               outlier.shape = NA,
+               show.legend = FALSE,
+               position = position_dodge(width = 0.3)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.3),
+               show.legend = FALSE) +
+  gghalves::geom_half_violin(side = 1,
+                             color = 'transparent',
+                             width = 0.5,
+                             alpha = 0.7,
+                             position = position_nudge(x = 0.2),
+                             show.legend = FALSE) +
+  facet_grid(model ~ para,
+             scales = 'free_x')
+```
+
 
 # Fitting consistency
 
@@ -69,6 +235,7 @@ all_designs = Load_data()
 Plot_prepare_consistency = function(data){
   data_plot = data %>%
     data.table::melt(., id.vars = c('participant_id',
+                                    'group',
                                     'file',
                                     'iter',
                                     'run',
@@ -88,6 +255,7 @@ Plot_prepare_consistency = function(data){
     # Join iterations of across jobs and within jobs
     .[, real_iter := seq(.N),
       by = c('participant_id',
+             'group',
              'run',
              'name_design_r1',
              'name_design_r2',
@@ -99,6 +267,7 @@ Plot_prepare_consistency = function(data){
              file = NULL)] %>%
     data.table::dcast(.,
                       participant_id + 
+                        group +
                         real_iter +
                         run + 
                         name_design_r1 + 
@@ -119,25 +288,22 @@ Plot_prepare_consistency = function(data){
 ```{r, out.width='100%', fig.height=n_participants}
 data_plot = Plot_prepare_consistency(data[model == 'Rw'])
 
-ggplot(data = data_plot,
+p_con_rw = ggplot(data = data_plot,
        aes(x = value_alpha,
            y = value_temperature,
-           fill = variable,
-           shape = variable,
            group = real_iter)) +
-  scale_fill_manual(values = c('white', 'black')) +
-  scale_shape_manual(values = c(21, 24)) +
   scale_x_continuous(limits = c(0,1)) +
   scale_y_continuous(limits = c(0,10)) +
-  # geom_path(color = 'black',
-  #           size = 0.2,
-  #           alpha = 0.3) +
-  geom_point(size = 0.8,
-             stroke = 0.3,
+  geom_path(color = 'black',
+            size = 0.2,
+            alpha = 0.2) +
+  geom_point(data = data_plot[variable == 'second_solution'],
+             size = 0.8,
              color = 'black',
              alpha = 0.5) +
   facet_grid(participant_id ~ run) +
-  theme(legend.position = 'bottom')
+  theme(legend.position = 'top')
+p_con_rw
 ```
 
 ## Pedlr_simple
