@@ -15,8 +15,14 @@ RUN echo 'APT::Get::Install-Recommends "false";' >> /etc/apt/apt.conf
 #################################
 
 # Create .Rprofile file to specify package repository, define installOrQuit function, set number of allowed CPUs
-RUN echo 'options(Ncpus=4, repos=structure(c(CRAN="https://cloud.r-project.org")))' > ~/.Rprofile
+RUN echo 'options(Ncpus=4, repos=structure(c(CRAN="https://cloud.r-project.org")))'                       > ~/.Rprofile
 RUN echo 'installOrQuit <- function(p) {tryCatch(install.packages(p), warning=function(e){q(status=1)})}' >> ~/.Rprofile
+
+# Add function to also install specific version
+#RUN echo 'installOrQuit_version <- function(p,v) {'                                                       >> ~/.Rprofile
+#RUN echo '  require(devtools)'                                                                            >> ~/.Rprofile
+#RUN echo '  tryCatch(install.version(p, version = v), warning=function(e){q(status=1)})'                  >> ~/.Rprofile
+#RUN echo '}'                                                                                              >> ~/.Rprofile
 
 # Install base R with version
 #ARG R_VERSION=4.1.2
