@@ -67,22 +67,27 @@ Get_exclusions = function(){
       by = c('participant_id', 'run')] %>%
     .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
     .[!is.na(est_1_reward),] %>%
-    .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
+    .[, est_trial := seq(.N), by = c('participant_id', 'run')]
+    # Convert measure variables to same type (to avoid "melt" warning)
+  conv_cols = c('est_1_reward',
+                'est_1_range',
+                'avg_1_running',
+                'est_2_reward',
+                'est_2_range',
+                'avg_2_running',
+                'est_3_reward',
+                'est_3_range',
+                'avg_3_running')
+  out_cols = conv_cols
+  est = est %>%
+    .[, c(out_cols) := lapply(.SD, as.double), .SDcols = conv_cols] %>%
     data.table::melt(.,
                      id.vars = c('participant_id',
                                  'group',
                                  'run',
                                  'est_trial',
                                  'forced_rare'),
-                     measure.vars = c('est_1_reward',
-                                      'est_1_range',
-                                      'avg_1_running',
-                                      'est_2_reward',
-                                      'est_2_range',
-                                      'avg_2_running',
-                                      'est_3_reward',
-                                      'est_3_range',
-                                      'avg_3_running')) %>%
+                     measure.vars = conv_cols) %>%
     .[, est_stim := substr(variable, 5, 5)] %>%
     .[, type := substr(variable, 7, 9)] %>%
     .[type == 'rew', type := 'reward'] %>%
@@ -121,9 +126,31 @@ Get_exclusions = function(){
   temp$reason = 'Consistently similar estimate for bandit 1 and 3'
   excludes = rbind(excludes, temp)
   
+  # ---
+  # Exclusion criterion 3: Chance-level overall performance
+  # ---
+  # Get overall performance (choice of bandit with higher mean, only choice 
+  # trials that were no timeouts)
+  perf_ov = data %>%
+    .[, trial := seq(.N),
+      by = participant_id] %>%
+    # Select only choice trials without timeouts
+    .[trial_type == 'choice' & !is.na(outcome),] %>%
+    # Get correctness of each trial (choice of stimulus with higher mean)
+    .[, corr_choice := (max(option_left, option_right) == option_choice),
+      by = c('participant_id', 'trial')] %>%
+    # Get percentage of overall correct choices
+    .[, .(perc_correct = sum(corr_choice) / length(corr_choice)),
+      by = c('participant_id', 'group')]
+  
+  # Exclude participants with less than 55% overall accuracy (probably guessing)
+  temp = perf_ov[perc_correct < 0.55, c('participant_id', 'group')]
+  temp$run = NA
+  temp$reason = 'Less than 55% overall accuracy'
+  excludes = rbind(excludes, temp)
   
   # ---
-  # Exclusion criterion 3: Chance-level performance for bandit 1 vs. bandit 3
+  # Exclusion criterion 4: Chance-level performance for bandit 1 vs. bandit 3
   # ---
   # Add accuracy of 1v3 choices across runs
   perf_1v3 = data %>%
@@ -141,7 +168,7 @@ Get_exclusions = function(){
   # Exclude participants with less than 55% overall accuracy (probably guessing)
   temp = perf_1v3[corr_1v3 < 0.55, c('participant_id', 'group')]
   temp$run = NA
-  temp$reason = 'Less than 55% overall accuracy chosing between bandit 1 and 3'
+  temp$reason = 'Less than 55% accuracy chosing between bandit 1 and 3'
   excludes = rbind(excludes, temp)
 
   # Prepare and return

@@ -53,11 +53,15 @@ source_path = file.path(base_path, 'code', 'utils',
 source_files = list.files(source_path, pattern = "[.][rR]$",
                           full.names = TRUE, recursive = TRUE)
 invisible(lapply(source_files, function(x) source(x)))
+
+# Get plot colors/linetypes
+custom_guides = Get_plot_guides()
 ```
 
 ```{r}
 # Load data
 data = Load_data() %>%
+  Apply_exclusion_criteria(.) %>%
   Add_comp(.) %>%
   .[, run := as.factor(run)]
 
@@ -91,6 +95,7 @@ p_fce = ggplot(data = data_plot,
        y = 'N') +
   scale_x_continuous(breaks = seq(0,max(data_plot$n_error), by = 2)) +
   scale_y_continuous(breaks = seq(max(data_plot$count, by = 2))) +
+  scale_fill_manual(values = custom_guides) +
   facet_wrap(~ group) +
   theme(legend.position = 'none')
 Neurocodify_plot(p_fce)
@@ -118,8 +123,189 @@ p_tot = ggplot(data = data_plot,
   scale_x_continuous(breaks = seq(0,max(data_plot$n_timeout), by = 5)) +
   scale_y_continuous(breaks = seq(0, max(data_plot$count), by = 2)) +
   facet_wrap(~group) +
+  scale_fill_manual(values = custom_guides) +
   theme(legend.position = 'none')
 Neurocodify_plot(p_tot)
+```
+
+# Accuracy and correctness
+
+```{r, fig.height=0.75*n_participants, out.width='100%'}
+# Overall optimal performance
+check_op = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  # Select only choice trials without timeouts
+  .[trial_type == 'choice' & !is.na(outcome),] %>%
+  # Get correctness of each trial (choice of stimulus with higher mean)
+  .[, corr_choice := (max(option_left, option_right) == option_choice),
+    by = c('participant_id', 'run', 'trial')] %>%
+  # Get percentage of overall correct choices
+  .[, .(perc_correct = sum(corr_choice) / length(corr_choice)),
+    by = c('participant_id', 'group', 'run')]
+  
+# Percentage of optimal choices
+check_noc = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  .[trial_type == 'choice',] %>%
+  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'run', 'trial')] %>%
+  .[, correct := correct_choice == choice] %>%
+  # Get percentage of correct choices (exclude timeouts from overall trials)
+  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
+    by = c('participant_id', 'group', 'run', 'comp')]
+```
+
+## Overall performance
+
+```{r, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_op)
+p_oc = ggplot(data = data_plot,
+              aes(x = run,
+                  y = perc_correct,
+                  color = group,
+                  fill = group)) +
+  geom_hline(yintercept = 0.5,
+             linetype = 'dashed') +
+  geom_point(size = 0.5,
+             position = position_jitterdodge(jitter.width = 0.08,
+                                             jitter.height = 0,
+                                             dodge.width = 0.3)) +
+  geom_boxplot(width = 0.1,
+               color = 'black',
+               outlier.shape = NA,
+               show.legend = FALSE,
+               position = position_dodge(width = 0.3)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.3),
+               show.legend = FALSE) +
+  gghalves::geom_half_violin(side = 1,
+                             color = 'transparent',
+                             width = 0.5,
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.2),
+                             show.legend = FALSE) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'top')
+Neurocodify_plot(p_oc)
+```
+
+
+## Difference between comparisons including asymmetric stimulus {.tabset}
+
+### Line plot
+
+```{r, out.width='100%'}
+check_noc_crit = check_noc %>%
+  .[comp %in% c('1v2', '2v3'),]
+
+data_plot = Prepare_data_for_plot(check_noc_crit)
+p_noc_diff_comp_line = ggplot(data = data_plot,
+                              aes(x = comp,
+                                  y = perc_correct,
+                                  color = group)) +
+  geom_point(alpha = 0.3) +
+  geom_line(aes(group = participant_id),
+            alpha = 0.3) +
+  scale_color_manual(values = custom_guides) +
+  facet_grid(run ~ group)
+Neurocodify_plot(p_noc_diff_comp_line)
+```
+
+### Difference
+
+```{r, out.width='100%'}
+check_noc_diff = check_noc %>%
+  # Only select critical comparisons
+  .[comp %in% c('1v2', '2v3'),] %>%
+  data.table::dcast(participant_id + group + run ~ paste('mean_', comp, sep = ''),
+                    value.var = 'perc_correct') %>%
+  .[, diff_1v2m2v3 := mean_1v2 - mean_2v3]
+
+data_plot = Prepare_data_for_plot(check_noc_diff)
+p_noc_diff_comp_diff = ggplot(data = data_plot,
+                              aes(x = run,
+                                  y = diff_1v2m2v3,
+                                  color = group,
+                                  fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5,
+             linetype = 'solid') +
+  geom_point(size = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.08,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.15)) +
+  geom_boxplot(width = 0.1,
+               color = 'black',
+               outlier.shape = NA,
+               position = position_nudge(x = 0),
+               show.legend = FALSE) +
+ stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               color = 'black',
+               size = 1.5,
+               stroke = 0.5) +
+  gghalves::geom_half_violin(side = 1,
+                             color = 'transparent',
+                             width = 0.3,
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.15),
+                             show.legend = FALSE) +
+  scale_y_continuous(limits = c(-max(abs(data_plot$diff_1v2m2v3)),
+                                max(abs(data_plot$diff_1v2m2v3)))) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  facet_wrap(~group) +
+  labs(title = 'Difference between crit comparisons (1v2 - 2v3)')
+Neurocodify_plot(p_noc_diff_comp_diff)
+```
+
+### Individual correctness
+
+```{r, fig.height=0.75*n_participants, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_noc)
+p_noc = ggplot(data = data_plot,
+               aes(x = comp,
+                   y = perc_correct,
+                   group = participant_id,
+                   color = group)) +
+  geom_line() +
+  geom_point() +
+  labs(x = '%-correct',
+       y = 'Comparison') +
+  facet_grid(group + participant_id ~ run) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'top')
+Neurocodify_plot(p_noc)
+```
+
+
+## Non-optimal between run 1 and 2
+
+```{r, out.width='100%'}
+data_plot = Prepare_data_for_plot(check_noc)
+p_noc_diff_run = ggplot(data = data_plot,
+                        aes(x = run,
+                            y = perc_correct,
+                            group = participant_id,
+                            color = group)) +
+  geom_point(alpha = 0.3) +
+  geom_line(alpha = 0.3) +
+  scale_color_manual(values = custom_guides) +
+  facet_grid(comp ~ group)
+Neurocodify_plot(p_noc_diff_run)
 ```
 
 # Estimation
@@ -205,7 +391,7 @@ p_est_diff = ggplot(data = data_plot,
   stat_summary(fun = 'mean', geom = 'point', size = 1.5, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
     geom_hline(yintercept = 0,
                size = 0.3) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
+  scale_color_manual(values = custom_guides) +
   facet_grid(run~ est_stim) +
   theme(legend.position = 'top')
 Neurocodify_plot(p_est_diff)
@@ -224,7 +410,7 @@ p_est_diff = ggplot(data = data_plot,
   stat_summary(fun = 'median', geom = 'point', size = 1.5, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
     geom_hline(yintercept = 0,
                size = 0.3) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
+  scale_color_manual(values = custom_guides) +
   facet_grid(run~ est_stim) +
   theme(legend.position = 'top')
 Neurocodify_plot(p_est_diff)
@@ -245,7 +431,7 @@ p_est_diff = ggplot(data = data_plot,
   stat_summary(fun = 'mean', geom = 'point', size = 1, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
   geom_hline(yintercept = 0,
              size = 0.3) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
+  scale_color_manual(values = custom_guides) +
   facet_grid(run ~ group + est_stim) +
   theme(legend.position = 'top')
 Neurocodify_plot(p_est_diff)
@@ -264,7 +450,7 @@ p_est_diff = ggplot(data = data_plot,
   stat_summary(fun = 'median', geom = 'point', size = 1, na.rm = TRUE, fill = 'white', color = 'black', shape = 21) +
   geom_hline(yintercept = 0,
              size = 0.3) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
+  scale_color_manual(values = custom_guides) +
   facet_grid(run ~ group + est_stim) +
   theme(legend.position = 'top')
 Neurocodify_plot(p_est_diff)
@@ -281,7 +467,7 @@ p_est_diff = ggplot(data = data_plot,
   geom_hline(yintercept = 0,
              linetype = 'dashed') +
   geom_path() +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
+  scale_color_manual(values = custom_guides) +
   facet_grid(group + participant_id ~ est_stim) +
   theme(legend.position = 'top')
 Neurocodify_plot(p_est_diff)
@@ -305,7 +491,7 @@ p_est = ggplot(data = data_plot,
   labs(x = 'Estimation Trial',
        y = 'Estimate') +
   facet_grid(group + participant_id ~ run + est_stim) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
+  scale_color_manual(values = custom_guides) +
   theme(legend.position = 'none')
 Neurocodify_plot(p_est)
 ```
@@ -371,6 +557,7 @@ p_rtd_median = ggplot(data = data_plot,
   geom_line(aes(group = participant_id),
             alpha = 0.3) +
   labs(title = 'Median') +
+  scale_color_manual(values = custom_guides) +
   facet_grid(run ~ trial_type + group)
 Neurocodify_plot(p_rtd_median)
 
@@ -383,6 +570,7 @@ p_rtd_mean = ggplot(data = data_plot,
   geom_line(aes(group = participant_id),
             alpha = 0.3) +
   labs(title = 'Mean') +
+  scale_color_manual(values = custom_guides) +
   facet_grid(run ~ trial_type + group)
 Neurocodify_plot(p_rtd_mean)
 ```
@@ -403,10 +591,12 @@ data_plot = Prepare_data_for_plot(check_rt_diff_comp)
 p_rtc_median = ggplot(data = data_plot,
                       aes(x = run,
                           y = median_1v2m2v3,
-                          color = trial_type,
-                          fill = trial_type)) +
+                          color = group,
+                          fill = group,
+                          linetype = trial_type)) +
   geom_hline(yintercept = 0,
-             linetype = 'dashed') +
+             size = 0.5,
+             linetype = 'solid') +
   geom_point(size = 0.5,
              position = position_jitterdodge(jitter.width = 0.08,
                                              jitter.height = 0,
@@ -427,13 +617,16 @@ p_rtc_median = ggplot(data = data_plot,
                position = position_dodge(width = 0.3),
                show.legend = FALSE) +
   gghalves::geom_half_violin(side = 1,
-                             color = 'transparent',
+                             color = 'black',
                              width = 0.5,
                              alpha = 0.5,
                              position = position_nudge(x = 0.2),
                              show.legend = FALSE) +
   scale_y_continuous(limits = c(-max(abs(data_plot$median_1v2m2v3)),
                                 max(abs(data_plot$median_1v2m2v3)))) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  scale_linetype_manual(values = custom_guides) +
   labs(title = 'Difference Median (1v2 - 2v3)') +
   facet_grid(~group)
 Neurocodify_plot(p_rtc_median)
@@ -442,10 +635,12 @@ data_plot = Prepare_data_for_plot(check_rt_diff_comp)
 p_rtc_mean = ggplot(data = data_plot,
                       aes(x = run,
                           y = mean_1v2m2v3,
-                          color = trial_type,
-                          fill = trial_type)) +
+                          color = group,
+                          fill = group,
+                          linetype = trial_type)) +
   geom_hline(yintercept = 0,
-             linetype = 'dashed') +
+             size = 0.5,
+             linetype = 'solid') +
   geom_point(size = 0.5,
              position = position_jitterdodge(jitter.width = 0.08,
                                              jitter.height = 0,
@@ -466,13 +661,16 @@ p_rtc_mean = ggplot(data = data_plot,
                position = position_dodge(width = 0.3),
                show.legend = FALSE) +
   gghalves::geom_half_violin(side = 1,
-                             color = 'transparent',
+                             color = 'black',
                              width = 0.5,
                              alpha = 0.5,
                              position = position_nudge(x = 0.2),
                              show.legend = FALSE) +
   scale_y_continuous(limits = c(-max(abs(data_plot$mean_1v2m2v3)),
                                 max(abs(data_plot$mean_1v2m2v3)))) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  scale_linetype_manual(values = custom_guides) +
   labs(title = 'Difference Mean (1v2 - 2v3)') +
   facet_grid(~ group)
 Neurocodify_plot(p_rtc_mean)
@@ -505,117 +703,4 @@ Neurocodify_plot(p_rt)
 ```
 
 
-# Correctness
 
-```{r, fig.height=0.75*n_participants, out.width='100%'}
-check_noc = data %>%
-  .[trial_type == 'choice',] %>%
-  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
-    by = c('participant_id', 'run', 'trial')] %>%
-  .[, correct := correct_choice == choice] %>%
-  # Get percentage of correct choices (exclude timeouts from overall trials)
-  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
-    by = c('participant_id', 'group', 'run', 'comp')]
-```
-
-## Difference between comparisons including asymmetric stimulus {.tabset}
-
-### Line plot
-
-```{r, out.width='100%'}
-check_noc_crit = check_noc %>%
-  .[comp %in% c('1v2', '2v3'),]
-
-data_plot = Prepare_data_for_plot(check_noc_crit)
-p_noc_diff_comp_line = ggplot(data = data_plot,
-                              aes(x = comp,
-                                  y = perc_correct,
-                                  color = group)) +
-  geom_point(alpha = 0.3) +
-  geom_line(aes(group = participant_id),
-            alpha = 0.3) +
-  facet_grid(run ~ group)
-Neurocodify_plot(p_noc_diff_comp_line)
-```
-
-### Difference
-
-```{r, out.width='100%'}
-check_noc_diff = check_noc %>%
-  # Only select critical comparisons
-  .[comp %in% c('1v2', '2v3'),] %>%
-  data.table::dcast(participant_id + group + run ~ paste('mean_', comp, sep = ''),
-                    value.var = 'perc_correct') %>%
-  .[, diff_1v2m2v3 := mean_1v2 - mean_2v3]
-
-data_plot = Prepare_data_for_plot(check_noc_diff)
-p_noc_diff_comp_diff = ggplot(data = data_plot,
-                              aes(x = run,
-                                  y = diff_1v2m2v3,
-                                  color = group,
-                                  fill = group)) +
-  geom_hline(yintercept = 0,
-             linetype = 'dashed') +
-  geom_point(size = 0.5,
-             position = sdamr::position_jitternudge(jitter.width = 0.08,
-                                                    jitter.height = 0,
-                                                    nudge.x = -0.15)) +
-  geom_boxplot(width = 0.1,
-               color = 'black',
-               outlier.shape = NA,
-               position = position_nudge(x = 0),
-               show.legend = FALSE) +
- stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               color = 'black',
-               size = 1.5,
-               stroke = 0.5) +
-  gghalves::geom_half_violin(side = 1,
-                             color = 'transparent',
-                             width = 0.3,
-                             alpha = 0.5,
-                             position = position_nudge(x = 0.15),
-                             show.legend = FALSE) +
-  scale_y_continuous(limits = c(-max(abs(data_plot$diff_1v2m2v3)),
-                                max(abs(data_plot$diff_1v2m2v3)))) +
-  facet_wrap(~group) +
-  labs(title = 'Difference between crit comparisons (1v2 - 2v3)')
-Neurocodify_plot(p_noc_diff_comp_diff)
-```
-
-### Individual correctness
-
-```{r, fig.height=0.75*n_participants, out.width='100%'}
-data_plot = Prepare_data_for_plot(check_noc)
-p_noc = ggplot(data = data_plot,
-               aes(x = comp,
-                   y = perc_correct,
-                   group = participant_id,
-                   color = group)) +
-  geom_line() +
-  geom_point() +
-  labs(x = '%-correct',
-       y = 'Comparison') +
-  facet_grid(group + participant_id ~ run) +
-  theme(legend.position = 'top')
-Neurocodify_plot(p_noc)
-```
-
-
-## Non-optimal between run 1 and 2
-
-```{r, out.width='100%'}
-data_plot = Prepare_data_for_plot(check_noc)
-p_noc_diff_run = ggplot(data = data_plot,
-                        aes(x = run,
-                            y = perc_correct,
-                            group = participant_id,
-                            color = group)) +
-  geom_point(alpha = 0.3) +
-  geom_line(alpha = 0.3) +
-  facet_grid(comp ~ group)
-Neurocodify_plot(p_noc_diff_run)
-```

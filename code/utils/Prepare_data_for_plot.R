@@ -9,10 +9,10 @@ Prepare_data_for_plot = function(data){
     # Rename age-groups
     if('older' %in% data[,col] | 'younger' %in% data[,col]){
       data[,col] = as.character(data[,col])
-      data[data[,col] == 'older', col] = 'Older\nAdults'
-      data[data[,col] == 'younger', col] = 'Younger\nAdults'
+      data[data[,col] == 'older', col] = 'Older\nadults'
+      data[data[,col] == 'younger', col] = 'Younger\nadults'
       data[,col] = factor(data[,col],
-                          levels = c('Younger\nAdults', 'Older\nAdults'))
+                          levels = c('Younger\nadults', 'Older\nadults'))
     }
     
     # Sort model names
@@ -77,6 +77,26 @@ Prepare_data_for_plot = function(data){
     # Make run a factor variable
     if(col == 'run'){
       data[,col] = factor(data[,col])
+    }
+    
+    
+    # Rename trial types
+    if('choice' %in% data[,col] | 'forced' %in% data[,col]){
+      data[,col] = as.character(data[,col])
+      data[data[,col] == 'choice', col] = 'Free\nchoices'
+      data[data[,col] == 'forced', col] = 'Guided\nchoices'
+      data[,col] = factor(data[,col],
+                          levels = c('Free\nchoices', 'Guided\nchoices'))
+    }
+    
+    # Rename bandits
+    if(length(unique(data[,col])) == 3 & grepl('est', col)){
+      data[,col] = as.character(data[,col])
+      data[data[,col] == '1', col] = 'Low'
+      data[data[,col] == '2', col] = 'Mid'
+      data[data[,col] == '3', col] = 'High'
+      data[,col] = factor(data[,col],
+                          levels = c('Low', 'Mid', 'High'))
     }
   }
   

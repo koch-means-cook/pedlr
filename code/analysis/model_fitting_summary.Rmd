@@ -50,6 +50,9 @@ source_path = file.path(base_path, 'code', 'utils',
 source_files = list.files(source_path, pattern = "[.][rR]$",
                           full.names = TRUE, recursive = TRUE)
 invisible(lapply(source_files, function(x) source(x)))
+
+# Get custom plot guides
+custom_guides = Get_plot_guides()
 ```
 
 
@@ -131,10 +134,7 @@ p_dist_para = ggplot(data = data_plot[para != 'temperature'],
            fill = group)) +
   geom_density(alpha = 0.7,
                 color = 'transparent') +
-  scale_color_viridis(option = 'D',
-                      discrete = TRUE) +
-  scale_fill_viridis(option = 'D',
-                      discrete = TRUE) +
+  scale_fill_manual(values = custom_guides) +
   facet_grid(para ~ model,
              scales = 'free_y') +
   theme(legend.position = 'top',
@@ -146,10 +146,7 @@ p_dist_temp = ggplot(data = data_plot[para == 'temperature'],
            fill = group)) +
   geom_density(alpha = 0.7,
                 color = 'transparent') +
-  scale_color_viridis(option = 'D',
-                      discrete = TRUE) +
-  scale_fill_viridis(option = 'D',
-                      discrete = TRUE) +
+  scale_fill_manual(values = custom_guides) +
   facet_grid(para ~ model) +
   theme(legend.position = 'none',
         strip.background.x = element_blank(),
@@ -174,7 +171,7 @@ data_plot = data_mean_aic %>%
     by = .EACHI] %>%
   Prepare_data_for_plot()
 
-# Plot best fiting models for both age groups
+# Plot best fitting models for both age groups
 p_best_fit = ggplot(data = data_plot,
                     aes(x = model,
                         y = count,
@@ -182,7 +179,10 @@ p_best_fit = ggplot(data = data_plot,
                         color = group)) +
   geom_col(color = NA,
            position = position_dodge()) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
   facet_wrap(~run)
+p_best_fit = Neurocodify_plot(p_best_fit)
 p_best_fit
 ```
 
@@ -194,7 +194,7 @@ data_plot = data_mean %>%
   .[para == 'alpha', para := 'alpha0'] %>%
   Prepare_data_for_plot()
 
-ggplot(data = data_plot[para != 'temperature',],
+p_age_comp = ggplot(data = data_plot[para != 'temperature',],
        aes(x = run,
            y = mean_solution,
            fill = group,
@@ -224,8 +224,13 @@ ggplot(data = data_plot[para != 'temperature',],
                              alpha = 0.7,
                              position = position_nudge(x = 0.2),
                              show.legend = FALSE) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
   facet_grid(model ~ para,
              scales = 'free_x')
+
+p_age_comp = Neurocodify_plot(p_age_comp)
+p_age_comp
 ```
 
 
