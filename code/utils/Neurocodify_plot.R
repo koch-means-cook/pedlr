@@ -4,7 +4,7 @@ library(lemon)
 Neurocodify_plot = function(input_plot){
   
   res = input_plot +
-    # Use capped coordinate system (liney will not touch extremes)
+    # Use capped coordinate system (line will not touch extremes)
     coord_capped_cart(left='both',
                       bottom='both',
                       expand = TRUE) +

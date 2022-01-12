@@ -323,3 +323,49 @@ perc_sus = length(unique(sus_pool$participant_id)) / length(unique(data$particip
 ```
 
 Roughly `r round(perc_sus,2)`% of the `r n_participants` participants get flagged as suspicious (probably did not pay attention).
+
+```{r}
+sus_pool = Get_exclusions()
+perc_sus = length(unique(sus_pool$participant_id)) / length(unique(data$participant_id)) * 100
+```
+
+## Exclusion reasons
+
+### Less than 55% overall accuracy
+
+```{r}
+excl = sus_pool[reason == 'Less than 55% overall accuracy']
+ids = excl$participant_id
+rem = sus_pool[!participant_id %in% ids, ]
+excl
+```
+
+### Consistently similar estimate for bandit 1 and 3
+
+```{r}
+excl = rem[reason == 'Consistently similar estimate for bandit 1 and 3']
+ids = excl$participant_id
+rem = rem[!participant_id %in% ids, ]
+excl
+```
+
+### Less than 55% accuracy chosing between bandit 1 and 3
+
+```{r}
+excl = rem[reason == 'Less than 55% accuracy chosing between bandit 1 and 3']
+ids = excl$participant_id
+rem = rem[!participant_id %in% ids, ]
+excl
+```
+
+### Less than 75% accuracy in forced choices
+
+```{r}
+excl = rem[reason == 'Less than 75% accuracy in forced choices']
+ids = excl$participant_id
+rem = rem[!participant_id %in% ids, ]
+excl
+```
+
+
+
