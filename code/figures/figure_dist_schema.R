@@ -7,6 +7,9 @@ library(binhf)
 library(pwr)
 library(knitr)
 library(kableExtra)
+library(cowplot)
+library(pdftools)
+library(emojifont)
 
 # Get directory of repository
 base_path = here::here()
@@ -30,10 +33,10 @@ reward_space_ub = 100
 
 # Low
 d_outcome = dnorm(seq(from=reward_space_lb,
-                    to=reward_space_ub,
-                    by = 0.1),
-                2/6*100,
-                sd)
+                      to=reward_space_ub,
+                      by = 0.1),
+                  2/6*100,
+                  sd)
 outcome = d_outcome / sum(d_outcome)
 low = data.table(x = seq(from=reward_space_lb,
                          to=reward_space_ub,
@@ -72,8 +75,10 @@ data = rbind(low,mid)
 data = rbind(data, high)
 data$stim = factor(data$stim, levels = c('Low', 'Mid', 'High'))
 
+# Get color schemes
 guides = Get_plot_guides()
 
+# Add annotation data for text boxes and hiragana symbols
 annot = data.table(x = c(2/6*100, 3/6*100, 4/6*100),
                    y = c(0.009, 0.009, 0.009),
                    stim = c('Low', 'Mid', 'High'),
@@ -83,6 +88,7 @@ annot_hira = data.table(x = c(2/6*100, 3/6*100, 4/6*100),
                         stim = c('Low', 'Mid', 'High'),
                         label = c('\u3072', '\u307f', '\u307a'))
 
+# Plot
 p_dist_schema = ggplot(data = data,
                        aes(x = x,
                            y = y,
@@ -114,11 +120,11 @@ p_dist_schema = ggplot(data = data,
              label.padding = unit(0.35, units = 'lines'),
              show.legend = FALSE) +
   geom_text(data = annot_hira,
-             aes(label = label),
-             size = 9,
+            aes(label = label),
+            size = 9,
             color = 'black',
-             show.legend = FALSE,
-            family = "Arial Unicode MS") +
+            #family = "Arial",
+            show.legend = FALSE) +
   geom_area(data = data[stim == 'Low'],
             alpha = 0.5) +
   geom_area(data = data[stim == 'High'],
@@ -130,12 +136,22 @@ p_dist_schema = ggplot(data = data,
   labs(x = 'Reward',
        y = 'Probability density')
 
+# Design plot
 p_dist_schema = Neurocodify_plot(p_dist_schema) +
   theme(axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
         legend.position = 'none',
         panel.grid = element_blank(),
-        axis.text = element_text(size = 15),
+        #axis.text = element_text(size = 15),
         axis.title = element_text(size = 15),
         axis.title.y = element_text(margin = margin(0,10,0,0, unit = 'pt')),
         axis.ticks.length = unit(6, units = 'pt'))
-p_dist_schema
+
+# Save plot
+out_file = file.path(base_path, 'derivatives', 'figures', 'dist_schema.pdf',
+                     fsep = .Platform$file.sep)
+ggsave(filename = out_file,
+       plot = p_dist_schema,
+       device = 'pdf',
+       width = 5,
+       height = 4)
