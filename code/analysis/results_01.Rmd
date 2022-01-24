@@ -1,0 +1,329 @@
+---
+title: "Summary Stats"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(sdamr)
+library(gghalves)
+library(lme4)
+library(emmeans)
+library(papeR)
+```
+
+```{r, message=FALSE}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+
+# Get plot colors/linetypes
+custom_guides = Get_plot_guides()
+```
+
+```{r}
+# Load data
+data = Load_data() %>%
+  Apply_exclusion_criteria(.) %>%
+  Add_comp(.) %>%
+  .[, run := as.factor(run)]
+
+# get number of participants (to adjust figure height)
+n_participants = length(unique(data$participant_id))
+```
+
+---
+
+# Overall performance
+
+```{r, fig.height=0.75*n_participants, out.width='100%'}
+# Percentage of optimal choices
+check_noc = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  .[trial_type == 'choice',] %>%
+  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'run', 'trial')] %>%
+  .[, correct := correct_choice == choice] %>%
+  # Get percentage of correct choices (exclude timeouts from overall trials)
+  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
+    by = c('participant_id', 'group', 'run', 'comp')]
+```
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_noc)
+p_noc_diff_comp_line = ggplot(data = data_plot,
+                              aes(x = comp,
+                                  y = perc_correct,
+                                  color = group,
+                                  fill = group)) +
+  geom_jitter(size = 0.1,
+              width = 0.1,
+              height = 0) +
+  geom_boxplot(width = 0.1,
+               color = 'black',
+               outlier.shape = NA,
+               position = position_nudge(x = 0),
+               show.legend = FALSE) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               color = 'black',
+               size = 1.5,
+               stroke = 0.5) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  facet_grid(group ~ run) +
+  theme(strip.text.y = element_text(angle = 0),
+        legend.position = 'none')
+Neurocodify_plot(p_noc_diff_comp_line)
+```
+
+## Stats
+
+```{r}
+# Assure data types
+check_noc$participant_id = as.factor(check_noc$participant_id)
+check_noc$group = as.factor(check_noc$group)
+check_noc$run = as.factor(check_noc$run)
+check_noc$comp = as.factor(check_noc$comp)
+check_noc$perc_correct = as.numeric(check_noc$perc_correct)
+
+# LME
+lme_noc = lme4::lmer(data = check_noc,
+                     perc_correct ~ group * run * comp + (1 | participant_id))
+papeR::prettify(Anova(lme_noc))
+```
+
+### Main effect run
+
+```{r}
+emmeans::emmeans(lme_noc,
+                 pairwise ~ run)
+```
+
+### Main effect comp
+
+```{r}
+emmeans::emmeans(lme_noc,
+                 pairwise ~ comp)
+```
+
+---
+
+# Critical Comparisons
+
+## Correctness
+
+```{r}
+# Within-subject comparison of correctness in critical comparisons
+check_noc_diff = check_noc %>%
+  data.table::dcast(participant_id + group + run ~ paste0('perc_correct_', comp), value.var = 'perc_correct') %>%
+  .[, perc_correct_1v2m2v3 := perc_correct_1v2 - perc_correct_2v3]
+```
+
+### Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_noc_diff)
+p_noc_diff_comp_diff = ggplot(data = data_plot,
+                              aes(x = run,
+                                  y = perc_correct_1v2m2v3,
+                                  color = group,
+                                  fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5,
+             linetype = 'solid') +
+  geom_point(size = 0.5,
+              position = position_jitterdodge(dodge.width = 0.2,
+                                              jitter.width = 0.08,
+                                              jitter.height = 0)) +
+  geom_boxplot(width = 0.1,
+               color = 'black',
+               outlier.shape = NA,
+               position = position_dodge(width = 0.2)) +
+ stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+              position = position_dodge(width = 0.2)) +
+  gghalves::geom_half_violin(side = 1,
+                             color = 'transparent',
+                             width = 0.3,
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.15),
+                             show.legend = FALSE) +
+  scale_y_continuous(limits = c(-max(abs(data_plot$perc_correct_1v2m2v3)),
+                                max(abs(data_plot$perc_correct_1v2m2v3)))) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  labs(title = 'Difference between crit comparisons (1v2 - 2v3)')
+Neurocodify_plot(p_noc_diff_comp_diff)
+```
+
+### Stats
+
+```{r}
+# Assure data types
+check_noc_diff$participant_id = as.factor(check_noc_diff$participant_id)
+check_noc_diff$group = as.factor(check_noc_diff$group)
+check_noc_diff$run = as.factor(check_noc_diff$run)
+check_noc_diff$perc_correct_1v2m2v3 = as.numeric(check_noc_diff$perc_correct_1v2m2v3)
+
+# LME
+lme_noc_diff = lme4::lmer(data = check_noc_diff,
+                     perc_correct_1v2m2v3 ~ group * run + (1 | participant_id))
+papeR::prettify(Anova(lme_noc_diff))
+```
+
+
+## RT
+
+```{r}
+# Get RT (restricted to critical comparisons 1v2 & 2v3)
+check_rt_crit = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  .[timeout == FALSE, ] %>%
+  .[, log_rt := log(rt)] %>%
+  data.table::melt(.,
+                   id.vars = c('participant_id',
+                               'group',
+                               'run',
+                               'trial',
+                               'trial_type',
+                               'comp'),
+                   measure.vars = c('log_rt')) %>%
+  .[trial_type == 'choice' & comp %in% c('1v2', '2v3')]
+
+# Get mean log(RT) of critical comparisons
+check_rt_mean_crit = check_rt_crit %>%
+  .[, .(mean_log_rt = mean(value)),
+    by = c('participant_id',
+           'group',
+           'run',
+           'comp')]
+
+# Get difference 1v2 - 2v3 (within-subject comparison of which )
+check_rt_mean_crit_diff = check_rt_mean_crit %>%
+  data.table::dcast(participant_id + group + run ~ paste0('mean_log_rt_', comp),
+                    value.var = c('mean_log_rt')) %>%
+  .[, mean_log_rt_1v2m2v3 := mean_log_rt_1v2 - mean_log_rt_2v3]
+```
+
+### Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_rt_mean_crit_diff)
+p_rt_mean_crit_diff = ggplot(data = data_plot,
+                             aes(x = run,
+                                 y = mean_log_rt_1v2m2v3,
+                                 color = group,
+                                 fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5,
+             linetype = 'solid') +
+  geom_point(size = 0.5,
+             position = position_jitterdodge(jitter.width = 0.08,
+                                             jitter.height = 0,
+                                             dodge.width = 0.3)) +
+  geom_boxplot(width = 0.15,
+               color = 'black',
+               outlier.shape = NA,
+               show.legend = FALSE,
+               position = position_dodge(width = 0.3)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.3),
+               show.legend = FALSE) +
+  gghalves::geom_half_violin(side = 1,
+                             color = NA,
+                             width = 0.5,
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.2),
+                             show.legend = FALSE) +
+  scale_y_continuous(limits = c(-max(abs(data_plot$mean_log_rt_1v2m2v3)),
+                                max(abs(data_plot$mean_log_rt_1v2m2v3)))) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  labs(title = 'Difference Mean (1v2 - 2v3)')
+Neurocodify_plot(p_rt_mean_crit_diff)
+```
+
+### Stats
+
+```{r}
+# Assure data types
+check_rt_mean_crit_diff$participant_id = as.factor(check_rt_mean_crit_diff$participant_id)
+check_rt_mean_crit_diff$group = as.factor(check_rt_mean_crit_diff$group)
+check_rt_mean_crit_diff$run = as.factor(check_rt_mean_crit_diff$run)
+check_rt_mean_crit_diff$comp = as.factor(check_rt_mean_crit_diff$comp)
+check_rt_mean_crit_diff$mean_log_rt_1v2m2v3 = as.numeric(check_rt_mean_crit_diff$mean_log_rt_1v2m2v3)
+
+# LME
+lme_rt = lme4::lmer(data = check_rt_mean_crit_diff,
+                     mean_log_rt_1v2m2v3 ~ group * run + (1 | participant_id))
+papeR::prettify(Anova(lme_rt))
+```
+
+### Main effect: Group
+
+```{r}
+emmeans::emmeans(lme_rt,
+                 pairwise ~ group)
+```
+
+
