@@ -99,25 +99,26 @@ p_noc_diff_comp_line = ggplot(data = data_plot,
                                   y = perc_correct,
                                   color = group,
                                   fill = group)) +
-  geom_jitter(size = 0.1,
-              width = 0.1,
-              height = 0) +
-  geom_boxplot(width = 0.1,
+  geom_point(size = 0.2,
+             position = position_jitterdodge(dodge.width = 0.3,
+                                             jitter.width = 0.2,
+                                             jitter.height = 0)) +
+  geom_boxplot(width = 0.15,
                color = 'black',
                outlier.shape = NA,
-               position = position_nudge(x = 0),
+               position = position_dodge(width = 0.3),
                show.legend = FALSE) +
   stat_summary(fun = 'mean',
                geom = 'point',
                na.rm = TRUE,
                shape = 23,
                fill = 'white',
-               color = 'black',
                size = 1.5,
-               stroke = 0.5) +
+               stroke = 0.5,
+               position = position_dodge(width = 0.3)) +
   scale_color_manual(values = custom_guides) +
   scale_fill_manual(values = custom_guides) +
-  facet_grid(group ~ run) +
+  facet_grid( ~ run) +
   theme(strip.text.y = element_text(angle = 0),
         legend.position = 'none')
 Neurocodify_plot(p_noc_diff_comp_line)
@@ -325,5 +326,280 @@ papeR::prettify(Anova(lme_rt))
 emmeans::emmeans(lme_rt,
                  pairwise ~ group)
 ```
+
+---
+
+# Estimation
+
+```{r}
+# State melt columns (to align data types to avoid warnings)
+measure_cols = c('est_1_reward',
+                 'est_1_range',
+                 'avg_1_running',
+                 'est_2_reward',
+                 'est_2_range',
+                 'avg_2_running',
+                 'est_3_reward',
+                 'est_3_range',
+                 'avg_3_running')
+
+# Get estimation data
+check_est = data %>%
+  # Get running average of chosen rewards
+  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 1),
+           avg_2_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 2),
+           avg_3_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 3)),
+    by = c('participant_id', 'run')] %>%
+  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
+  .[!is.na(est_1_reward),] %>%
+  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
+  # Unify data types of measure columns
+  .[, (measure_cols) := lapply(.SD, as.double), .SDcols = measure_cols] %>%
+  data.table::melt(.,
+                   id.vars = c('participant_id',
+                               'group',
+                               'run',
+                               'est_trial',
+                               'forced_rare'),
+                   measure.vars = measure_cols) %>%
+  .[, est_stim := substr(variable, 5, 5)] %>%
+  .[, type := substr(variable, 7, 9)] %>%
+  .[type == 'rew', type := 'reward'] %>%
+  .[type == 'ran', type := 'range'] %>%
+  .[type == 'run', type := 'r_avg'] %>%
+  data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
+                    value.var = 'value')
+
+# Merge true means with estimation
+check_est_diff = check_est %>%
+  # Get difference between estimation and true mean
+  .[, diff_from_true := reward - r_avg]
+
+# Get mean estimation accuracy across estimation trials
+check_mean_est_diff = check_est_diff %>%
+  .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
+    by = c('participant_id', 'group', 'run', 'est_stim')] %>%
+  .[, .(mean_diff_from_true = mean(diff_from_true, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run', 'half', 'est_stim')]
+```
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_mean_est_diff)
+
+data_plot$half = as.factor(data_plot$half)
+levels(data_plot$half) = c('First Half', 'Second Half')
+data_plot$run = as.factor(data_plot$run)
+levels(data_plot$run) = c('Run 1', 'Run 2')
+
+p_check_mean_est_diff = ggplot(data = data_plot[half == 'Second Half'],
+                               aes(x = est_stim,
+                                   y = mean_diff_from_true,
+                                   fill = group,
+                                   color = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitterdodge(dodge.width = 0.6,
+                                             jitter.width = 0.2,
+                                             jitter.height = 0)) +
+  geom_boxplot(width = 0.5,
+               color = 'black',
+               outlier.shape = NA,
+               position = position_dodge(width = 0.6)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.6),
+               show.legend = FALSE)+
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  facet_grid(run ~ half)
+Neurocodify_plot(p_check_mean_est_diff)
+```
+
+
+## Stats
+
+```{r}
+# Assure data types
+check_mean_est_diff$participant_id = as.factor(check_mean_est_diff$participant_id)
+check_mean_est_diff$group = as.factor(check_mean_est_diff$group)
+check_mean_est_diff$run = as.factor(check_mean_est_diff$run)
+check_mean_est_diff$est_stim = factor(check_mean_est_diff$est_stim)
+levels(check_mean_est_diff$est_stim) = c('Low', 'Mid', 'High')
+check_mean_est_diff$mean_diff_from_true = as.numeric(check_mean_est_diff$mean_diff_from_true)
+
+#Only take second half (to allow learning)
+check_mean_est_diff_half = check_mean_est_diff %>%
+  .[half == '2',]
+
+# LME
+lme_est_diff = lme4::lmer(data = check_mean_est_diff_half,
+                          mean_diff_from_true ~ group * run * est_stim + (1 | participant_id))
+papeR::prettify(Anova(lme_est_diff))
+```
+
+### Main effect: Stimulus
+
+```{r}
+emmeans::emmeans(lme_est_diff,
+                 pairwise ~ est_stim)
+```
+
+```{r}
+data_plot = Prepare_data_for_plot(check_mean_est_diff_half)
+
+p_check_mean_est_diff = ggplot(data = data_plot[half == 2],
+                               aes(x = est_stim,
+                                   y = mean_diff_from_true,
+                                   fill = est_stim,
+                                   color = est_stim)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitterdodge(dodge.width = 0.6,
+                                             jitter.width = 0.2,
+                                             jitter.height = 0)) +
+  geom_boxplot(width = 0.5,
+               color = 'black',
+               outlier.shape = NA,
+               position = position_dodge(width = 0.6)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.6),
+               show.legend = FALSE)+
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'None')
+Neurocodify_plot(p_check_mean_est_diff)
+```
+
+
+## Interaction effect: Group X Run
+
+```{r}
+emmeans::emmeans(lme_est_diff,
+                 pairwise ~ run | group)
+```
+
+# Distance between Low and Mid in estimates
+
+```{r}
+check_diff_mid_dist = check_est_diff %>%
+  .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
+    by = c('participant_id', 'group', 'run', 'est_stim')] %>%
+  data.table::dcast(participant_id + group + run + half + est_trial + forced_rare ~ est_stim,
+                    value.var = c('r_avg', 'reward', 'range')) %>%
+  .[, ':='(diff_2m1_ravg = r_avg_2 - r_avg_1,
+           diff_2m1_est = reward_2 - reward_1,
+           diff_3m2_ravg = r_avg_2 - r_avg_2,
+           diff_3m2_est = reward_3 - reward_2),
+    by = c('participant_id', 'group', 'run', 'est_trial')] %>%
+  # Get difference between real 1v2 distance and estimates 1v2 distance
+  .[, ':='(diff_est_m_ravg_2m1 = diff_2m1_est - diff_2m1_ravg, 
+           diff_est_m_ravg_3m2 = diff_3m2_est - diff_3m2_ravg)] %>%
+  # Average within participant
+  .[half == 2,] %>%
+  .[,.(mean_diff_est_m_ravg_2m1 = mean(diff_est_m_ravg_2m1, na.rm = TRUE),
+       mean_diff_est_m_ravg_3m2 = mean(diff_est_m_ravg_3m2, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run', 'half')]
+```
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_diff_mid_dist)
+
+ggplot(data = data_plot,
+       aes(x = group,
+           y = mean_diff_est_m_ravg,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0) +
+  geom_point(alpha = 0.2) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black') +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               show.legend = FALSE) +
+  scale_color_manual(values = custom_guides) +
+  facet_grid(~run)
+```
+
+
+## Stats
+
+```{r}
+# Assure data types
+check_diff_mid_dist$participant_id = as.factor(check_diff_mid_dist$participant_id)
+check_diff_mid_dist$group = as.factor(check_diff_mid_dist$group)
+check_diff_mid_dist$run = as.factor(check_diff_mid_dist$run)
+check_diff_mid_dist$mean_diff_est_m_ravg_2m1 = as.numeric(check_diff_mid_dist$mean_diff_est_m_ravg_2m1)
+check_diff_mid_dist$mean_diff_est_m_ravg_3m2 = as.numeric(check_diff_mid_dist$mean_diff_est_m_ravg_3m2)
+
+
+# LME
+lme_est_diff_1v2 = lme4::lmer(data = check_diff_1v2_dist,
+                              mean_diff_est_m_ravg ~ group * run + (1 | participant_id))
+papeR::prettify(Anova(lme_est_diff_1v2))
+```
+
+
+```{r}
+t.test(x = check_diff_1v2_dist[group == 'older']$mean_diff_est_m_ravg, mu = 0)
+t.test(x = check_diff_1v2_dist[group == 'younger']$mean_diff_est_m_ravg, mu = 0)
+```
+
+
+## Plot 
+
+```{r}
+data_plot = Prepare_data_for_plot(check_diff_1v2_dist)
+
+ggplot(data = data_plot,
+       aes(x = group,
+           y = mean_diff_est_m_ravg,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0) +
+  geom_point(alpha = 0.2) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black') +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               show.legend = FALSE) +
+  scale_color_manual(values = custom_guides) +
+  facet_grid(~run)
+```
+
 
 

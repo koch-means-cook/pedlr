@@ -36,5 +36,15 @@ Create_figures = function(){
          width = 7,
          height = 3)
   
+  # Behavioral data (Overal correct and RT diff)
+  p_pcrt = Figure_behav_pcrt()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_pcrt.pdf',
+                       fsep = .Platform$file.sep)
+  ggsave(filename = out_file,
+         plot = p_pcrt,
+         device = 'pdf',
+         width = 6,
+         height = 3)
+  
   
 }
