@@ -499,7 +499,7 @@ emmeans::emmeans(lme_est_diff,
                  pairwise ~ run | group)
 ```
 
-# Distance between Low and Mid in estimates
+# Difference between real and estimated distance of two stimuli
 
 ```{r}
 check_diff_mid_dist = check_est_diff %>%
@@ -509,7 +509,7 @@ check_diff_mid_dist = check_est_diff %>%
                     value.var = c('r_avg', 'reward', 'range')) %>%
   .[, ':='(diff_2m1_ravg = r_avg_2 - r_avg_1,
            diff_2m1_est = reward_2 - reward_1,
-           diff_3m2_ravg = r_avg_2 - r_avg_2,
+           diff_3m2_ravg = r_avg_3 - r_avg_2,
            diff_3m2_est = reward_3 - reward_2),
     by = c('participant_id', 'group', 'run', 'est_trial')] %>%
   # Get difference between real 1v2 distance and estimates 1v2 distance
@@ -519,36 +519,11 @@ check_diff_mid_dist = check_est_diff %>%
   .[half == 2,] %>%
   .[,.(mean_diff_est_m_ravg_2m1 = mean(diff_est_m_ravg_2m1, na.rm = TRUE),
        mean_diff_est_m_ravg_3m2 = mean(diff_est_m_ravg_3m2, na.rm = TRUE)),
-    by = c('participant_id', 'group', 'run', 'half')]
+    by = c('participant_id', 'group', 'run', 'half')] %>%
+  data.table::melt(id = c('participant_id', 'group', 'run', 'half'),
+                   measure.vars = c('mean_diff_est_m_ravg_2m1',
+                                    'mean_diff_est_m_ravg_3m2'))
 ```
-
-## Plot
-
-```{r}
-data_plot = Prepare_data_for_plot(check_diff_mid_dist)
-
-ggplot(data = data_plot,
-       aes(x = group,
-           y = mean_diff_est_m_ravg,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0) +
-  geom_point(alpha = 0.2) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black') +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               inherit.aes = TRUE,
-               fill = 'white',
-               size = 1.5,
-               stroke = 0.5,
-               show.legend = FALSE) +
-  scale_color_manual(values = custom_guides) +
-  facet_grid(~run)
-```
-
 
 ## Stats
 
@@ -557,35 +532,35 @@ ggplot(data = data_plot,
 check_diff_mid_dist$participant_id = as.factor(check_diff_mid_dist$participant_id)
 check_diff_mid_dist$group = as.factor(check_diff_mid_dist$group)
 check_diff_mid_dist$run = as.factor(check_diff_mid_dist$run)
-check_diff_mid_dist$mean_diff_est_m_ravg_2m1 = as.numeric(check_diff_mid_dist$mean_diff_est_m_ravg_2m1)
-check_diff_mid_dist$mean_diff_est_m_ravg_3m2 = as.numeric(check_diff_mid_dist$mean_diff_est_m_ravg_3m2)
-
+check_diff_mid_dist$variable = as.factor(check_diff_mid_dist$variable)
+check_diff_mid_dist$value = as.numeric(check_diff_mid_dist$value)
 
 # LME
-lme_est_diff_1v2 = lme4::lmer(data = check_diff_1v2_dist,
-                              mean_diff_est_m_ravg ~ group * run + (1 | participant_id))
-papeR::prettify(Anova(lme_est_diff_1v2))
+lme_diff_mid_dist = lme4::lmer(data = check_diff_mid_dist,
+                               value ~ group * run * variable + (1 | participant_id))
+papeR::prettify(Anova(lme_diff_mid_dist))
 ```
 
+# Main effect: Variable
 
 ```{r}
-t.test(x = check_diff_1v2_dist[group == 'older']$mean_diff_est_m_ravg, mu = 0)
-t.test(x = check_diff_1v2_dist[group == 'younger']$mean_diff_est_m_ravg, mu = 0)
+emmeans::emmeans(lme_diff_mid_dist,
+                 pairwise ~ variable)
 ```
-
 
 ## Plot 
 
 ```{r}
-data_plot = Prepare_data_for_plot(check_diff_1v2_dist)
+data_plot = Prepare_data_for_plot(check_diff_mid_dist)
 
-ggplot(data = data_plot,
-       aes(x = group,
-           y = mean_diff_est_m_ravg,
-           color = group,
-           fill = group)) +
+p_diff_mid_dist = ggplot(data = data_plot,
+                         aes(x = variable,
+                             y = value,
+                             color = group,
+                             fill = group)) +
   geom_hline(yintercept = 0) +
-  geom_point(alpha = 0.2) +
+  geom_point(alpha = 0.5) +
+  geom_line(aes(group = participant_id)) +
   geom_boxplot(outlier.shape = NA,
                color = 'black') +
   stat_summary(fun = 'mean',
@@ -598,8 +573,214 @@ ggplot(data = data_plot,
                stroke = 0.5,
                show.legend = FALSE) +
   scale_color_manual(values = custom_guides) +
-  facet_grid(~run)
+  scale_fill_manual(values = custom_guides) +
+  facet_grid(group~run)
+Neurocodify_plot(p_diff_mid_dist)
+```
+
+```{r, fig.width=2, fig.height=3}
+data_plot = Prepare_data_for_plot(check_diff_mid_dist)
+data_plot_mean = data_plot %>%
+  .[!is.na(value), .(value = mean(value),
+        sd = sd(value),
+        n = .N,
+        sem = sd(value) / sqrt(.N)),
+    by = c('group', 'half', 'variable')]
+
+dodge_width = 0.3
+
+p_diff_mid_dist = ggplot(data = data_plot,
+                         aes(x = variable,
+                             y = value,
+                             color = group,
+                             fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(alpha = 1,
+             size = 0.5,
+             position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = 0.1,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_col(data = data_plot_mean,
+           color = 'black',
+           size = 0.5,
+           width = 0.3,
+           inherit.aes = TRUE,
+           show.legend = FALSE,
+           position = position_dodge(width = dodge_width)) +
+  geom_errorbar(data = data_plot_mean,
+                aes(ymin = value - sem,
+                    ymax = value + sem),
+                width = 0.1,
+                color = 'black',
+                position = position_dodge(width = dodge_width)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides)
+Neurocodify_plot(p_diff_mid_dist)
 ```
 
 
+---
 
+# Average distance between bandits in estimation (disregarding accuracy)
+
+```{r}
+check_est_dist = data %>%
+  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
+  .[!is.na(est_1_reward),] %>%
+  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
+  # Unify data types of measure columns
+  .[, (measure_cols) := lapply(.SD, as.double), .SDcols = measure_cols] %>%
+  # Melt to change variable names of estimation variables
+  data.table::melt(id.vars = c('participant_id',
+                               'group',
+                               'run',
+                               'est_trial',
+                               'forced_rare'),
+                   measure.vars = measure_cols) %>%
+  .[, est_stim := substr(variable, 5, 5)] %>%
+  .[, type := substr(variable, 7, 9)] %>%
+  .[type == 'rew', type := 'reward'] %>%
+  .[type == 'ran', type := 'range'] %>%
+  # Put back into long format to calculate distance between estimates
+  data.table::dcast(., participant_id + group + run + est_trial + forced_rare ~ paste0(type, '_', est_stim),
+                    value.var = 'value') %>%
+  # Get distance between critical estimates
+  .[, ':='(dist_2m1 = reward_2 - reward_1,
+           dist_3m2 = reward_3 - reward_2)] %>%
+  # Add first and second half of run variable
+  .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
+    by = c('participant_id', 'group', 'run')] %>%
+  .[, half := as.factor(half)] %>%
+  # Get mean of distance between estimates (separately for each half)
+  .[, .(mean_dist_2m1 = mean(dist_2m1, na.rm = TRUE),
+        mean_dist_3m2 = mean(dist_3m2, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run', 'half')] %>%
+  # Melt for data analysis
+  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'half'),
+                   measure.vars = c('mean_dist_2m1', 'mean_dist_3m2'),
+                   variable.name = 'comp')
+```
+
+## Stats
+
+```{r}
+# Assure data types
+check_est_dist$participant_id = as.factor(check_est_dist$participant_id)
+check_est_dist$group = as.factor(check_est_dist$group)
+check_est_dist$run = as.factor(check_est_dist$run)
+check_est_dist$half = as.factor(check_est_dist$half)
+check_est_dist$comp = as.factor(check_est_dist$comp)
+check_est_dist$value = as.double(check_est_dist$value)
+
+# take only means of second half of experiment (to avoid uninformed estimates at start)
+check_est_dist_sh = check_est_dist[half == '2']
+
+
+# LME
+lme_est_diff = lme4::lmer(data = check_est_dist_sh,
+                              value ~ group * run * comp + (1 | participant_id))
+papeR::prettify(Anova(lme_est_diff))
+```
+
+### Main effect: Comp
+
+```{r}
+emmeans::emmeans(lme_est_diff,
+                 pairwise ~ comp)
+```
+
+### Underestimation of distance 1v2?
+
+```{r}
+t.test(check_est_dist_sh[comp == 'mean_dist_2m1']$value, mu = 1/6 * 100)
+```
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_est_dist_sh)
+
+p_est_dist_sh = ggplot(data = data_plot,
+       aes(x = comp,
+           y = value,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 1/6 * 100,
+             linetype = 'dashed') +
+  geom_point(position = position_jitterdodge(dodge.width = 0.4,
+                                             jitter.width = 0.2,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = 0.3,
+               position = position_dodge(width = 0.4)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               show.legend = FALSE,
+               position = position_dodge(width = 0.4)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  scale_y_continuous(breaks = round(c(-20, 0, 1/6*100, 20, 40), 2)) +
+  facet_grid(~run)
+Neurocodify_plot(p_est_dist_sh)
+```
+
+```{r}
+data_plot = Prepare_data_for_plot(check_est_dist_sh)
+data_plot_mean = data_plot %>%
+  .[!is.na(value), .(value = mean(value),
+        sd = sd(value),
+        n = .N,
+        sem = sd(value) / sqrt(.N)),
+    by = c('group', 'half', 'comp')]
+
+dodge_width = 0.3
+
+# Value to shift y axis
+y_axis_shift = 1/6*100
+
+p_est_dist_sh = ggplot(data = data_plot,
+       aes(x = comp,
+           y = value - y_axis_shift,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 1/6 * 100 - y_axis_shift,
+             linetype = 'dashed') +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = 0.2,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+geom_col(data = data_plot_mean,
+           color = 'black',
+           size = 0.5,
+           width = 0.3,
+           inherit.aes = TRUE,
+           show.legend = FALSE,
+           position = position_dodge(width = dodge_width)) +
+  geom_errorbar(data = data_plot_mean,
+                aes(ymin = value - y_axis_shift - sem,
+                    ymax = value - y_axis_shift + sem),
+                width = 0.1,
+                color = 'black',
+                position = position_dodge(width = dodge_width)) +
+  # Geom to demonstrate shift did not change data
+  # geom_text(data = data_plot_mean,
+  #            aes(label = round(value, 2)),
+  #           size = 2,
+  #           color = 'black',
+  #           position = position_dodge(width = dodge_width)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  scale_y_continuous(breaks = round(c(-20 - y_axis_shift, 0 - y_axis_shift, 0, 20 - y_axis_shift, 40 - y_axis_shift), 2),
+                     labels = round(c(-20, 0, y_axis_shift, 20, 40), 2))
+Neurocodify_plot(p_est_dist_sh)
+```
