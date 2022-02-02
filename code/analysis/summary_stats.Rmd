@@ -308,6 +308,30 @@ p_noc_diff_run = ggplot(data = data_plot,
 Neurocodify_plot(p_noc_diff_run)
 ```
 
+# Running avg
+
+```{r}
+check_ravg = data %>%
+  # Get running average of chosen rewards
+  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 1),
+           avg_2_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 2),
+           avg_3_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 3)),
+    by = c('participant_id', 'run')] %>%
+  .[, ':='(ravg_2m1 = avg_2_running - avg_1_running,
+           ravg_3m2 = avg_3_running - avg_2_running)] %>%
+  .[comp == '1v2', ravg_3m2 := NA] %>%
+  .[comp == '2v3', ravg_2m1 := NA] %>%
+  .[comp == '1v3', ravg_2m1 := NA] %>%
+  .[comp == '1v3', ravg_3m2 := NA]
+```
+
+
 # Estimation
 
 ```{r}

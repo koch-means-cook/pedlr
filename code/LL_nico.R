@@ -12,6 +12,19 @@ LL_nico = function(x, data, model) {
     params$temp = x[2]
     params$init_values = 50
     cdf = RW_nico(data, params)
+  } else if (model == 'PEDLRSIMP'){
+    params = NULL
+    params$alpha1 = x[1]
+    params$temp = x[2]
+    params$init_values = 50
+    cdf = PEDLR_simple_nico(data, params)
+  } else if (model == 'PEDLRFIX'){
+    params = NULL
+    params$alpha0 = x[1]
+    params$alpha1 = x[2]
+    params$temp = x[3]
+    params$init_values = 50
+    cdf = PEDLR_fixdep_nico(data, params)
   }
   LL = -sum(log(cdf$choice_prob[cdf$forced_choice == 0 & !is.na(cdf$PE)]))
   return(LL)

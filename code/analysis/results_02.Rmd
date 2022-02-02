@@ -1,0 +1,154 @@
+---
+title: "Summary Stats"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(sdamr)
+library(gghalves)
+library(lme4)
+library(emmeans)
+library(papeR)
+```
+
+```{r, message=FALSE}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+
+# Get plot colors/linetypes
+custom_guides = Get_plot_guides()
+```
+
+```{r}
+data = Load_model_fits() %>%
+  Apply_exclusion_criteria(.) %>%
+  .[, ':='(participant_id = as.factor(participant_id),
+           group = as.factor(group),
+           run = as.factor(run),
+           para = as.factor(para),
+           model = as.factor(model))] %>%
+  .[, real_iter := seq(.N),
+      by = c('participant_id',
+             'group',
+             'run',
+             'model',
+             'para')]
+# Sort model levels by number of parameters
+data$model = factor(data$model, levels = c('Rw', 'Pedlr_simple', 'Pedlr', 'Pedlr_fixdep', 'Pedlr_interdep'))
+
+# get number of participants (to adjust figure height)
+n_participants = length(unique(data$participant_id))
+```
+
+# Model comparison
+
+```{r}
+data_aic = data %>%
+  .[,n_para := .N,
+    by = c('participant_id', 'group', 'run', 'real_iter', 'model')] %>%
+  data.table::dcast(.,
+                    participant_id + group + run + real_iter + second_ll + model + n_para ~ para,
+                    value.var = 'second_solution') %>%
+  # Calculate AIC
+  .[, AIC := (2*n_para) + (2*second_ll)]
+
+# Get min aic model
+data_best_fit = data_aic %>%
+  .[, .SD[which.min(AIC)],
+    by = c('participant_id', 'group', 'run', 'real_iter')] %>%
+  # Take only first iteration (no variability in fits)
+  .[real_iter == 1,]
+```
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(data_best_fit)
+dodge_width = 0.2
+
+ggplot(data = data_plot,
+       aes(x = model,
+           color = group,
+           fill = group)) +
+  geom_bar(stat = 'count',
+                 width = dodge_width,
+                 position = position_dodge(width = dodge_width)) +
+  facet_wrap(~run)
+```
+
+---
+
+# LL comp
+
+```{r}
+data_ll_comp = data_aic %>%
+  #.[model != 'Rw',] %>%
+  .[real_iter == 1,] %>%
+  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'model'),
+                   measure.vars = c('second_ll', 'AIC'))
+```
+
+## Plot
+
+```{r, fig.height=n_participants, out.width='100%'}
+ggplot(data = data_ll_comp,
+       aes(x = model,
+           y = value,
+           shape = variable,
+           color = variable)) +
+  geom_point() +
+  facet_grid(participant_id ~ run,
+             scales = 'free')
+```
+
+```{r}
+l_low = rnorm(4, mean = 0.5, sd = 0.1) - 0.1
+l_high = l_low + 0.2
+ll_low = sum(log(l_low))
+ll_high = sum(log(l_high))
+ll_low = -(ll_low)
+ll_high = -(ll_high)
+```
+

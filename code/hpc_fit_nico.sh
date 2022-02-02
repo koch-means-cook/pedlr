@@ -46,7 +46,7 @@ MEM_MB=128
 # Set number of iterative jobs per particpant
 # ===
 # For more parallelization fitting can be split into multiple jobs per participant
-N_PARALLEL=100
+N_PARALLEL=20
 
 # ===
 # Run model fitting

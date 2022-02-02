@@ -1,7 +1,6 @@
-PEDLR_nico = function(data, params, init_values = 50) {
+PEDLR_simple_nico = function(data, params, init_values = 50) {
   
   # params = list()
-  # params$alpha0 = 0.2
   # params$alpha1 = 0.7
   # params$temp = 5
   # params$init_values = 50
@@ -45,10 +44,10 @@ PEDLR_nico = function(data, params, init_values = 50) {
       #LR = params$alpha0 + (1-params$alpha0)*params$alpha1 * (abs(PE)/max(abs(df$PE[1:trial_count]), na.rm = TRUE))
       
       # Nico's approach: Nico normalized the PE term by the max of the PEs so far (stronger updating in beginning)
-      LR = params$alpha0 + (1-params$alpha0)*params$alpha1 * (abs(PE)/max(abs(df$PE[1:trial_count]), na.rm = TRUE))
+      LR = params$alpha1 * (abs(PE)/max(abs(df$PE[1:trial_count]), na.rm = TRUE))
       
       # My approach (constant normalization of PE term with 100, the highest point range)
-      #LR = params$alpha0 + (1-params$alpha0)*params$alpha1 * (abs(PE)/100)
+      #LR = params$alpha1 * (abs(PE)/100)
       
       df$LR[trial_count] = LR
       

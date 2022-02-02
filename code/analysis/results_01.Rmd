@@ -224,12 +224,81 @@ lme_noc_diff = lme4::lmer(data = check_noc_diff,
 papeR::prettify(Anova(lme_noc_diff))
 ```
 
+---
+
+# Risk aversion (proportion of M choices)
+
+```{r}
+check_risk = data %>%
+  Add_comp() %>%
+  # Only take free choices
+  .[trial_type == 'choice',] %>%
+  .[comp != '1v3',] %>%
+  .[, .(n_overall = .N,
+        n_choice_2 = length(which(option_choice == 2))),
+    by = c('participant_id', 'group', 'run', 'trial_type')] %>%
+  .[, perc_choice_2 := n_choice_2 / n_overall * 100]
+```
+
+## Stats
+
+```{r}
+# Assure data types
+check_risk$participant_id = as.factor(check_risk$participant_id)
+check_risk$group = as.factor(check_risk$group)
+check_risk$run = as.factor(check_risk$run)
+check_risk$trial_type = as.factor(check_risk$trial_type)
+check_risk$n_overall = as.numeric(check_risk$n_overall)
+check_risk$n_choice_2 = as.numeric(check_risk$n_choice_2)
+check_risk$perc_choice_2 = as.numeric(check_risk$perc_choice_2)
+
+lme_risk = lme4::lmer(data = check_risk,
+           perc_choice_2 ~ group * run + (1|participant_id))
+papeR::prettify(Anova(lme_risk))
+```
+
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_risk)
+
+dodge_width = 0.3
+
+p_risk = ggplot(data = data_plot,
+                aes(x = group,
+                    y = perc_choice_2,
+                    color = group,
+                    fill = group)) +
+    geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = dodge_width/2,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width,
+               position = position_dodge(width = dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = dodge_width),
+               show.legend = FALSE) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides)
+Neurocodify_plot(p_risk)
+```
+
+---
 
 ## RT
 
 ```{r}
-# Get RT (restricted to critical comparisons 1v2 & 2v3)
-check_rt_crit = data %>%
+check_rt = data %>%
   .[, trial := seq(.N),
     by = c('participant_id', 'run')] %>%
   .[timeout == FALSE, ] %>%
@@ -241,7 +310,102 @@ check_rt_crit = data %>%
                                'trial',
                                'trial_type',
                                'comp'),
-                   measure.vars = c('log_rt')) %>%
+                   measure.vars = c('log_rt'))
+```
+
+
+### Comp resolves RT difference
+
+```{r}
+check_rt_mean = check_rt %>%
+  .[variable == 'log_rt', ] %>%
+  # Get mean log(rt) for each possible comparison
+  .[, .(mean_value = mean(value)),
+    by = c('participant_id', 'group', 'run', 'trial_type', 'comp')] %>%
+  # Restrict to choice trials (ommitting forced choices)
+  .[trial_type == 'choice',]
+```
+
+#### Stats
+
+```{r}
+# Assure data types
+check_rt_mean$participant_id = as.factor(check_rt_mean$participant_id)
+check_rt_mean$group = as.factor(check_rt_mean$group)
+check_rt_mean$run = as.factor(check_rt_mean$run)
+check_rt_mean$trial_type = as.factor(check_rt_mean$trial_type)
+check_rt_mean$comp = as.factor(check_rt_mean$comp)
+check_rt_mean$mean_value = as.numeric(check_rt_mean$mean_value)
+
+lme_rt_comp = lme4::lmer(data = check_rt_mean,
+                         mean_value ~ group * run * comp + (1|participant_id))
+papeR::prettify(Anova(lme_rt_comp))
+```
+
+##### Main effect: Group
+
+```{r}
+emmeans::emmeans(lme_rt_comp,
+                 pairwise ~ group)
+```
+
+##### Main effect: Comp
+
+```{r}
+emmeans::emmeans(lme_rt_comp,
+                 pairwise ~ comp)
+```
+
+##### Interaction effect: Group x Comp
+
+```{r}
+emmeans::emmeans(lme_rt_comp,
+                  pairwise ~ group | comp)
+```
+
+
+#### Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_rt_mean)
+
+dodge_width = 0.3
+
+p_rt_comp = ggplot(data = data_plot,
+       aes(x = comp,
+           y = mean_value,
+           color = group,
+           fill = group)) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = dodge_width/2,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width,
+               position = position_dodge(width = dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = dodge_width),
+               show.legend = FALSE) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides)
+Neurocodify_plot(p_rt_comp)
+  
+```
+
+
+### Within-subject comparison between 1v2 and 2v3
+
+```{r}
+# Get RT (restricted to critical comparisons 1v2 & 2v3)
+check_rt_crit = check_rt %>%
   .[trial_type == 'choice' & comp %in% c('1v2', '2v3')]
 
 # Get mean log(RT) of critical comparisons
@@ -259,7 +423,7 @@ check_rt_mean_crit_diff = check_rt_mean_crit %>%
   .[, mean_log_rt_1v2m2v3 := mean_log_rt_1v2 - mean_log_rt_2v3]
 ```
 
-### Plot
+#### Plot
 
 ```{r}
 data_plot = Prepare_data_for_plot(check_rt_mean_crit_diff)
@@ -304,7 +468,7 @@ p_rt_mean_crit_diff = ggplot(data = data_plot,
 Neurocodify_plot(p_rt_mean_crit_diff)
 ```
 
-### Stats
+#### Stats
 
 ```{r}
 # Assure data types
@@ -320,7 +484,7 @@ lme_rt = lme4::lmer(data = check_rt_mean_crit_diff,
 papeR::prettify(Anova(lme_rt))
 ```
 
-### Main effect: Group
+#### Main effect: Group
 
 ```{r}
 emmeans::emmeans(lme_rt,
@@ -784,3 +948,160 @@ geom_col(data = data_plot_mean,
                      labels = round(c(-20, 0, y_axis_shift, 20, 40), 2))
 Neurocodify_plot(p_est_dist_sh)
 ```
+
+---
+
+# Difference between real distance (running average) and estimated distance
+
+```{r}
+check_est_dist = data %>%
+  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
+  .[!is.na(est_1_reward),] %>%
+  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
+  # Unify data types of measure columns
+  .[, (measure_cols) := lapply(.SD, as.double), .SDcols = measure_cols] %>%
+  # Melt to change variable names of estimation variables
+  data.table::melt(id.vars = c('participant_id',
+                               'group',
+                               'run',
+                               'est_trial',
+                               'forced_rare'),
+                   measure.vars = measure_cols) %>%
+  .[, est_stim := substr(variable, 5, 5)] %>%
+  .[, type := substr(variable, 7, 9)] %>%
+  .[type == 'rew', type := 'reward'] %>%
+  .[type == 'ran', type := 'range'] %>%
+  # Put back into long format to calculate distance between estimates
+  data.table::dcast(., participant_id + group + run + est_trial + forced_rare ~ paste0(type, '_', est_stim),
+                    value.var = 'value') %>%
+  # Get distance between critical estimates
+  .[, ':='(dist_est_2m1 = reward_2 - reward_1,
+           dist_est_3m2 = reward_3 - reward_2)] %>%
+  # Get difference of running averages of critical comparisons
+  .[, ':='(dist_ravg_2m1 = run_2 - run_1,
+           dist_ravg_3m2 = run_3 - run_2)] %>%
+  # Add first and second half of run variable
+  .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
+    by = c('participant_id', 'group', 'run')] %>%
+  .[, half := as.factor(half)] %>%
+  # Get difference between real distance and estimated distance (Estimate - Real, EmR)
+  .[, ':='(diff_EmR_2m1 = dist_est_2m1 - dist_ravg_2m1,
+           diff_EmR_3m2 = dist_est_3m2 - dist_ravg_3m2)] %>%
+  # Long format
+  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'half', 'est_trial'),
+                   measure.vars = c('diff_EmR_2m1',
+                                    'diff_EmR_3m2')) %>%
+  # Average values
+  .[, .(mean_value = mean(value, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run', 'half', 'variable')]
+  
+```
+
+## Stats
+
+```{r}
+# Assure data types
+check_est_dist$participant_id = as.factor(check_est_dist$participant_id)
+check_est_dist$group = as.factor(check_est_dist$group)
+check_est_dist$run = as.factor(check_est_dist$run)
+check_est_dist$half = as.factor(check_est_dist$half)
+check_est_dist$variable = as.factor(check_est_dist$variable)
+check_est_dist$mean_value = as.numeric(check_est_dist$mean_value)
+
+lme_diff_EmR = lme4::lmer(data = check_est_dist,
+                          mean_value ~ group * run * variable + (1 | participant_id))
+papeR::prettify(Anova(lme_diff_EmR))
+```
+
+### Main effect: Variable
+
+```{r}
+emmeans::emmeans(lme_diff_EmR,
+                 pairwise ~ variable)
+```
+
+### Interaction effect: Group X Variable
+
+```{r}
+emmeans::emmeans(lme_diff_EmR,
+                 pairwise ~ variable | group)
+```
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_est_dist)
+
+dodge_width = 0.2
+
+p_diff_EmR = ggplot(data = data_plot,
+       aes(x = variable,
+           y = mean_value,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0,
+             linetype = 'solid',
+             size = 0.5) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = dodge_width/2,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_boxplot(color = 'black',
+               outlier.shape = NA,
+               position = position_dodge(width = dodge_width),
+               width = dodge_width) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               show.legend = FALSE,
+               position = position_dodge(width = dodge_width)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides)
+Neurocodify_plot(p_diff_EmR)
+  
+```
+
+```{r}
+data_plot = Prepare_data_for_plot(check_est_dist)
+
+dodge_width = 0.2
+
+p_diff_EmR = ggplot(data = data_plot,
+       aes(x = variable,
+           y = mean_value,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0,
+             linetype = 'solid',
+             size = 0.5) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = dodge_width/2,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_boxplot(color = 'black',
+               outlier.shape = NA,
+               position = position_dodge(width = dodge_width),
+               width = dodge_width) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               inherit.aes = TRUE,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               show.legend = FALSE,
+               position = position_dodge(width = dodge_width)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  facet_grid(~group)
+Neurocodify_plot(p_diff_EmR)
+  
+```
+
+
