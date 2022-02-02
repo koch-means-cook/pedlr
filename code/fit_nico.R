@@ -4,10 +4,12 @@ library(magrittr)
 library(nloptr)
 library(optparse)
 
+# participant_id = '09RI1ZH'
 # out_file = '/Users/koch/Docs/pedlr/derivatives/model_fitting/nico/test.tsv'
 # random_x0 = TRUE
 
-fit_nico = function(out_file,
+fit_nico = function(participant_id,
+                    out_file,
                     random_x0){
   
   base_path = here::here()
@@ -15,6 +17,7 @@ fit_nico = function(out_file,
   # List of all data points
   data_list = Sys.glob(file.path(data_dir, '*.tsv', fsep = .Platform$file.sep))
   ids = unname(sapply(data_list, function(x) unlist(strsplit(basename(x), split = '_'))[1]))
+  ids = ids[ids == participant_id]
   nid = length(ids)
   # Load pre-written functions
   source_path = file.path(base_path, 'code', 'utils',
@@ -35,7 +38,7 @@ fit_nico = function(out_file,
   source(source_path)
   
   #opts = list('algorithm'='NLOPT_GN_CRS2_LM', 'xtol_rel'=1.0e-4, 'maxeval'= 5000)
-  opts = list('algorithm'='NLOPT_GN_DIRECT_L', 'xtol_rel'=1.0e-4, 'maxeval'= 5000)
+  opts = list('algorithm'='NLOPT_GN_DIRECT_L', 'xtol_rel'=1.0e-4, 'maxeval'= 100)
   #opts = list('algorithm'='NLOPT_LN_BOBYQA', 'xtol_rel'=1.0e-8, 'maxeval'= 5000)
   
   # Set lower and upper boundaries
@@ -99,7 +102,7 @@ fit_nico = function(out_file,
                     sep = ''))
       
       # Message to user
-      cat(paste('Fitting Sub ', sprintf("%02d", cid), ' ', sep = ''))
+      cat(paste('Fitting ', participant_id, sep = ''))
       data = data_all %>%
         .[participant_id == ids[cid] & run == ctv, ]
       
@@ -238,6 +241,11 @@ fit_nico = function(out_file,
 
 # Make function command line callable with options
 option_list = list(
+  make_option(c('-p', '--participant_id'),
+              type='character',
+              default = NULL,
+              help = 'ID of participant to process',
+              metavar = 'PARTICIPANT_ID'),
   make_option(c('-o', '--out_file'),
               type='character',
               default = NULL,
@@ -254,7 +262,8 @@ opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
 
 # Call function with options
-fit_nico(out_file = opt$out_file,
+fit_nico(participant_id = opt$participant_id,
+         out_file = opt$out_file,
          random_x0 = opt$random_x0)
 
 # # does a model with higher alpha 1 have lower value estimates for bandit 2?
