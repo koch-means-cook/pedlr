@@ -38,7 +38,7 @@ fit_nico = function(participant_id,
   source(source_path)
   
   #opts = list('algorithm'='NLOPT_GN_CRS2_LM', 'xtol_rel'=1.0e-4, 'maxeval'= 5000)
-  opts = list('algorithm'='NLOPT_GN_DIRECT_L', 'xtol_rel'=1.0e-4, 'maxeval'= 100)
+  opts = list('algorithm'='NLOPT_GN_DIRECT_L', 'xtol_rel'=1.0e-4, 'maxeval'= 5000)
   #opts = list('algorithm'='NLOPT_LN_BOBYQA', 'xtol_rel'=1.0e-8, 'maxeval'= 5000)
   
   # Set lower and upper boundaries
