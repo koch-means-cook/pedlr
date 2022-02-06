@@ -293,6 +293,8 @@ p_risk = ggplot(data = data_plot,
 Neurocodify_plot(p_risk)
 ```
 
+(Whats the baseline exactly? Could there be local bubbles of comparisons that would encourage deviations fpr risk aversion?)
+
 ---
 
 ## RT
@@ -356,6 +358,12 @@ emmeans::emmeans(lme_rt_comp,
                  pairwise ~ comp)
 ```
 
+```{r}
+emmeans::emmeans(lme_rt_comp,
+                  pairwise ~ group * comp)
+```
+
+
 ##### Interaction effect: Group x Comp
 
 ```{r}
@@ -400,6 +408,7 @@ Neurocodify_plot(p_rt_comp)
   
 ```
 
+Correlation RT to accuracy
 
 ### Within-subject comparison between 1v2 and 2v3
 
@@ -494,6 +503,8 @@ emmeans::emmeans(lme_rt,
 ---
 
 # Estimation
+
+Let running average not include first 10 trials or so
 
 ```{r}
 # State melt columns (to align data types to avoid warnings)
@@ -1104,4 +1115,11 @@ Neurocodify_plot(p_diff_EmR)
   
 ```
 
+# Influence on rating of rare outcomes
 
+Be crude first (look at forced/rare/rating trials)
+
+- How many trials away from rating was the rare outcome?
+- How high was the rare outcome?
+
+# 

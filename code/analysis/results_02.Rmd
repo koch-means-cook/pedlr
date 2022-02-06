@@ -118,37 +118,132 @@ ggplot(data = data_plot,
   facet_wrap(~run)
 ```
 
+- look at fit as function of behavioral results
+  - e.g. effect of rare outcome ==> fit of pedlr
+
+```{r}
+data_pedler_simple = data_best_fit %>%
+  .[model == 'Pedlr_simple',] %>%
+  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'AIC'),
+                   measure.vars = c('alpha1', 'temperature'),
+                   variable.name = 'para')
+```
+
+```{r}
+data_plot = Prepare_data_for_plot(data_aic) %>%
+  .[real_iter == 1 & model == 'Pedlr_simple'] %>%
+  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'AIC'),
+                   measure.vars = c('alpha1', 'temperature'),
+                   variable.name = 'para')
+
+dodge_width = 0.3
+
+p_alpha1 = ggplot(data = data_plot[para == 'alpha1'],
+       aes(x = run,
+           y = log(value),
+           color = group,
+           fill = group)) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = dodge_width,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_boxplot(width = dodge_width/2,
+               outlier.shape = NA,
+               color = 'black',
+               position = position_dodge(width = dodge_width)) +
+  gghalves::geom_half_violin(position = position_nudge(-dodge_width),
+                             alpha = 0.5,
+                             color = NA) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides)
+
+Neurocodify_plot(p_alpha1)
+```
+
+- Could maybe move model estimation to log space (so in the model its not a1 * PE BUT e^a1 * PE) so 0.00004 and 0.0000000007 could actually be distinguished
+
+```{r}
+data_plot = Prepare_data_for_plot(data_pedler_simple)
+
+dodge_width = 0.3
+
+p_alpha1 = ggplot(data = data_plot[para == 'alpha1'],
+       aes(x = run,
+           y = value,
+           color = group,
+           fill = group)) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = dodge_width,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_boxplot(width = dodge_width/2,
+               outlier.shape = NA,
+               color = 'black',
+               position = position_dodge(width = dodge_width)) +
+  gghalves::geom_half_violin(position = position_nudge(-dodge_width),
+                             alpha = 0.5,
+                             color = NA) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides)
+
+Neurocodify_plot(p_alpha1)
+```
+
+
 ---
 
-# LL comp
+# Nico
 
 ```{r}
-data_ll_comp = data_aic %>%
-  #.[model != 'Rw',] %>%
-  .[real_iter == 1,] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'model'),
-                   measure.vars = c('second_ll', 'AIC'))
+data = Load_model_fits_nico() %>%
+  Apply_exclusion_criteria(.) %>%
+  .[, ':='(participant_id = as.factor(participant_id),
+           group = as.factor(group),
+           run = as.factor(run),
+           para = as.factor(para),
+           model = as.factor(model))]
+
+# Sort model levels by number of parameters
+data$model = factor(data$model, levels = c('Rw', 'Pedlr_simple', 'Pedlr', 'Pedlr_fixdep'))
 ```
 
-## Plot
 
-```{r, fig.height=n_participants, out.width='100%'}
-ggplot(data = data_ll_comp,
+```{r}
+data_aic = data %>%
+  .[,n_para := .N,
+    by = c('participant_id', 'group', 'run', 'iter', 'model')] %>%
+  data.table::dcast(.,
+                    participant_id + group + run + iter + ll + model + n_para ~ para,
+                    value.var = 'solution') %>%
+  # Calculate AIC
+  .[, AIC := (2*n_para) + (2*ll)]
+
+# Get min aic model
+data_best_fit = data_aic %>%
+  .[, .SD[which.min(AIC)],
+    by = c('participant_id', 'group', 'run', 'iter')] %>%
+  # Take only first iteration (no variability in fits)
+  .[iter == 1,]
+```
+
+```{r}
+data_plot = Prepare_data_for_plot(data_best_fit)
+dodge_width = 0.2
+
+ggplot(data = data_plot,
        aes(x = model,
-           y = value,
-           shape = variable,
-           color = variable)) +
-  geom_point() +
-  facet_grid(participant_id ~ run,
-             scales = 'free')
+           color = group,
+           fill = group)) +
+  geom_bar(stat = 'count',
+                 width = dodge_width,
+                 position = position_dodge(width = dodge_width)) +
+  facet_wrap(~run)
 ```
 
-```{r}
-l_low = rnorm(4, mean = 0.5, sd = 0.1) - 0.1
-l_high = l_low + 0.2
-ll_low = sum(log(l_low))
-ll_high = sum(log(l_high))
-ll_low = -(ll_low)
-ll_high = -(ll_high)
-```
+# Two main things to put in:
 
+- Relating behavioral results to model fits (alpha 1)
+
+# Look at difference in behavioral predicitin between modles
+
+- how many trials get predicted for different choices between models
