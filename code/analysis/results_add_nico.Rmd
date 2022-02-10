@@ -1,0 +1,294 @@
+---
+title: "Summary Stats"
+output:
+  html_document:
+    toc: yes
+    self_contained: true
+    toc_float:
+      collapsed: true
+      smooth_scroll: false
+    toc_depth: 3
+    number_sections: False
+    highlight: pygments
+    theme: cosmo
+    code_folding: "hide"
+    df_print: paged
+    fig_caption: true
+  pdf_document:
+    toc: yes
+    fig_caption: true
+    latex_engine: xelatex
+fig.align: "center"
+header-includes:
+  - \usepackage{fontspec}
+  - \setmainfont{AgfaRotisSansSerif}
+email: koch@mpib-berlin.mpg.de
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(sdamr)
+library(gghalves)
+library(lme4)
+library(emmeans)
+library(papeR)
+```
+
+```{r, message=FALSE}
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+
+# Get plot colors/linetypes
+custom_guides = Get_plot_guides()
+```
+
+# Choice correctness
+
+## Nico
+
+```{r}
+# load data
+DATA = Load_data()
+ids = unique(DATA$participant_id)
+agegroup = tapply(DATA$group, DATA$participant_id, function(x) which(unique(x) == c('younger', 'older')))
+#source('/gdrive/workbench/R/tools/misc/gen_functions.R')
+
+
+# calculate if choice was correct or not
+DATA$correct = c('left', 'right')[(DATA$option_right > DATA$option_left)*1+1]
+DATA$correct_choice = DATA$correct == DATA$choice
+DATA$correct_choice[DATA$forced_left == 1] = DATA$choice[DATA$forced_left == 1] == 'left'
+DATA$correct_choice[DATA$forced_right == 1] = DATA$choice[DATA$forced_right == 1] == 'right'
+# Set timeouts to NA
+tmpidx = cbind(1:48000, unlist(sapply(DATA$choice, function(x) which(x == c('left', 'right', NA)))))
+tmpidx[tmpidx[,2] == 3,2] = NA
+# Get chosen bandit (option choice col)
+cmat = cbind(DATA$option_left, DATA$option_right)
+DATA$chosen_bandit = cmat[tmpidx]
+
+# DATA$trial_type[DATA$is_rare==1]
+# DATA$chosen_bandit[DATA$is_rare==1]
+
+
+# make bandit variable (labeling 12 and 21 the same)
+DATA$bandit = paste(DATA$option_left, DATA$option_right, sep = '')
+DATA$bandit[DATA$bandit=='31'] = '13'
+DATA$bandit[DATA$bandit=='21'] = '12'
+DATA$bandit[DATA$bandit=='32'] = '23'
+
+# get correct choice per bandit and encounter (averaged over runs)
+cmat = tapply(DATA$correct_choice, list(DATA$group, DATA$comp_number, DATA$bandit, DATA$trial_type=='choice', DATA$participant_id), mean, na.rm = TRUE)[,,,'TRUE',]
+mean_correct = apply(cmat, c(1, 2, 3), mean, na.rm = TRUE)
+sds_correct = apply(cmat, c(1, 2, 3), function(x) sd(x, na.rm = TRUE)/sqrt(count(x)))
+
+layout(matrix(1:4, 2, 2, byrow = TRUE))
+matplot(mean_correct['older',,], type = 'o', lty = 1, col = hcl.colors(3, 'Dark3'), pch = 16, bty = 'n', ylab = '% correct', xlab = 'Trial', cex.axis = 1.2, cex.lab = 1.2, ylim = c(0.5, 1))
+matplot(mean_correct['younger',,], type = 'o', lty = 1, col = hcl.colors(3, 'Dark3'), pch = 16, bty = 'n', ylab = '% correct', xlab = 'Trial', cex.axis = 1.2, cex.lab = 1.2, ylim = c(0.5, 1))
+
+# difference between LM and MH over time
+plot(mean_correct['older',,'23']-mean_correct['older',,'12'], type = 'o', lty = 1, col = 'darkblue', pch = 16, bty = 'n', ylab = '% correct', xlab = 'Trial', cex.axis = 1.2, cex.lab = 1.2, ylim = c(-0.3, 0.3))
+abline(h=0, lty = 2)
+plot(mean_correct['younger',,'23']-mean_correct['younger',,'12'], type = 'o', lty = 1, col = 'darkblue', pch = 16, bty = 'n', ylab = '% correct', xlab = 'Trial', cex.axis = 1.2, cex.lab = 1.2, ylim = c(-0.3, 0.3))
+abline(h=0, lty = 2)
+
+# now test mean effect across all subjects
+mean_bandit_effect = apply(cmat[,1:40,'23',] - cmat[,1:40,'12',], c(1, 3), mean, na.rm = TRUE)
+
+# test against baseline
+t.test(mean_bandit_effect[1,])
+t.test(mean_bandit_effect[2,])
+# test age group diffs
+t.test(mean_bandit_effect[1,], mean_bandit_effect[2,])
+
+# to check: exclude to bad apples
+mean_bandit_effect[1,'456LJD0'] = NaN
+mean_bandit_effect[1,'8TYYUVQ'] = NaN
+t.test(mean_bandit_effect[1,], mean_bandit_effect[2,])
+
+```
+
+## Christoph Copy
+
+```{r}
+# Load data
+data = Load_data() %>%
+  #Apply_exclusion_criteria(.) %>%
+  Add_comp(.) %>%
+  .[, run := as.factor(run)]
+
+# Add correct choice
+bla = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  # Get correct choice for free choices (left vs. right)
+  .[trial_type == 'choice', correct := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'run', 'trial')] %>%
+  # Correct choice for forced choices (left vs. right)
+  .[trial_type == 'forced', correct := forced,
+    by = c('participant_id', 'run', 'trial')] %>%
+  # Get if made choice was correct (true vs. false)
+  # .[!is.na(outcome), correct_choice := choice == correct,
+  #   by = c('participant_id', 'run', 'trial')]
+  .[, correct_choice := choice == correct,
+     by = c('participant_id', 'run', 'trial')]
+
+bla_mean_correct = bla %>%
+  .[trial_type == 'choice', ] %>%
+  # Average over runs
+  .[, .(mean_runs = mean(correct_choice, na.rm = TRUE),
+        sd_runs = sd(correct_choice, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'comp', 'comp_number')] %>%
+  # Sort for easier checks
+  .[order(rank(comp), rank(comp_number)),] %>%
+  # Average over groups
+  .[, .(mean_correct = mean(mean_runs, na.rm = TRUE),
+        sd_correct = sd(mean_runs, na.rm = TRUE)),
+    by = c('group', 'comp', 'comp_number')]
+
+bla_mean_bandid_effect = bla %>%
+  .[trial_type == 'choice', ] %>%
+  # Average over runs
+  .[, .(mean_runs = mean(correct_choice, na.rm = TRUE),
+        sd_runs = sd(correct_choice, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'comp', 'comp_number')] %>%
+  # Sort for easier checks
+  .[order(rank(comp), rank(comp_number)),] %>%
+  # Get difference in mean_over_runs between 2v3 & 1v2 for each comparison number
+  data.table::dcast(participant_id + group + comp_number ~ paste0('comp_', comp),
+                    value.var = 'mean_runs') %>%
+  .[, bandit_effect := comp_2v3 - comp_1v2] %>%
+  .[, .(mean_bandit_effect = mean(bandit_effect, na.rm = TRUE)),
+    by = c('participant_id', 'group')]
+
+# Test difference in older adults against 0
+t.test(bla_mean_bandid_effect[group == 'older']$mean_bandit_effect)
+# Test difference in younger adults against 0
+t.test(bla_mean_bandid_effect[group == 'younger']$mean_bandit_effect)
+# Compare age groups
+t.test(bla_mean_bandid_effect[group == 'older']$mean_bandit_effect,
+       bla_mean_bandid_effect[group == 'younger']$mean_bandit_effect)
+
+# Exclusion of "outliers"
+outlier_excl = bla_mean_bandid_effect[!participant_id %in% c('456LJD0', '8TYYUVQ')]
+t.test(outlier_excl[group == 'older']$mean_bandit_effect,
+       outlier_excl[group == 'younger']$mean_bandit_effect)
+
+```
+
+## Christoph usual
+
+```{r}
+bla = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  .[trial_type == 'choice', correct := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'run', 'trial')] %>%
+  .[trial_type == 'forced', correct := forced,
+    by = c('participant_id', 'run', 'trial')] %>%
+  # Exclude time-out trials
+  .[!is.na(outcome), correct_choice := choice == correct,
+    by = c('participant_id', 'run', 'trial')]
+
+bla_mean_correct = bla %>%
+  .[trial_type == 'choice', ] %>%
+  # Average over runs
+  .[, .(mean_correct = mean(correct_choice, na.rm = TRUE),
+        sd_correct = sd(correct_choice, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run', 'comp')] %>%
+  # Sort for easier checks
+  .[order(rank(comp)),] %>%
+  data.table::dcast(participant_id + group + run ~ paste0('comp_', comp),
+                    value.var = 'mean_correct') %>%
+  .[, bandit_effect := comp_2v3 - comp_1v2] %>%
+  .[, .(mean_bandit_effect = mean(bandit_effect, na.rm = TRUE)),
+    by = c('participant_id', 'group')]
+
+# Test difference in older adults against 0
+t.test(bla_mean_correct[group == 'older']$mean_bandit_effect)
+# Test difference in younger adults against 0
+t.test(bla_mean_correct[group == 'younger']$mean_bandit_effect)
+# Compare age groups
+t.test(bla_mean_correct[group == 'older']$mean_bandit_effect,
+       bla_mean_correct[group == 'younger']$mean_bandit_effect)
+
+# Exclusion of "outliers"
+outlier_excl = bla_mean_correct[!participant_id %in% c('456LJD0', '8TYYUVQ')]
+t.test(outlier_excl[group == 'older']$mean_bandit_effect,
+       outlier_excl[group == 'younger']$mean_bandit_effect)
+```
+
+Same result with different numbers
+
+
+---
+
+# Effect of rare outcomes
+
+```{r}
+# check for effect of rare outcomes
+# this function takes the rare events and checks the accuracies in the trials before and after
+# wdsz: windowsize
+# y: data (correct)
+# cidx: index of rare events
+tmpfunc = function(y, cidx, wdsz = 5) {
+  apply(sapply(cidx, function(z) c(rep(NA, max(-z+wdsz, 0)), seq(max(z-wdsz + 1, 1), z+wdsz))), 2, function(u) y[u])
+}
+
+rare_effect = array(NA, dim = c(10, 2, 100))
+for (crun in 1:2) {
+  for (cid in 1:100) {
+    cDATA = subset(DATA, DATA$run == crun & DATA$participant_id == ids[cid])
+    cidx = which(cDATA$is_rare == 1 & cDATA$trial_type=='choice' & cDATA$chosen_bandit==2)
+    cDATA$correct_choice[cDATA$bandit != '12' | cDATA$trial_type!='choice'] = NA
+
+    rare_effect[,crun, cid] = apply(tmpfunc(cDATA$correct_choice, cidx, wdsz = 5), 1, mean, na.rm = TRUE)
+  }
+}
+# timepoint 5 is by definition 1 (correct), so we can remove
+rare_effect[5,,] = NA
+
+# take mean over runs
+rare_effect_mean = apply(rare_effect, c(1, 3), mean)
+
+# make age group specific means / sds
+young_means = apply(rare_effect_mean[,agegroup == 1], 1, mean, na.rm = TRUE)
+old_means = apply(rare_effect_mean[,agegroup == 2], 1, mean, na.rm = TRUE)
+
+young_sds = apply(rare_effect_mean[,agegroup == 1], 1, function(x) sd(x, na.rm = TRUE)/sqrt(count(x)))
+old_sds = apply(rare_effect_mean[,agegroup == 2], 1, function(x) sd(x, na.rm = TRUE)/sqrt(count(x)))
+
+plot(-4:5, young_means, type = 'o', bty = 'n', ylim = c(0.5, 1), pch = 16, col = hcl.colors(2, 'Dark3')[1], lwd = 1.5, xlab = 'trial', ylab = 'correct LM choice')
+se_bars(-4:5, young_means, young_sds, col = hcl.colors(2, 'Dark3')[1], lwd = 1.5)
+
+lines(-4.1:5.1, old_means, type = 'o', col = hcl.colors(2, 'Dark3')[2], pch = 16, lwd = 1.5)
+se_bars(-4.1:5.1, old_means, old_sds, col = hcl.colors(2, 'Dark3')[2], lwd = 1.5)
+
+legend('topright', legend = c('younger', 'older'), col = hcl.colors(2, 'Dark3'), pch = 16, lwd = 1.5, bty = 'n', cex = 1)
+# test pre vs post trial
+# younger
+t.test(rare_effect_mean[4, agegroup == 1], rare_effect_mean[6, agegroup == 1], paired = TRUE)
+# older
+t.test(rare_effect_mean[4, agegroup == 2], rare_effect_mean[6, agegroup == 2], paired = TRUE)
+# younger vs older
+t.test(rare_effect_mean[4, agegroup == 1] - rare_effect_mean[6, agegroup == 1], rare_effect_mean[4, agegroup == 2] - rare_effect_mean[6, agegroup == 2])
+```
+

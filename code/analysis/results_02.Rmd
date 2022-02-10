@@ -118,6 +118,15 @@ ggplot(data = data_plot,
   facet_wrap(~run)
 ```
 
+```{r}
+# Count winning model
+data_fit_count = data_best_fit %>%
+  .[, .(n_best_fit = .N),
+    by = c('group', 'run', 'model')] %>%
+  .[order(rank(group), rank(run)), ]
+```
+
+
 - look at fit as function of behavioral results
   - e.g. effect of rare outcome ==> fit of pedlr
 

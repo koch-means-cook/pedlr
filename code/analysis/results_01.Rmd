@@ -72,6 +72,13 @@ data = Load_data() %>%
 n_participants = length(unique(data$participant_id))
 ```
 
+```{r}
+file = file.path('~', 'Desktop', 'pedlr_data.tsv',
+                 fsep = .Platform$file.sep)
+data.table::fwrite(data, file = file, na = 'n/a', sep = '\t', row.names = FALSE)
+```
+
+
 ---
 
 # Overall performance
@@ -787,6 +794,10 @@ data_inf_of_rare_on_rat = data %>%
         'next_rating_trial', 'dist_to_next_rating_trial', 'next_rating_2_reward', 'next_rating_2_range',
         'avg_2_running', 'n_2_chosen_pre_rating', 'count_chosen_2', 'count_rare_outcome')]
 ```
+
+
+
+
 
 ```{r}
 data_influence_forced_rare = data_inf_of_rare_on_rat %>%

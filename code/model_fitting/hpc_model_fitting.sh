@@ -63,7 +63,7 @@ MEM_MB=90
 # Set number of iterative jobs per particpant
 # ===
 # For more parallelization fitting can be split into multiple jobs per participant
-N_PARALLEL=10
+N_PARALLEL=5
 
 # ===
 # Run model fitting
@@ -77,7 +77,7 @@ for DATA in ${DATA_LIST}; do
   # Function inputs
   INPUT_PATH="${PATH_DATA}/${DATA}"
 	RANDOM_START_VALUES="TRUE"
-  N_ITER=10
+  N_ITER=2
 
 
   # ----------------------------------------------------------------------------

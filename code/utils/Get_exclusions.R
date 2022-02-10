@@ -1,5 +1,6 @@
 library(data.table)
 library(here)
+library(magrittr)
 
 Get_exclusions = function(){
   
@@ -30,8 +31,7 @@ Get_exclusions = function(){
   # ---
   # Exclusion criterion 1: Errors in forced choices
   # ---
-  # Set max allowed percentage of forced choice errors
-  max_fce = 25
+  
   # Get correctness in forced choices
   fce = data %>%
     .[trial_type == 'forced',] %>%
@@ -42,12 +42,15 @@ Get_exclusions = function(){
     # Percentage false
     .[, perc_forced_error := round((n_error/n_forced) * 100, 2)] %>%
     .[, count := seq(.N), by = c('n_error', 'group')] %>%
-    .[perc_forced_error > max_fce, ]
+    # Get z-score
+    .[, z_perc_forced_error := scale(perc_forced_error)] %>%
+    # Apply excl criterion
+    .[, excl := z_perc_forced_error >= 3]
   
-  # Add excludes
-  temp = fce[, c('participant_id', 'group')]
+  # Add excludes with SD > 3
+  temp = fce[excl == TRUE, c('participant_id', 'group')]
   temp$run = NA
-  temp$reason = 'Less than 75% accuracy in forced choices'
+  temp$reason = 'Forced choice errors + 3 SDs'
   excludes = rbind(excludes, temp)
   
   # ---
@@ -117,17 +120,18 @@ Get_exclusions = function(){
                                  y = est_3,
                                  alternative = 'less',
                                  paired = TRUE)$p.value, 3)),
-      by = c('participant_id', 'group')]
+      by = c('participant_id', 'group')] %>%
+    .[, excl := p.value > 0.05]
   
   # Exclude participants who's estimates of bandit 1 and 3 are not significantly
   # different
-  temp = est_1v3[p.value > 0.05, c('participant_id', 'group')]
+  temp = est_1v3[excl == TRUE, c('participant_id', 'group')]
   temp$run = NA
   temp$reason = 'Consistently similar estimate for bandit 1 and 3'
   excludes = rbind(excludes, temp)
   
   # ---
-  # Exclusion criterion 3: Chance-level overall performance
+  # Exclusion criterion 3: Overall performance
   # ---
   # Get overall performance (choice of bandit with higher mean, only choice 
   # trials that were no timeouts)
@@ -140,13 +144,21 @@ Get_exclusions = function(){
     .[, corr_choice := (max(option_left, option_right) == option_choice),
       by = c('participant_id', 'trial')] %>%
     # Get percentage of overall correct choices
-    .[, .(perc_correct = sum(corr_choice) / length(corr_choice)),
-      by = c('participant_id', 'group')]
+    .[, .(perc_correct = sum(corr_choice) / length(corr_choice),
+          # binom test to see difference from chance
+          p_binom = binom.test(x = sum(corr_choice),
+                         n = length(corr_choice),
+                         p = 0.5,
+                         alternative = 'greater')$p.value),
+      by = c('participant_id', 'group')] %>%
+    # Get z-score of performance
+    .[, z_perc_correct := scale(perc_correct)] %>%
+    .[, excl := p_binom > 0.05]
   
   # Exclude participants with less than 55% overall accuracy (probably guessing)
-  temp = perf_ov[perc_correct < 0.55, c('participant_id', 'group')]
+  temp = perf_ov[excl == TRUE, c('participant_id', 'group')]
   temp$run = NA
-  temp$reason = 'Less than 55% overall accuracy'
+  temp$reason = 'Overall performance not different from chance (binom test)'
   excludes = rbind(excludes, temp)
   
   # ---
@@ -162,13 +174,19 @@ Get_exclusions = function(){
     .[, corr := corr_outcome == outcome,
       by = c('participant_id', 'group', 'trial')] %>%
     # Get accuracy for valid 1v3 trials (timeouts and forced choices excluded)
-    .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr)),
-      by = c('participant_id', 'group')]
+    .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr),
+                      # binom test to see difference from chance
+                      p_binom = binom.test(x = sum(corr),
+                                           n = length(corr),
+                                           p = 0.5,
+                                           alternative = 'greater')$p.value),
+      by = c('participant_id', 'group')] %>%
+    .[, excl := p_binom > 0.05]
   
   # Exclude participants with less than 55% overall accuracy (probably guessing)
-  temp = perf_1v3[corr_1v3 < 0.55, c('participant_id', 'group')]
+  temp = perf_1v3[excl == TRUE, c('participant_id', 'group')]
   temp$run = NA
-  temp$reason = 'Less than 55% accuracy chosing between bandit 1 and 3'
+  temp$reason = 'Performance 1v3 not diferent from chance (binom test)'
   excludes = rbind(excludes, temp)
 
   # Prepare and return
