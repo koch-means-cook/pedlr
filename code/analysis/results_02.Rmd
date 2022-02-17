@@ -57,6 +57,15 @@ source_files = list.files(source_path, pattern = "[.][rR]$",
                           full.names = TRUE, recursive = TRUE)
 invisible(lapply(source_files, function(x) source(x)))
 
+# Load model_fitting functions
+source_path = file.path(base_path, 'code', 'model_fitting',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+source_files = source_files[basename(source_files) != 'Fit_model_wrapper.R' &
+                              basename(source_files) != 'Fuse_fitting_outputs.R']
+invisible(lapply(source_files, function(x) source(x)))
+
 # Get plot colors/linetypes
 custom_guides = Get_plot_guides()
 ```
@@ -108,22 +117,24 @@ data_best_fit = data_aic %>%
 data_plot = Prepare_data_for_plot(data_best_fit)
 dodge_width = 0.2
 
-ggplot(data = data_plot,
+p_fit = ggplot(data = data_plot,
        aes(x = model,
            color = group,
            fill = group)) +
   geom_bar(stat = 'count',
                  width = dodge_width,
                  position = position_dodge(width = dodge_width)) +
+  scale_fill_manual(values = custom_guides) +
   facet_wrap(~run)
+Neurocodify_plot(p_fit)
 ```
 
 ```{r}
 # Count winning model
-data_fit_count = data_best_fit %>%
+data_best_fit %>%
   .[, .(n_best_fit = .N),
     by = c('group', 'run', 'model')] %>%
-  .[order(rank(group), rank(run)), ]
+  .[order(rank(group), rank(run), rank(-n_best_fit)), ]
 ```
 
 
@@ -131,7 +142,7 @@ data_fit_count = data_best_fit %>%
   - e.g. effect of rare outcome ==> fit of pedlr
 
 ```{r}
-data_pedler_simple = data_best_fit %>%
+data_pedlr_simple = data_best_fit %>%
   .[model == 'Pedlr_simple',] %>%
   data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'AIC'),
                    measure.vars = c('alpha1', 'temperature'),
@@ -139,11 +150,13 @@ data_pedler_simple = data_best_fit %>%
 ```
 
 ```{r}
-data_plot = Prepare_data_for_plot(data_aic) %>%
-  .[real_iter == 1 & model == 'Pedlr_simple'] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'AIC'),
-                   measure.vars = c('alpha1', 'temperature'),
-                   variable.name = 'para')
+# data_plot = Prepare_data_for_plot(data_aic) %>%
+#   .[real_iter == 1 & model == 'Pedlr_simple'] %>%
+#   data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'AIC'),
+#                    measure.vars = c('alpha1', 'temperature'),
+#                    variable.name = 'para')
+
+data_plot = Prepare_data_for_plot(data_pedlr_simple)
 
 dodge_width = 0.3
 
@@ -172,7 +185,7 @@ Neurocodify_plot(p_alpha1)
 - Could maybe move model estimation to log space (so in the model its not a1 * PE BUT e^a1 * PE) so 0.00004 and 0.0000000007 could actually be distinguished
 
 ```{r}
-data_plot = Prepare_data_for_plot(data_pedler_simple)
+data_plot = Prepare_data_for_plot(data_pedlr_simple)
 
 dodge_width = 0.3
 
@@ -197,6 +210,119 @@ p_alpha1 = ggplot(data = data_plot[para == 'alpha1'],
 
 Neurocodify_plot(p_alpha1)
 ```
+
+# Model predictions
+
+```{r}
+# Get behavioral data (choices and estimates)
+data_experiment = Load_data()
+```
+
+
+```{r}
+# Allocate data table that will hold model values and indivisual estimate
+data_est_values = data.table()
+
+# For each participant and run
+for(i_id in unique(data$participant_id)){
+  for(i_run in unique(data$run)){
+    
+    # Select model parameters
+    data_fit = data[real_iter == 1 & participant_id == i_id & run == i_run]
+    
+    # Select behavioral data (important for individual estimates)
+    temp = data_experiment[participant_id == i_id & run == i_run]
+    temp = Prepare_data_for_fit(temp)
+    
+    # Fit RW model to choices
+    data_para = data_fit[model == 'Rw']
+    Rw = Fit_Rw(data = temp,
+                params.alpha = data_para[para == 'alpha']$second_solution,
+                params.temperature = data_para[para == 'temperature']$second_solution,
+                params.reward_space_ub = 100,
+                choice_policy = 'softmax',
+                init_values = c(50,50,50))
+    
+    # Fit Pedler simple model to choices
+    data_para = data_fit[model == 'Pedlr_simple']
+    Pedlr_simple = Fit_Pedlr_simple(data = temp,
+                                    params.alpha1 = data_para[para == 'alpha1']$second_solution,
+                                    params.temperature = data_para[para == 'temperature']$second_solution,
+                                    params.reward_space_ub = 100,
+                                    choice_policy = 'softmax',
+                                    init_values = c(50,50,50))
+    
+    # Fit pedlr model to choices
+    data_para = data_fit[model == 'Pedlr']
+    Pedlr = Fit_Pedlr(data = temp,
+                      params.alpha0 = data_para[para == 'alpha0']$second_solution,
+                      params.alpha1 = data_para[para == 'alpha1']$second_solution,
+                      params.temperature = data_para[para == 'temperature']$second_solution,
+                      params.reward_space_ub = 100,
+                      choice_policy = 'softmax',
+                      init_values = c(50,50,50))
+    
+    # Add model values for each option as column
+    # RW
+    temp$Rw_1_reward = Rw$values$stim_1
+    temp$Rw_2_reward = Rw$values$stim_2
+    temp$Rw_3_reward = Rw$values$stim_3
+    # Pedlr_simple
+    temp$Pedlrsimple_1_reward = Pedlr_simple$values$stim_1
+    temp$Pedlrsimple_2_reward = Pedlr_simple$values$stim_2
+    temp$Pedlrsimple_3_reward = Pedlr_simple$values$stim_3
+    # Pedlr
+    temp$Pedlr_1_reward = Pedlr$values$stim_1
+    temp$Pedlr_2_reward = Pedlr$values$stim_2
+    temp$Pedlr_3_reward = Pedlr$values$stim_3
+    
+    # Bind run and participant specific data together
+    data_est_values = rbind(data_est_values, temp)
+  }
+}
+
+```
+
+```{r}
+# Get rating columns
+est_columns = colnames(data_est_values)[grep('*_reward', colnames(data_est_values))]
+
+# Get data structure comparing participant estimate to model values
+data_values_comp = data_est_values[with_rating == TRUE] %>%
+  # Numerate estimation trials
+  .[, est_trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  # Melt estimates
+  .[, (est_columns) := lapply(.SD, as.numeric), .SDcols = est_columns] %>%
+  data.table::melt(measure.vars = est_columns) %>%
+  .[, ':='(model = unlist(strsplit(as.character(variable), '_'))[1],
+           option = unlist(strsplit(as.character(variable), '_'))[2]),
+    by = c('participant_id', 'run', 'est_trial', 'variable')] %>%
+  # Standardize model names
+  .[model == 'Pedlrsimple', model := 'Pedlr_simple'] %>%
+  # Factorize estimate variable
+  .[, model := factor(model, levels = c('est', 'Rw', 'Pedlr_simple', 'Pedlr'))] %>%
+  # Sort data table
+  .[order(rank(participant_id), rank(run), rank(est_trial), rank(option), rank(model))] %>%
+  # Create column duplicating individual estimate (for easier difference calculation)
+  .[, estimate := value[model == 'est'],
+    by = c('participant_id', 'run', 'est_trial', 'option')]
+```
+
+```{r, fig.height=n_participants}
+# Plot estimation tracks and model values for each participant
+p = ggplot(data = data_values_comp,
+       aes(x = est_trial,
+           y = value,
+           color = model)) +
+  geom_path(alpha = 0.5) +
+  scale_color_viridis(option = 'D', discrete = TRUE) +
+  facet_grid(participant_id ~ run + option) +
+  theme(legend.position = 'top')
+
+  Neurocodify_plot(p)
+```
+
 
 
 ---
@@ -239,14 +365,16 @@ data_best_fit = data_aic %>%
 data_plot = Prepare_data_for_plot(data_best_fit)
 dodge_width = 0.2
 
-ggplot(data = data_plot,
+p_fit_nico = ggplot(data = data_plot,
        aes(x = model,
            color = group,
            fill = group)) +
   geom_bar(stat = 'count',
                  width = dodge_width,
                  position = position_dodge(width = dodge_width)) +
+  scale_fill_manual(values = custom_guides) +
   facet_wrap(~run)
+Neurocodify_plot(p_fit_nico)
 ```
 
 # Two main things to put in:

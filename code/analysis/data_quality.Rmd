@@ -111,10 +111,10 @@ p = ggplot(data = data_plot,
 Neurocodify_plot(p)
 ```
 
-**Above:** Amount of errors in 'guided' choice trials.
-Dashed line shows 25% errors (75% accuracy).
-Most participants stay way below this critical error rate.
-Additionally, older adults don't seem much worse in this measure.
+**Above:**
+
+- **Colored:** more than 3SDs away from mean (z-score, problematic for skewed distributions?)
+- **Dashed line:** 25% errors
 
 ## Difference estimation bandit 1 and 3
 
@@ -303,6 +303,11 @@ p = ggplot(data = perf_ov,
 Neurocodify_plot(p)
 ```
 
+**Above:**
+
+- **Colored:** Overall performance not significantly different from prob = 0.5 (binom test)
+- **Dashed line:** Choice accuracy of prob = 0.55 (previous exclusion criterion)
+- **Solid line:** Chance (prob = 0.5)
 
 ## Performance 1v3
 
@@ -343,7 +348,13 @@ p = ggplot(data = perf_1v3,
                linetype = 'dashed')
 Neurocodify_plot(p)
 ```
+**Above:**
 
+- **Colored:** Overall performance not significantly different from prob = 0.5 (binom test)
+- **Dashed line:** Choice accuracy of prob = 0.55 (previous exclusion criterion)
+- **Solid line:** Chance (prob = 0.5)
+
+---
 
 # Percentage of suspicious participants
 
@@ -356,6 +367,7 @@ Roughly `r round(perc_sus,2)`% of the `r n_participants` participants get flagge
 ```{r}
 sus_pool = Get_exclusions()
 perc_sus = length(unique(sus_pool$participant_id)) / length(unique(data$participant_id)) * 100
+perc_sus
 ```
 
 ## Exclusion reasons
@@ -372,7 +384,7 @@ excl
 ### Consistently similar estimate for bandit 1 and 3
 
 ```{r}
-excl = rem[reason == 'est_1v3_not_different']
+excl = rem[reason == 'Consistently similar estimate for bandit 1 and 3']
 ids = excl$participant_id
 rem = rem[!participant_id %in% ids, ]
 excl
@@ -394,6 +406,17 @@ excl = rem[reason == 'Forced choice errors + 3 SDs']
 ids = excl$participant_id
 rem = rem[!participant_id %in% ids, ]
 excl
+```
+
+---
+
+# Remaining sample
+
+```{r}
+Load_data() %>%
+  Apply_exclusion_criteria() %>%
+  .[, .(n = length(unique(participant_id))),
+    by = 'group']
 ```
 
 

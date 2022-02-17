@@ -44,6 +44,7 @@ library(gghalves)
 library(lme4)
 library(emmeans)
 library(papeR)
+library(ggtext)
 ```
 
 ```{r, message=FALSE}
@@ -163,6 +164,56 @@ emmeans::emmeans(lme_noc,
 
 ---
 
+```{r}
+bla = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  .[trial_type == 'choice', correct := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'run', 'trial')] %>%
+  .[trial_type == 'forced', correct := forced,
+    by = c('participant_id', 'run', 'trial')] %>%
+  # Exclude time-out trials
+  .[!is.na(outcome), correct_choice := choice == correct,
+    by = c('participant_id', 'run', 'trial')]
+
+bla_mean_correct = bla %>%
+  .[trial_type == 'choice', ] %>%
+  # Average over runs
+  .[, .(mean_correct = mean(correct_choice, na.rm = TRUE),
+        sd_correct = sd(correct_choice, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run', 'comp')] %>%
+  # Sort for easier checks
+  .[order(rank(comp)),] %>%
+  # Wide format to calculate differences
+  data.table::dcast(participant_id + group + run ~ paste0('comp_', comp),
+                    value.var = 'mean_correct') %>%
+  # Get difference between critical comparisons
+  .[, bandit_effect := comp_2v3 - comp_1v2] %>%
+  # Average over runs
+  .[, .(mean_bandit_effect = mean(bandit_effect, na.rm = TRUE)),
+    by = c('participant_id', 'group')]
+```
+
+## Stats
+
+```{r}
+# Test difference in older adults against 0
+t.test(bla_mean_correct[group == 'older']$mean_bandit_effect)
+# Test difference in younger adults against 0
+t.test(bla_mean_correct[group == 'younger']$mean_bandit_effect)
+# Compare age groups
+t.test(bla_mean_correct[group == 'older']$mean_bandit_effect,
+       bla_mean_correct[group == 'younger']$mean_bandit_effect)
+
+# Exclusion of "outliers"
+outlier_excl = bla_mean_correct[!participant_id %in% c('456LJD0', '8TYYUVQ')]
+t.test(outlier_excl[group == 'older']$mean_bandit_effect,
+       outlier_excl[group == 'younger']$mean_bandit_effect)
+```
+
+
+---
+
 # Risk aversion (proportion of M choices)
 
 ```{r}
@@ -251,6 +302,314 @@ knitr::kable(data_test) %>%
   kableExtra::kable_styling()
 ```
 
+---
+
+# Effect of rare events on choice performance
+
+```{r}
+# Make sure we only include choices in 1v2 comps when calculating prob of choosing 2
+bla = data %>%
+  .[comp != '1v2' | trial_type != 'choice', correct_choice := NA,
+    by = c('participant_id', 'run')]
+
+# Allocate data holding +-5 trials from rare outcome of bandit 2
+window_data = data.table()
+
+#rep(NA, max(-z+wdsz, 0))
+
+# Function to get data slice +-5 trials from rare outcome of bandit 2
+Windowrize = function(data,
+                      index_rare,
+                      window_size){
+  result = data[seq(max(index_rare - window_size + 1, 1),
+                    index_rare + window_size), ]
+  result$window_center = data$trial[index_rare]
+  result$window_relative = seq(max(index_rare - window_size + 1, 1),
+                               index_rare + window_size) - index_rare
+  result[window_relative == 0]$correct_choice = NA
+  
+  result$window_center = as.factor(result$window_center)
+  result$window_relative = as.factor(result$window_relative)
+  return(result)
+}
+
+# i_id = '09RI1ZH'
+# i_run = '1'
+
+# For each participant & run
+for(i_id in unique(bla$participant_id)){
+  for(i_run in unique(bla$run)){
+    
+    # Select data
+    temp_data = bla[participant_id == i_id &
+                      run == i_run]
+    
+    # Get all trials where rare outcomes were obtained
+    idx_chosen_rare_outcome = which(temp_data$is_rare == 1 &
+                                      # CHANGE: I also allow rare outcomes that came from forced choices
+                                      temp_data$trial_type %in% c('choice', 'forced') &
+                                      temp_data$option_choice == 2)
+   # For each of the rare-outcome trials
+   for(rare_count in seq(1,length(idx_chosen_rare_outcome))){
+    # Get data slice
+     temp = Windowrize(data = temp_data,
+                       index_rare = idx_chosen_rare_outcome[rare_count],
+                       window_size = 5) %>%
+       .[, window_relative := factor(window_relative, levels = unique(sort(window_relative)))]
+     # Add count of the rare outcome
+     temp$i_rare = rare_count
+     # Fuse data for each participant & run
+     window_data = rbind(window_data, temp)
+   }
+  }
+}
+
+# Summarize data
+window_data_run = window_data %>%
+  # Eliminate windows which extended across trial boundaries (<1 or >240)
+  .[, relative_trial := as.numeric(as.character(window_center)) + as.numeric(as.character(window_relative))] %>%
+  .[!(relative_trial < 1 | relative_trial > 240),] %>%
+  # Sort by relative window
+  .[order(rank(group), rank(participant_id), rank(run), rank(window_relative)),] %>%
+  # Get mean accuracy across all relative window positions (-4 to +5)
+  .[, .(mean_accuracy = mean(correct_choice, na.rm = TRUE),
+        n_data = sum(!is.na(correct_choice))),
+    by = c('participant_id', 'group', 'run', 'window_relative')]
+
+# Get mean across runs
+window_data_participant = window_data_run %>%
+  .[, .(accuracy = mean(mean_accuracy, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'window_relative')]
+  
+# Get age group specific mean and sd
+window_data_group = window_data_participant %>%
+  .[, .(mean_accuracy = mean(accuracy, na.rm = TRUE),
+        sd_accuracy = sd(accuracy, na.rm = TRUE)),
+    by = c('group', 'window_relative')] %>%
+  .[order(rank(group), rank(window_relative)),]
+```
+
+## Stats
+
+```{r}
+# test pre vs post trial
+# younger
+t.test(window_data_participant[window_relative == '-1' & group == 'younger']$accuracy,
+       window_data_participant[window_relative == '1' & group == 'younger']$accuracy,
+       paired = TRUE)
+# older
+t.test(window_data_participant[window_relative == '-1' & group == 'older']$accuracy,
+       window_data_participant[window_relative == '1' & group == 'older']$accuracy,
+       paired = TRUE)
+# younger vs older
+t.test(
+  window_data_participant[window_relative == '-1' & group == 'younger']$accuracy -
+    window_data_participant[window_relative == '1' & group == 'younger']$accuracy,
+  window_data_participant[window_relative == '-1' & group == 'older']$accuracy -
+    window_data_participant[window_relative == '1' & group == 'older']$accuracy
+  )
+```
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(window_data_participant) %>%
+  .[, window_relative := as.numeric(as.character(window_relative))] %>%
+  .[!window_relative == 0, ]
+
+data_plot_mean = data_plot %>%
+  .[, .(accuracy = mean(accuracy),
+        sem_accuracy = sd(accuracy) / sqrt(.N)),
+    by = c('group', 'window_relative')]
+
+dodge_width = 0.3
+
+p = ggplot(data = data_plot,
+       aes(x = window_relative,
+           y = accuracy,
+           fill = group,
+           color = group,
+           group = interaction(window_relative, group))) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = 0.1,
+                                             jitter.height = 0,
+                                             seed = 666),
+             size = 0.5,
+             alpha = 0.5) +
+  # geom_line(aes(group = participant_id),
+  #           alpha = 0.1,
+  #           size = 0.5) +
+  # geom_boxplot(color = 'black',
+  #              outlier.shape = NA,
+  #              width = dodge_width,
+  #              position = position_dodge(width = dodge_width)) +
+  geom_vline(xintercept = 0,
+             linetype = 'dashed') +
+  geom_path(data = data_plot_mean,
+             size = 1,
+             position = position_dodge(dodge_width),
+            aes(group = group)) +
+  geom_errorbar(data = data_plot_mean,
+                  aes(x = window_relative,
+                      y = accuracy,
+                      ymin = accuracy - sem_accuracy,
+                      ymax = accuracy + sem_accuracy),
+                  size = 0.5,
+                width = dodge_width/2,
+                  position = position_dodge(dodge_width),
+                color = 'black') +
+  geom_point(data = data_plot_mean,
+                  aes(x = window_relative,
+                      y = accuracy),
+                  size = 3,
+                  position = position_dodge(dodge_width),
+             shape = 21,
+             color = 'black') +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  scale_x_continuous(breaks = seq(min(data_plot$window_relative),
+                                max(data_plot$window_relative))) +
+  scale_y_continuous(limits = c(0,1)) +
+  ggtext::geom_richtext(x = 0,
+                        y = 0.1,
+                        label = 'Rare outcome in Mid arm',
+                        fill = 'white',
+                        color = 'black',
+                        angle = 90,
+                        size = 3,
+                        hjust = 0) +
+  labs(y = 'p(Choice Mid | LM)') +
+  theme(legend.position = 'top')
+  
+Neurocodify_plot(p) +
+  theme(panel.grid = element_blank())
+```
+
+## Ordninary events
+
+```{r}
+window_data_normal = data.table()
+# For each participant & run
+for(i_id in unique(bla$participant_id)){
+  for(i_run in unique(bla$run)){
+    
+    # Select data
+    temp_data = bla[participant_id == i_id &
+                      run == i_run]
+    
+    # Get all trials where rare outcomes were obtained
+   idx_chosen_normal_outcome = which(temp_data$is_rare == 0 &
+                                     temp_data$trial_type %in% c('choice', 'forced') &
+                                     temp_data$option_choice == 2)
+   # For each of the rare-outcome trials
+   for(normal_count in seq(1,length(idx_chosen_normal_outcome))){
+    # Get data slice
+     temp = Windowrize(data = temp_data,
+                       index_rare = idx_chosen_normal_outcome[normal_count],
+                       window_size = 5)
+     # Add count of the rare outcome
+     temp$i_rare = normal_count
+     # Fuse data for each participant & run
+     window_data_normal = rbind(window_data_normal, temp)
+   }
+  }
+}
+
+window_data_normal$window_relative = as.numeric(as.character(window_data_normal$window_relative))
+window_data_normal$window_relative = factor(window_data_normal$window_relative,
+                                            levels = sort(unique(window_data_normal$window_relative)))
+
+# Summarize data
+window_data_run_normal = window_data_normal %>%
+  # Eliminate windows which extended across trial boundaries (<1 or >240)
+  .[, relative_trial := as.numeric(as.character(window_center)) + as.numeric(as.character(window_relative))] %>%
+  .[!(relative_trial < 1 | relative_trial > 240),] %>%
+  # Sort by relative window
+  .[order(rank(group), rank(participant_id), rank(run), rank(window_relative)),] %>%
+  # Get mean accuracy across all relative window positions (-4 to +5)
+  .[, .(mean_accuracy = mean(correct_choice, na.rm = TRUE),
+        n_data = sum(!is.na(correct_choice))),
+    by = c('participant_id', 'group', 'run', 'window_relative')]
+
+# Get mean across runs
+window_data_participant_normal = window_data_run_normal %>%
+  .[, .(accuracy = mean(mean_accuracy, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'window_relative')]
+```
+
+
+```{r}
+data_plot = Prepare_data_for_plot(window_data_participant_normal) %>%
+  .[, window_relative := as.numeric(as.character(window_relative))] %>%
+  .[!window_relative == 0, ]
+
+data_plot_mean = data_plot %>%
+  .[, .(accuracy = mean(accuracy),
+        sem_accuracy = sd(accuracy) / sqrt(.N)),
+    by = c('group', 'window_relative')]
+
+dodge_width = 0.3
+
+p = ggplot(data = data_plot,
+       aes(x = window_relative,
+           y = accuracy,
+           fill = group,
+           color = group,
+           group = interaction(window_relative, group))) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = 0.1,
+                                             jitter.height = 0,
+                                             seed = 666),
+             size = 0.5,
+             alpha = 0.5) +
+  # geom_line(aes(group = participant_id),
+  #           alpha = 0.1,
+  #           size = 0.5) +
+  # geom_boxplot(color = 'black',
+  #              outlier.shape = NA,
+  #              width = dodge_width,
+  #              position = position_dodge(width = dodge_width)) +
+  geom_vline(xintercept = 0,
+             linetype = 'dashed') +
+  geom_path(data = data_plot_mean,
+             size = 1,
+             position = position_dodge(dodge_width),
+            aes(group = group)) +
+  geom_errorbar(data = data_plot_mean,
+                  aes(x = window_relative,
+                      y = accuracy,
+                      ymin = accuracy - sem_accuracy,
+                      ymax = accuracy + sem_accuracy),
+                  size = 0.5,
+                width = dodge_width/2,
+                  position = position_dodge(dodge_width),
+                color = 'black') +
+  geom_point(data = data_plot_mean,
+                  aes(x = window_relative,
+                      y = accuracy),
+                  size = 3,
+                  position = position_dodge(dodge_width),
+             shape = 21,
+             color = 'black') +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  scale_x_continuous(breaks = seq(min(data_plot$window_relative),
+                                max(data_plot$window_relative))) +
+  scale_y_continuous(limits = c(0,1)) +
+  ggtext::geom_richtext(x = 0,
+                        y = 0.1,
+                        label = 'Ordinary outcome in Mid arm',
+                        fill = 'white',
+                        color = 'black',
+                        angle = 90,
+                        size = 3,
+                        hjust = 0) +
+  labs(y = 'p(Choice Mid | LM)') +
+  theme(legend.position = 'top')
+  
+Neurocodify_plot(p) +
+  theme(panel.grid = element_blank())
+```
 
 
 ---

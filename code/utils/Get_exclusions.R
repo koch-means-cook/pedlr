@@ -155,7 +155,7 @@ Get_exclusions = function(){
     .[, z_perc_correct := scale(perc_correct)] %>%
     .[, excl := p_binom > 0.05]
   
-  # Exclude participants with less than 55% overall accuracy (probably guessing)
+  # Exclude participants with overall performance not sig different from chance
   temp = perf_ov[excl == TRUE, c('participant_id', 'group')]
   temp$run = NA
   temp$reason = 'Overall performance not different from chance (binom test)'
@@ -183,7 +183,7 @@ Get_exclusions = function(){
       by = c('participant_id', 'group')] %>%
     .[, excl := p_binom > 0.05]
   
-  # Exclude participants with less than 55% overall accuracy (probably guessing)
+  # Exclude participants with 1v3 performance not sig different from chance
   temp = perf_1v3[excl == TRUE, c('participant_id', 'group')]
   temp$run = NA
   temp$reason = 'Performance 1v3 not diferent from chance (binom test)'
