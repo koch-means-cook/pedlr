@@ -116,78 +116,127 @@ Neurocodify_plot(p)
 - **Colored:** more than 3SDs away from mean (z-score, problematic for skewed distributions?)
 - **Dashed line:** 25% errors
 
+## Performance 1v3
+
+```{r}
+perf_1v3 = data %>%
+  .[comp == '1v3' & trial_type == 'choice',] %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'group')] %>%
+  .[, corr_outcome := max(c(reward_stim_1, reward_stim_2)),
+    by = c('participant_id', 'group', 'trial')] %>%
+  .[, corr := corr_outcome == outcome,
+    by = c('participant_id', 'group', 'trial')] %>%
+  # Get accuracy for valid 1v3 trials (timeouts and forced choices excluded)
+  .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr),
+                    # binom test to see difference from chance
+                    p_binom = binom.test(x = sum(corr),
+                                         n = length(corr),
+                                         p = 0.5,
+                                         alternative = 'greater')$p.value),
+    by = c('participant_id', 'group')] %>%
+  .[, excl := p_binom > 0.05]
+
+# Exclude participants with less than 55% overall accuracy (probably guessing)
+temp = perf_1v3[excl == TRUE, c('participant_id', 'group')]
+temp$run = NA
+temp$reason = 'Performance 1v3 not different from chance (binom test)'
+sus_pool = rbind(sus_pool, temp)
+```
+
+```{r}
+p = ggplot(data = perf_1v3,
+         aes(x = group,
+             y = corr_1v3,
+             color = excl)) +
+    geom_point() +
+    geom_hline(yintercept = 0.5) +
+    geom_hline(yintercept = 0.55,
+               linetype = 'dashed')
+Neurocodify_plot(p)
+```
+**Above:**
+
+- **Colored:** Overall performance not significantly different from prob = 0.5 (binom test)
+- **Dashed line:** Choice accuracy of prob = 0.55 (previous exclusion criterion)
+- **Solid line:** Chance (prob = 0.5)
+
 ## Difference estimation bandit 1 and 3
 
 ```{r, warning=FALSE}
 est = data %>%
-  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
-                                           choice_outcome = outcome,
-                                           stim = 1),
-           avg_2_running = Get_running_avg(choice_option = option_choice,
-                                           choice_outcome = outcome,
-                                           stim = 2),
-           avg_3_running = Get_running_avg(choice_option = option_choice,
-                                           choice_outcome = outcome,
-                                           stim = 3)),
-    by = c('participant_id', 'run')] %>%
-  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
-  .[!is.na(est_1_reward),] %>%
-  .[, est_trial := seq(.N), by = c('participant_id', 'run')]
-# Convert measure variables to same type (to avoid "melt" warning)
-conv_cols = c('est_1_reward',
-              'est_1_range',
-              'avg_1_running',
-              'est_2_reward',
-              'est_2_range',
-              'avg_2_running',
-              'est_3_reward',
-              'est_3_range',
-              'avg_3_running')
-out_cols = conv_cols
-est = est %>%
-  .[, c(out_cols) := lapply(.SD, as.double), .SDcols = conv_cols] %>%
-  data.table::melt(.,
-                   id.vars = c('participant_id',
-                               'group',
-                               'run',
-                               'est_trial',
-                               'forced_rare'),
-                   measure.vars = conv_cols) %>%
-  .[, est_stim := substr(variable, 5, 5)] %>%
-  .[, type := substr(variable, 7, 9)] %>%
-  .[type == 'rew', type := 'reward'] %>%
-  .[type == 'ran', type := 'range'] %>%
-  .[type == 'run', type := 'r_avg'] %>%
-  data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
-                    value.var = 'value')
-
-# Compare estimates of bandit 1 and 3 with paired t-test within subject
-est_1v3 = est %>%
-  .[est_stim != 2,] %>%
-  data.table::dcast(participant_id + group + run + est_trial ~ paste0('est_', est_stim),
-                    value.var = 'reward') %>%
-  .[, .(mean_1 = mean(est_1),
-        mean_3 = mean(est_3),
-        # Test for sig difference between estimate of bandit 1 and 3 (across 
-        # task versions is okay because of paired)
-        statistic = t.test(x = est_1,
-                           y = est_3,
-                           alternative = 'less',
-                           paired = TRUE)$statistic,
-        parameter = t.test(x = est_1,
-                           y = est_3,
-                           alternative = 'less',
-                           paired = TRUE)$parameter,
-        p.value = round(t.test(x = est_1,
-                               y = est_3,
-                               alternative = 'less',
-                               paired = TRUE)$p.value, 3)),
-    by = c('participant_id', 'group')]
+    .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
+                                             choice_outcome = outcome,
+                                             stim = 1),
+             avg_2_running = Get_running_avg(choice_option = option_choice,
+                                             choice_outcome = outcome,
+                                             stim = 2),
+             avg_3_running = Get_running_avg(choice_option = option_choice,
+                                             choice_outcome = outcome,
+                                             stim = 3)),
+      by = c('participant_id', 'run')] %>%
+    .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
+    .[!is.na(est_1_reward),] %>%
+    .[, est_trial := seq(.N), by = c('participant_id', 'run')]
+  # Convert measure variables to same type (to avoid "melt" warning)
+  conv_cols = c('est_1_reward',
+                'est_1_range',
+                'avg_1_running',
+                'est_2_reward',
+                'est_2_range',
+                'avg_2_running',
+                'est_3_reward',
+                'est_3_range',
+                'avg_3_running')
+  out_cols = conv_cols
+  est = est %>%
+    .[, c(out_cols) := lapply(.SD, as.double), .SDcols = conv_cols] %>%
+    data.table::melt(.,
+                     id.vars = c('participant_id',
+                                 'group',
+                                 'run',
+                                 'est_trial',
+                                 'forced_rare'),
+                     measure.vars = conv_cols) %>%
+    .[, est_stim := substr(variable, 5, 5)] %>%
+    .[, type := substr(variable, 7, 9)] %>%
+    .[type == 'rew', type := 'reward'] %>%
+    .[type == 'ran', type := 'range'] %>%
+    .[type == 'run', type := 'r_avg'] %>%
+    data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
+                      value.var = 'value')
+  
+  # Compare estimates of bandit 1 and 3 with paired t-test within subject
+  est_1v3 = est %>%
+    .[est_stim != 2,] %>%
+    data.table::dcast(participant_id + group + run + est_trial ~ paste0('est_', est_stim),
+                      value.var = 'reward') %>%
+    .[, diff_3m1 := est_3 - est_1] %>%
+    # Introduce extremely low random Gaussian noise to allow t.test even if variance == 0
+    .[, diff_3m1_noise := diff_3m1 + (rnorm(1) * 0.0001),
+      by = c('participant_id', 'group', 'run', 'est_trial')] %>%
+    # .[, .(mean_diff = mean(diff_3m1),
+    #       sd_diff = sd(diff_3m1),
+    #       mean_diff_3m1_noise = mean(diff_3m1_noise),
+    #       sd_diff_3m1_noise = sd(diff_3m1_noise)),
+    #   by = c('participant_id', 'group', 'run')]
+    # Test for sig difference between estimate of bandit 1 and 3 (across 
+    # task versions is okay because of paired)
+    .[, .(statistic = t.test(x = diff_3m1_noise,
+                             mu = 0,
+                             alternative = 'greater')$statistic,
+          parameter = t.test(x = diff_3m1_noise,
+                             mu = 0,
+                             alternative = 'greater')$parameter,
+          p.value = round(t.test(x = diff_3m1_noise,
+                                 mu = 0,
+                                 alternative = 'greater')$p.value, 3)),
+      by = c('participant_id', 'group', 'run')] %>%
+    .[, excl := p.value > 0.05]
 
 # add suspicious participants
-temp = est_1v3[p.value > 0.05,
-               c('participant_id', 'group')]
-temp$run = NA
+temp = est_1v3[excl == TRUE,
+               c('participant_id', 'group', 'run')]
 temp$reason = 'est_1v3_not_different'
 sus_pool = rbind(sus_pool, temp)
 ```
@@ -201,8 +250,11 @@ data_plot = Prepare_data_for_plot(est[est_stim != 2]) %>%
   # data.table::melt(id.vars = c('participant_id', 'group', 'run', 'est_trial', 'est_stim'),
   #                  measure.vars = c('r_avg',
   #                                   'reward')) %>%
-  .[participant_id %in% est_1v3[p.value > 0.05]$participant_id, excl := TRUE] %>%
-  .[!participant_id %in% est_1v3[p.value > 0.05]$participant_id, excl := FALSE]
+  data.table::merge.data.table(.,
+                               Prepare_data_for_plot(est_1v3),
+                               by = c('participant_id', 'group', 'run'),
+                               all = TRUE)
+
 
 p = ggplot(data = data_plot,
                aes(x = est_trial,
@@ -233,15 +285,20 @@ check_corr_1v3 = data %>%
     by = c('participant_id', 'group', 'run', 'trial')] %>%
   # get accuracy for valid 1v3 trials (timeouts and forced choices excluded)
   .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr)),
-    by = c('participant_id', 'group', 'run')]
+    by = c('participant_id', 'group', 'run')] %>%
+  # Add exclusion
+  .[participant_id %in% perf_1v3[excl == TRUE]$participant_id, excl := TRUE] %>%
+  .[!participant_id %in% perf_1v3[excl == TRUE]$participant_id, excl := FALSE]
 
 p_ext = ggplot(data = check_corr_1v3,
                aes(x = run,
-                   y = corr_1v3)) +
+                   y = corr_1v3,
+                   color = excl)) +
   geom_hline(yintercept = 0.5,
              linetype = 'dashed') +
   geom_point() +
-  facet_grid(participant_id ~ 'corr_1v3')
+  facet_grid(participant_id ~ 'corr_1v3') +
+  theme(legend.position = 'none')
 p_ext = Neurocodify_plot(p_ext)
 ```
 
@@ -261,132 +318,37 @@ These participants estimated similar means for two separate, not-crossing Gaussi
 This makes it likely they did not pay attention to the estimation trials.
 The left plot shows accuracy in comparisons between bandit 1 and 3 in choice trials.
 
-## Overall performance
-
-```{r}
-perf_ov = data %>%
-  .[, trial := seq(.N),
-    by = participant_id] %>%
-  # Select only choice trials without timeouts
-  .[trial_type == 'choice' & !is.na(outcome),] %>%
-  # Get correctness of each trial (choice of stimulus with higher mean)
-  .[, corr_choice := (max(option_left, option_right) == option_choice),
-    by = c('participant_id', 'trial')] %>%
-  # Get percentage of overall correct choices
-  .[, .(perc_correct = sum(corr_choice) / length(corr_choice),
-        # binom test to see difference from chance
-        p_binom = binom.test(x = sum(corr_choice),
-                             n = length(corr_choice),
-                             p = 0.5,
-                             alternative = 'greater')$p.value),
-    by = c('participant_id', 'group')] %>%
-  # Get z-score of performance
-  .[, z_perc_correct := scale(perc_correct)] %>%
-  .[, excl := p_binom > 0.05]
-
-# Exclude participants with less than 55% overall accuracy (probably guessing)
-temp = perf_ov[p_binom > 0.05, c('participant_id', 'group')]
-temp$run = NA
-temp$reason = 'Overall performance not different from chance (binom test)'
-sus_pool = rbind(sus_pool, temp)
-```
-
-```{r}
-p = ggplot(data = perf_ov,
-         aes(x = group,
-             y = perc_correct,
-             color = excl)) +
-    geom_point() +
-    geom_hline(yintercept = 0.5) +
-    geom_hline(yintercept = 0.55,
-               linetype = 'dashed')
-Neurocodify_plot(p)
-```
-
-**Above:**
-
-- **Colored:** Overall performance not significantly different from prob = 0.5 (binom test)
-- **Dashed line:** Choice accuracy of prob = 0.55 (previous exclusion criterion)
-- **Solid line:** Chance (prob = 0.5)
-
-## Performance 1v3
-
-```{r}
-perf_1v3 = data %>%
-  .[comp == '1v3' & trial_type == 'choice',] %>%
-  .[, trial := seq(.N),
-    by = c('participant_id', 'group')] %>%
-  .[, corr_outcome := max(c(reward_stim_1, reward_stim_2)),
-    by = c('participant_id', 'group', 'trial')] %>%
-  .[, corr := corr_outcome == outcome,
-    by = c('participant_id', 'group', 'trial')] %>%
-  # Get accuracy for valid 1v3 trials (timeouts and forced choices excluded)
-  .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr),
-                    # binom test to see difference from chance
-                    p_binom = binom.test(x = sum(corr),
-                                         n = length(corr),
-                                         p = 0.5,
-                                         alternative = 'greater')$p.value),
-    by = c('participant_id', 'group')] %>%
-  .[, excl := p_binom > 0.05]
-
-# Exclude participants with less than 55% overall accuracy (probably guessing)
-temp = perf_1v3[excl == TRUE, c('participant_id', 'group')]
-temp$run = NA
-temp$reason = 'Performance 1v3 not diferent from chance (binom test)'
-sus_pool = rbind(sus_pool, temp)
-```
-
-```{r}
-p = ggplot(data = perf_1v3,
-         aes(x = group,
-             y = corr_1v3,
-             color = excl)) +
-    geom_point() +
-    geom_hline(yintercept = 0.5) +
-    geom_hline(yintercept = 0.55,
-               linetype = 'dashed')
-Neurocodify_plot(p)
-```
-**Above:**
-
-- **Colored:** Overall performance not significantly different from prob = 0.5 (binom test)
-- **Dashed line:** Choice accuracy of prob = 0.55 (previous exclusion criterion)
-- **Solid line:** Chance (prob = 0.5)
-
 ---
 
 # Percentage of suspicious participants
 
-```{r}
-perc_sus = length(unique(sus_pool$participant_id)) / length(unique(data$participant_id)) * 100
-```
-
-Roughly `r round(perc_sus,2)`% of the `r n_participants` participants get flagged as suspicious (probably did not pay attention).
+## Choice analyses
 
 ```{r}
 sus_pool = Get_exclusions()
+perc_sus = length(unique(sus_pool[mod == 'choice_performance']$participant_id)) / length(unique(data$participant_id)) * 100
+perc_sus
+```
+
+Roughly `r round(perc_sus,2)`% of the `r n_participants` participants get flagged as suspicious for choice performance (probably did not pay attention).
+
+## Rating analsis
+
+```{r}
 perc_sus = length(unique(sus_pool$participant_id)) / length(unique(data$participant_id)) * 100
 perc_sus
 ```
 
-## Exclusion reasons
+Roughly `r round(perc_sus,2)`% of the `r n_participants` participants get flagged as suspicious for choice performance (probably did not pay attention). (These are more since we also exclude people with weird choices from the ratings, and on top people who chose reliably but did not rate reliably).
 
-### Binom test: Overall performance vs. chance
+# Exclusion reasons
+
+### Over 3SD for forced choices
 
 ```{r}
-excl = sus_pool[reason == 'Overall performance not different from chance (binom test)']
+excl = sus_pool[reason == 'Forced choice errors + 3 SDs']
 ids = excl$participant_id
 rem = sus_pool[!participant_id %in% ids, ]
-excl
-```
-
-### Consistently similar estimate for bandit 1 and 3
-
-```{r}
-excl = rem[reason == 'Consistently similar estimate for bandit 1 and 3']
-ids = excl$participant_id
-rem = rem[!participant_id %in% ids, ]
 excl
 ```
 
@@ -399,25 +361,40 @@ rem = rem[!participant_id %in% ids, ]
 excl
 ```
 
-### Over 3SD for forced choices
+## Consistently similar estimate for bandit 1 and 3
 
 ```{r}
-excl = rem[reason == 'Forced choice errors + 3 SDs']
+excl = rem[reason == 'Consistently similar estimate for bandit 1 and 3']
 ids = excl$participant_id
 rem = rem[!participant_id %in% ids, ]
 excl
 ```
 
+
+
 ---
 
 # Remaining sample
 
+## Choice analyses
+
 ```{r}
 Load_data() %>%
-  Apply_exclusion_criteria() %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
   .[, .(n = length(unique(participant_id))),
     by = 'group']
 ```
 
+## Rating analyses
+
+```{r}
+Load_data() %>%
+  Apply_exclusion_criteria(choice_based_exclusion = FALSE) %>%
+  .[, .(n_runs = length(unique(run))),
+    by = c('participant_id', 'group')] %>%
+  .[, .(both_runs = sum(n_runs == 2),
+        single_runs = sum(n_runs == 1)),
+    by = c('group')]
+```
 
 

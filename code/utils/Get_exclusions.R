@@ -51,10 +51,40 @@ Get_exclusions = function(){
   temp = fce[excl == TRUE, c('participant_id', 'group')]
   temp$run = NA
   temp$reason = 'Forced choice errors + 3 SDs'
+  temp$mod = 'choice_performance'
   excludes = rbind(excludes, temp)
   
   # ---
-  # Exclusion criterion 2: Consistently similar estimates between bandit 1 and 3
+  # Exclusion criterion 2: Chance-level performance for bandit 1 vs. bandit 3
+  # ---
+  # Add accuracy of 1v3 choices across runs
+  perf_1v3 = data %>%
+    .[comp == '1v3' & trial_type == 'choice',] %>%
+    .[, trial := seq(.N),
+      by = c('participant_id', 'group')] %>%
+    .[, corr_outcome := max(c(reward_stim_1, reward_stim_2)),
+      by = c('participant_id', 'group', 'trial')] %>%
+    .[, corr := corr_outcome == outcome,
+      by = c('participant_id', 'group', 'trial')] %>%
+    # Get accuracy for valid 1v3 trials (timeouts and forced choices excluded)
+    .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr),
+                      # binom test to see difference from chance
+                      p_binom = binom.test(x = sum(corr),
+                                           n = length(corr),
+                                           p = 0.5,
+                                           alternative = 'greater')$p.value),
+      by = c('participant_id', 'group')] %>%
+    .[, excl := p_binom > 0.05]
+  
+  # Exclude participants with 1v3 performance not sig different from chance
+  temp = perf_1v3[excl == TRUE, c('participant_id', 'group')]
+  temp$run = NA
+  temp$reason = 'Performance 1v3 not diferent from chance (binom test)'
+  temp$mod = 'choice_performance'
+  excludes = rbind(excludes, temp)
+
+  # ---
+  # Exclusion criterion 3: Consistently similar estimates between bandit 1 and 3
   # ---
   # Get data of all estimations
   est = data %>%
@@ -71,7 +101,7 @@ Get_exclusions = function(){
     .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
     .[!is.na(est_1_reward),] %>%
     .[, est_trial := seq(.N), by = c('participant_id', 'run')]
-    # Convert measure variables to same type (to avoid "melt" warning)
+  # Convert measure variables to same type (to avoid "melt" warning)
   conv_cols = c('est_1_reward',
                 'est_1_range',
                 'avg_1_running',
@@ -104,91 +134,57 @@ Get_exclusions = function(){
     .[est_stim != 2,] %>%
     data.table::dcast(participant_id + group + run + est_trial ~ paste0('est_', est_stim),
                       value.var = 'reward') %>%
-    .[, .(mean_1 = mean(est_1),
-          mean_3 = mean(est_3),
-          # Test for sig difference between estimate of bandit 1 and 3 (across 
-          # task versions is okay because of paired)
-          statistic = t.test(x = est_1,
-                             y = est_3,
-                             alternative = 'less',
-                             paired = TRUE)$statistic,
-          parameter = t.test(x = est_1,
-                             y = est_3,
-                             alternative = 'less',
-                             paired = TRUE)$parameter,
-          p.value = round(t.test(x = est_1,
-                                 y = est_3,
-                                 alternative = 'less',
-                                 paired = TRUE)$p.value, 3)),
-      by = c('participant_id', 'group')] %>%
-    .[, excl := p.value > 0.05]
+    .[, diff_3m1 := est_3 - est_1] %>%
+    # Introduce extremely low random Gaussian noise to allow t.test even if variance == 0
+    .[, diff_3m1_noise := diff_3m1 + (rnorm(1) * 0.0001),
+      by = c('participant_id', 'group', 'run', 'est_trial')] %>%
+    # .[, .(mean_diff = mean(diff_3m1),
+    #       sd_diff = sd(diff_3m1),
+    #       mean_diff_3m1_noise = mean(diff_3m1_noise),
+    #       sd_diff_3m1_noise = sd(diff_3m1_noise)),
+    #   by = c('participant_id', 'group', 'run')]
+    # Test for sig difference between estimate of bandit 1 and 3 (across 
+    # task versions is okay because of paired)
+    .[, .(statistic = t.test(x = diff_3m1_noise,
+                             mu = 0,
+                             alternative = 'greater')$statistic,
+          parameter = t.test(x = diff_3m1_noise,
+                             mu = 0,
+                             alternative = 'greater')$parameter,
+          p.value = round(t.test(x = diff_3m1_noise,
+                                 mu = 0,
+                                 alternative = 'greater')$p.value, 3)),
+      by = c('participant_id', 'group', 'run')] %>%
+    .[, excl := p.value > 0.05] %>%
+    # Exclude 8TYYUVQ
+    .[participant_id == '8TYYUVQ', excl := TRUE]
+    
+    # .[, .(mean_1 = mean(est_1),
+    #       mean_3 = mean(est_3),
+    #       # Test for sig difference between estimate of bandit 1 and 3 (across 
+    #       # task versions is okay because of paired)
+    #       statistic = t.test(x = est_1,
+    #                          y = est_3,
+    #                          alternative = 'less',
+    #                          paired = TRUE)$statistic,
+    #       parameter = t.test(x = est_1,
+    #                          y = est_3,
+    #                          alternative = 'less',
+    #                          paired = TRUE)$parameter,
+    #       p.value = round(t.test(x = est_1,
+    #                              y = est_3,
+    #                              alternative = 'less',
+    #                              paired = TRUE)$p.value, 3)),
+    #   by = c('participant_id', 'group')] %>%
+    # .[, excl := p.value > 0.05]
   
   # Exclude participants who's estimates of bandit 1 and 3 are not significantly
   # different
-  temp = est_1v3[excl == TRUE, c('participant_id', 'group')]
-  temp$run = NA
+  temp = est_1v3[excl == TRUE, c('participant_id', 'group', 'run')]
   temp$reason = 'Consistently similar estimate for bandit 1 and 3'
+  temp$mod = 'rating_performance'
   excludes = rbind(excludes, temp)
   
-  # ---
-  # Exclusion criterion 3: Overall performance
-  # ---
-  # Get overall performance (choice of bandit with higher mean, only choice 
-  # trials that were no timeouts)
-  perf_ov = data %>%
-    .[, trial := seq(.N),
-      by = participant_id] %>%
-    # Select only choice trials without timeouts
-    .[trial_type == 'choice' & !is.na(outcome),] %>%
-    # Get correctness of each trial (choice of stimulus with higher mean)
-    .[, corr_choice := (max(option_left, option_right) == option_choice),
-      by = c('participant_id', 'trial')] %>%
-    # Get percentage of overall correct choices
-    .[, .(perc_correct = sum(corr_choice) / length(corr_choice),
-          # binom test to see difference from chance
-          p_binom = binom.test(x = sum(corr_choice),
-                         n = length(corr_choice),
-                         p = 0.5,
-                         alternative = 'greater')$p.value),
-      by = c('participant_id', 'group')] %>%
-    # Get z-score of performance
-    .[, z_perc_correct := scale(perc_correct)] %>%
-    .[, excl := p_binom > 0.05]
-  
-  # Exclude participants with overall performance not sig different from chance
-  temp = perf_ov[excl == TRUE, c('participant_id', 'group')]
-  temp$run = NA
-  temp$reason = 'Overall performance not different from chance (binom test)'
-  excludes = rbind(excludes, temp)
-  
-  # ---
-  # Exclusion criterion 4: Chance-level performance for bandit 1 vs. bandit 3
-  # ---
-  # Add accuracy of 1v3 choices across runs
-  perf_1v3 = data %>%
-    .[comp == '1v3' & trial_type == 'choice',] %>%
-    .[, trial := seq(.N),
-      by = c('participant_id', 'group')] %>%
-    .[, corr_outcome := max(c(reward_stim_1, reward_stim_2)),
-      by = c('participant_id', 'group', 'trial')] %>%
-    .[, corr := corr_outcome == outcome,
-      by = c('participant_id', 'group', 'trial')] %>%
-    # Get accuracy for valid 1v3 trials (timeouts and forced choices excluded)
-    .[!is.na(corr), .(corr_1v3 = sum(corr) / length(corr),
-                      # binom test to see difference from chance
-                      p_binom = binom.test(x = sum(corr),
-                                           n = length(corr),
-                                           p = 0.5,
-                                           alternative = 'greater')$p.value),
-      by = c('participant_id', 'group')] %>%
-    .[, excl := p_binom > 0.05]
-  
-  # Exclude participants with 1v3 performance not sig different from chance
-  temp = perf_1v3[excl == TRUE, c('participant_id', 'group')]
-  temp$run = NA
-  temp$reason = 'Performance 1v3 not diferent from chance (binom test)'
-  excludes = rbind(excludes, temp)
-
   # Prepare and return
   excludes = excludes %>%
     .[, n_criteria := .N,

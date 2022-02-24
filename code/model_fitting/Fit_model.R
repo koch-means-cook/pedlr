@@ -11,10 +11,10 @@ source(source_path)
 # data = Load_data()
 # data = Prepare_data_for_fit(data)
 # data = data[participant_id == '0IUKYRW' & run == 2]
-# model = 'Pedlr_fixdep'
-# start_values = c(0.2,0.2,5)
-# lb = c(0,0,1)
-# ub = c(1,1,10)
+# model = 'Pedlr_simple_const'
+# start_values = c(0.2,5)
+# lb = c(0,1)
+# ub = c(1,10)
 
 Fit_model = function(data,
                      model,
@@ -41,11 +41,11 @@ Fit_model = function(data,
   # Options for second (local) optimization
   opts2 = list('algorithm'='NLOPT_LN_COBYLA',
                'xtol_rel'=1.0e-4,
-               'maxeval'=100)
+               'maxeval'=5000)
   
   # Set up model list
-  model_list = data.table('model_name' = c('Rw', 'Pedlr_simple', 'Pedlr', 'Pedlr_fixdep', 'Pedlr_interdep'),
-                          'n_parameters' = c(2,2,3,3,4))
+  model_list = data.table('model_name' = c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_fixdep', 'Pedlr_interdep'),
+                          'n_parameters' = c(2,2,2,3,3,4))
   
   # See if provided model is in model list
   if(!model %in% model_list$model_name){
