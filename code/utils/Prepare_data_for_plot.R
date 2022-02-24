@@ -20,11 +20,13 @@ Prepare_data_for_plot = function(data){
        'Pedlr' %in% data[,col] |
        'Pedlr_interdep' %in% data[,col] |
        'Pedlr_simple' %in% data[,col] |
-       'Pedlr_fixdep' %in% data[,col]){
+       'Pedlr_fixdep' %in% data[,col] |
+       'Pedlr_simple_const' %in% data[,col]){
       
       # Set different models
       models = c('Rw',
                  'Pedlr_simple',
+                 'Pedlr_simple_const',
                  'Pedlr',
                  'Pedlr_fixdep',
                  'Pedlr_interdep')

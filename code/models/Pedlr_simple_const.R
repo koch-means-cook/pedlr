@@ -4,7 +4,7 @@
 # - Updating of values only for chosen option
 # - Choice policy based on softmax
 
-Pedlr_simple = function(design,
+Pedlr_simple_const = function(design,
                         params.alpha1,
                         params.temperature,
                         params.reward_space_ub,
