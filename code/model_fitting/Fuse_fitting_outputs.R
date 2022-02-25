@@ -23,7 +23,7 @@ Fuse_fitting_outputs = function(delete_source = FALSE){
   # Loop over data of each participant
   for(id in participants){
     # Loop over different models
-    for(model in c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_fixdep', 'Pedlr_interdep')){
+    for(model in c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_step', 'Pedlr_fixdep', 'Pedlr_interdep')){
       # Get data for participant and model
       pattern = paste(id,'*', model, '-*', '.tsv', sep = '')
       data = Sys.glob(file.path(fuse_path, pattern, fsep = .Platform$file.sep))
