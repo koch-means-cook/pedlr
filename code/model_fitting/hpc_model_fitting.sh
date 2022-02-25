@@ -294,6 +294,59 @@ for DATA in ${DATA_LIST}; do
 
 	# ----------------------------------------------------------------------------
 	# ===
+	# Pedlr_step
+	# ===
+	# ----------------------------------------------------------------------------
+	MODEL="Pedlr_step"
+	START_VALUES="0.5,0.5,5"
+	LB="0,0,1"
+	UB="1,1,10"
+
+	# Give message to user
+	echo "${SUB_LABEL}: ${MODEL}"
+
+  # Loop over job parallelization (N_PARRALEL is zero padded, e.g. 005)
+  for PARALLEL in $(seq -f "%03g" ${N_PARALLEL}); do
+
+    # Define output path (depends on parallelization)
+    OUTPUT_PATH="${PATH_OUT}/${SUB_LABEL}-fit-${MODEL}-${PARALLEL}.tsv"
+
+  	# Get job name
+  	JOB_NAME="fit_${PARALLEL}_${MODEL}_${SUB_LABEL}"
+
+  	# Create job file
+  	echo "#!/bin/bash" > job.slurm
+  	# name of the job
+  	echo "#SBATCH --job-name ${JOB_NAME}" >> job.slurm
+  	# set the expected maximum running time for the job:
+  	echo "#SBATCH --time 23:59:00" >> job.slurm
+  	# determine how much RAM your operation needs:
+  	echo "#SBATCH --mem ${MEM_MB}MB" >> job.slurm
+  	# determine number of CPUs
+  	echo "#SBATCH --cpus-per-task ${N_CPUS}" >> job.slurm
+  	# write to log folder
+  	echo "#SBATCH --output ${PATH_LOG}/slurm-${JOB_NAME}.%j.out" >> job.slurm
+
+    # Load R module
+    echo "module unload R" >> job.slurm
+    echo "module load R/4.0" >> job.slurm
+    echo "Rscript ${PATH_CODE}/Fit_model_wrapper.R \
+    --input_path ${INPUT_PATH} \
+    --output_path ${OUTPUT_PATH} \
+    --model ${MODEL} \
+    --start_values ${START_VALUES} \
+    --lb ${LB} \
+    --ub ${UB} \
+    --random_start_values ${RANDOM_START_VALUES} \
+    --n_iter ${N_ITER}" >> job.slurm
+
+  	# submit job to cluster queue and remove it to avoid confusion:
+  	sbatch job.slurm
+  	rm -f job.slurm
+  done
+
+	# ----------------------------------------------------------------------------
+	# ===
 	# Pedlr_fixdep
 	# ===
 	# ----------------------------------------------------------------------------
