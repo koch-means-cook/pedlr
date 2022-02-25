@@ -8,6 +8,8 @@ source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_interdep.R',
                  fsep = .Platform$file.sep))
 source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr.R',
                  fsep = .Platform$file.sep))
+source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_step.R',
+                 fsep = .Platform$file.sep))
 source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_fixdep.R',
                  fsep = .Platform$file.sep))
 source(file.path(here::here(), 'code', 'model_fitting', 'Fit_Pedlr_simple.R',
@@ -79,6 +81,21 @@ Log_Likelihood = function(x,
                            params.reward_space_ub = 100,
                            choice_policy = 'softmax',
                            init_values = c(50, 50, 50))
+    
+    # Pedlr with step function
+  } else if(model == 'Pedlr_step'){ 
+    params.alpha0 = x[1]
+    params.alpha1 = x[2]
+    params.temperature = x[3]
+    
+    # Call model to obtain model values
+    model_data = Fit_Pedlr_step(data = data,
+                                params.alpha0 = params.alpha0,
+                                params.alpha1 = params.alpha1,
+                                params.temperature = params.temperature,
+                                params.reward_space_ub = 100,
+                                choice_policy = 'softmax',
+                                init_values = c(50, 50, 50))
     
     # Pedlr model with constant alpha0 
   } else if(model == 'Pedlr_simple_const'){ 

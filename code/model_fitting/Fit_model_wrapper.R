@@ -34,6 +34,8 @@ Fit_model_wrapper = function(input_path,
     p_names = c('alpha1', 'temperature')
   } else if(model == 'Pedlr'){
     p_names = c('alpha0', 'alpha1', 'temperature')
+  } else if(model == 'Pedlr_step'){
+    p_names = c('alpha0', 'alpha1', 'temperature')
   } else if(model == 'Pedlr_fixdep'){
     p_names = c('alpha0', 'alpha1', 'temperature')
   }else if(model == 'Pedlr_interdep'){
@@ -187,7 +189,7 @@ Fit_model_wrapper(input_path = opt$input_path,
                   random_start_values = opt$random_start_values,
                   n_iter = opt$n_iter)
 
-# Rscript Fit_model_wrapper.R --input_path "/Users/koch/Docs/pedlr/data/0IUKYRW_exp_data.tsv" --output_path "/Users/koch/Docs/pedlr/derivatives/model_fitting/_bla.tsv" --model Pedlr_simple_const --start_values 0.5,5 --lb 0,1 --ub 0.1,10 --random_start_values TRUE --n_iter 2
+# Rscript Fit_model_wrapper.R --input_path "/Users/koch/Docs/pedlr/data/0IUKYRW_exp_data.tsv" --output_path "/Users/koch/Docs/pedlr/derivatives/model_fitting/_bla.tsv" --model Pedlr_step --start_values 0.5,0.5,5 --lb 0,0,1 --ub 1,1,10 --random_start_values TRUE --n_iter 2
 # Rscript Fit_model_wrapper.R --input_path "/home/mpib/koch/pedlr/data/PYV1GPO_exp_data.tsv" --output_path "/home/mpib/koch/pedlr/derivatives/model_fitting/bla.tsv" --model Pedlr_interdep --start_values 0.5,0.5,0.5,5 --lb 0,0,0,1 --ub 1,1,1,10 --random_start_values TRUE --n_iter 2
 
 # Rscript Fit_model_wrapper.R --input_path "/Users/koch/Docs/pedlr/data/PYV1GPO_exp_data.tsv" --output_path "/Users/koch/Docs/pedlr/derivatives/model_fitting/_bla.tsv" --model Pedlr --start_values 0.5,0.5,5 --lb 0,0,0.1 --ub 1,1,10 --random_start_values TRUE --n_iter 2

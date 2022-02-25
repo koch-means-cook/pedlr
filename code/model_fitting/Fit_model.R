@@ -44,8 +44,8 @@ Fit_model = function(data,
                'maxeval'=5000)
   
   # Set up model list
-  model_list = data.table('model_name' = c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_fixdep', 'Pedlr_interdep'),
-                          'n_parameters' = c(2,2,2,3,3,4))
+  model_list = data.table('model_name' = c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_step', 'Pedlr_fixdep', 'Pedlr_interdep'),
+                          'n_parameters' = c(2,2,2,3,3,3,4))
   
   # See if provided model is in model list
   if(!model %in% model_list$model_name){
