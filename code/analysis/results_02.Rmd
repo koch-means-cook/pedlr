@@ -85,7 +85,7 @@ data = Load_model_fits() %>%
              'model',
              'para')]
 # Sort model levels by number of parameters
-data$model = factor(data$model, levels = c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_fixdep', 'Pedlr_interdep'))
+data$model = factor(data$model, levels = c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_step', 'Pedlr_fixdep', 'Pedlr_interdep'))
 
 # get number of participants (to adjust figure height)
 n_participants = length(unique(data$participant_id))
@@ -139,8 +139,8 @@ data_best_fit %>%
   .[order(rank(group), rank(run), rank(-n_best_fit)), ]
 ```
 
-- look at fit as function of behavioral results
-  - e.g. effect of rare outcome ==> fit of pedlr
+-   look at fit as function of behavioral results
+    -   e.g. effect of rare outcome ==\> fit of pedlr
 
 ```{r}
 data_pedlr_family = data_best_fit %>%
@@ -183,7 +183,7 @@ p_alpha1 = ggplot(data = data_plot[para == 'alpha1'],
 Neurocodify_plot(p_alpha1)
 ```
 
-- Could maybe move model estimation to log space (so in the model its not a1 * PE BUT e^a1 * PE) so 0.00004 and 0.0000000007 could actually be distinguished
+-   Could maybe move model estimation to log space (so in the model its not a1 \* PE BUT e\^a1 \* PE) so 0.00004 and 0.0000000007 could actually be distinguished
 
 ```{r}
 data_plot = Prepare_data_for_plot(data_pedlr_family)
@@ -344,7 +344,6 @@ bla = lm(preminuspost ~ alpha1,
 summary(bla)
 ```
 
-
 ### Correlation alpha1 & bandit 2 estimates in participants best fit by Pedlr-family
 
 ```{r}
@@ -456,7 +455,6 @@ summary(bla)
 data_experiment = Load_data()
 ```
 
-
 ```{r}
 # Make sure data used excludes participants with dubious ratings
 data_rat = data %>%
@@ -513,6 +511,16 @@ for(i_id in unique(data_rat$participant_id)){
                       choice_policy = 'softmax',
                       init_values = c(50,50,50))
     
+    # Fit Pedlr_step model to choices
+    data_para = data_fit[model == 'Pedlr_step']
+    Pedlr_step = Fit_Pedlr_step(data = temp,
+                                params.alpha0 = data_para[para == 'alpha0']$second_solution,
+                                params.alpha1 = data_para[para == 'alpha1']$second_solution,
+                                params.temperature = data_para[para == 'temperature']$second_solution,
+                                params.reward_space_ub = 100,
+                                choice_policy = 'softmax',
+                                init_values = c(50,50,50))
+    
     # Fit pedlr_fixdep model to choices
     data_para = data_fit[model == 'Pedlr_fixdep']
     Pedlr_fixdep = Fit_Pedlr_fixdep(data = temp,
@@ -551,6 +559,10 @@ for(i_id in unique(data_rat$participant_id)){
     temp$Pedlr_1_reward = Pedlr$values$stim_1
     temp$Pedlr_2_reward = Pedlr$values$stim_2
     temp$Pedlr_3_reward = Pedlr$values$stim_3
+    # Pedlr_step
+    temp$Pedlrstep_1_reward = Pedlr_step$values$stim_1
+    temp$Pedlrstep_2_reward = Pedlr_step$values$stim_2
+    temp$Pedlrstep_3_reward = Pedlr_step$values$stim_3
     # Pedlr_fixdep
     temp$Pedlrfixdep_1_reward = Pedlr_fixdep$values$stim_1
     temp$Pedlrfixdep_2_reward = Pedlr_fixdep$values$stim_2
@@ -585,6 +597,7 @@ data_values_comp = data_est_values[with_rating == TRUE] %>%
   # Standardize model names
   .[model == 'Pedlrsimple', model := 'Pedlr_simple'] %>%
   .[model == 'Pedlrsimpleconst', model := 'Pedlr_simple_const'] %>%
+  .[model == 'Pedlrstep', model := 'Pedlr_step'] %>%
   .[model == 'Pedlrfixdep', model := 'Pedlr_fixdep'] %>%
   .[model == 'Pedlrinterdep', model := 'Pedlr_interdep'] %>%
   # Factorize estimate variable
@@ -593,6 +606,7 @@ data_values_comp = data_est_values[with_rating == TRUE] %>%
                                         'Pedlr_simple',
                                         'Pedlr_simple_const',
                                         'Pedlr',
+                                        'Pedlr_step',
                                         'Pedlr_fixdep',
                                         'Pedlr_interdep'))] %>%
   # Sort data table
@@ -661,9 +675,9 @@ Neurocodify_plot(p)
 ```
 
 ```{r}
-# Rw vs Pedlr
+# Rw vs. Pedlr_simple
 t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
-       data_sse[model == 'Pedlr' & option == '2', mean_rmse],
+       data_sse[model == 'Pedlr_simple' & option == '2', mean_rmse],
        paired = TRUE)
 
 # Rw vs. Pedlr_simple_const
@@ -671,9 +685,14 @@ t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
        data_sse[model == 'Pedlr_simple_const' & option == '2', mean_rmse],
        paired = TRUE)
 
-# Rw vs. Pedlr_simple
+# Rw vs Pedlr
 t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
-       data_sse[model == 'Pedlr_simple' & option == '2', mean_rmse],
+       data_sse[model == 'Pedlr' & option == '2', mean_rmse],
+       paired = TRUE)
+
+# Rw vs Pedlr_step
+t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
+       data_sse[model == 'Pedlr_step' & option == '2', mean_rmse],
        paired = TRUE)
 
 # Rw vs. Pedlr_fixdep
@@ -696,7 +715,6 @@ emmeans::emmeans(lme,
                  pairwise ~ model)
 ```
 
-
 ---
 
 # Nico
@@ -713,7 +731,6 @@ data = Load_model_fits_nico() %>%
 # Sort model levels by number of parameters
 data$model = factor(data$model, levels = c('Rw', 'Pedlr_simple', 'Pedlr', 'Pedlr_fixdep'))
 ```
-
 
 ```{r}
 data_aic = data %>%
@@ -751,8 +768,8 @@ Neurocodify_plot(p_fit_nico)
 
 # Two main things to put in:
 
-- Relating behavioral results to model fits (alpha 1)
+-   Relating behavioral results to model fits (alpha 1)
 
 # Look at difference in behavioral predicitin between modles
 
-- how many trials get predicted for different choices between models
+-   how many trials get predicted for different choices between models

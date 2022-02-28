@@ -28,6 +28,7 @@ Prepare_data_for_plot = function(data){
                  'Pedlr_simple',
                  'Pedlr_simple_const',
                  'Pedlr',
+                 'Pedlr_step',
                  'Pedlr_fixdep',
                  'Pedlr_interdep')
       # Raise error if you find a new model
