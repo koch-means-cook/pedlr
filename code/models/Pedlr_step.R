@@ -10,7 +10,8 @@ Pedlr_step = function(design,
                       params.temperature,
                       params.reward_space_ub,
                       choice_policy,
-                      init_values = c(50,50,50)){
+                      init_values = c(50,50,50),
+                      pe_boundary_abs = NA){
   
   # Get other parameters from design
   # Number of trials
@@ -99,10 +100,10 @@ Pedlr_step = function(design,
     
     # Step function
     # If PE surpasses boundary: Use alpha1
-    if(design$is_rare[trial_count] == 1){
+    if(abs(pe) >= pe_boundary_abs){
       fpe = params.alpha1
       # If PE is in normal range: Apply standard alpha0
-    } else if(design$is_rare[trial_count] == 0){
+    } else if(abs(pe) < pe_boundary_abs){
       fpe = params.alpha0
     }
     updated_value = choice_value + fpe * pe

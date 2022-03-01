@@ -9,7 +9,7 @@ source_path = file.path(here::here(), 'code', 'utils',
 source(source_path)
 
 # data = Load_data()
-# data = Prepare_data_for_fit(data)
+# #data = Prepare_data_for_fit(data)
 # data = data[participant_id == '0IUKYRW' & run == 2]
 # model = 'Pedlr_simple_const'
 # start_values = c(0.2,5)
@@ -44,7 +44,13 @@ Fit_model = function(data,
                'maxeval'=5000)
   
   # Set up model list
-  model_list = data.table('model_name' = c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_step', 'Pedlr_fixdep', 'Pedlr_interdep'),
+  model_list = data.table('model_name' = c('Rw',
+                                           'Pedlr_simple',
+                                           'Pedlr_simple_const',
+                                           'Pedlr',
+                                           'Pedlr_step',
+                                           'Pedlr_fixdep',
+                                           'Pedlr_interdep'),
                           'n_parameters' = c(2,2,2,3,3,3,4))
   
   # See if provided model is in model list

@@ -542,35 +542,56 @@ for(i_id in unique(data_rat$participant_id)){
                                         choice_policy = 'softmax',
                                         init_values = c(50,50,50))
     
-    # Add model values for each option as column
+    # Add model values and PE for each option as column
     # RW
     temp$Rw_1_reward = Rw$values$stim_1
     temp$Rw_2_reward = Rw$values$stim_2
     temp$Rw_3_reward = Rw$values$stim_3
+    temp$Rw_1_pe = Rw$PE$stim_1
+    temp$Rw_2_pe = Rw$PE$stim_2
+    temp$Rw_3_pe = Rw$PE$stim_3
     # Pedlr_simple
     temp$Pedlrsimple_1_reward = Pedlr_simple$values$stim_1
     temp$Pedlrsimple_2_reward = Pedlr_simple$values$stim_2
     temp$Pedlrsimple_3_reward = Pedlr_simple$values$stim_3
+    temp$Pedlrsimple_1_pe = Pedlr_simple$PE$stim_1
+    temp$Pedlrsimple_2_pe = Pedlr_simple$PE$stim_2
+    temp$Pedlrsimple_3_pe = Pedlr_simple$PE$stim_3
     # Pedlr_simple_const
     temp$Pedlrsimpleconst_1_reward = Pedlr_simple_const$values$stim_1
     temp$Pedlrsimpleconst_2_reward = Pedlr_simple_const$values$stim_2
     temp$Pedlrsimpleconst_3_reward = Pedlr_simple_const$values$stim_3
+    temp$Pedlrsimpleconst_1_pe = Pedlr_simple_const$PE$stim_1
+    temp$Pedlrsimpleconst_2_pe = Pedlr_simple_const$PE$stim_2
+    temp$Pedlrsimpleconst_3_pe = Pedlr_simple_const$PE$stim_3
     # Pedlr
     temp$Pedlr_1_reward = Pedlr$values$stim_1
     temp$Pedlr_2_reward = Pedlr$values$stim_2
     temp$Pedlr_3_reward = Pedlr$values$stim_3
+    temp$Pedlr_1_pe = Pedlr$PE$stim_1
+    temp$Pedlr_2_pe = Pedlr$PE$stim_2
+    temp$Pedlr_3_pe = Pedlr$PE$stim_3
     # Pedlr_step
     temp$Pedlrstep_1_reward = Pedlr_step$values$stim_1
     temp$Pedlrstep_2_reward = Pedlr_step$values$stim_2
     temp$Pedlrstep_3_reward = Pedlr_step$values$stim_3
+    temp$Pedlrstep_1_pe = Pedlr_step$PE$stim_1
+    temp$Pedlrstep_2_pe = Pedlr_step$PE$stim_2
+    temp$Pedlrstep_3_pe = Pedlr_step$PE$stim_3
     # Pedlr_fixdep
     temp$Pedlrfixdep_1_reward = Pedlr_fixdep$values$stim_1
     temp$Pedlrfixdep_2_reward = Pedlr_fixdep$values$stim_2
     temp$Pedlrfixdep_3_reward = Pedlr_fixdep$values$stim_3
+    temp$Pedlrfixdep_1_pe = Pedlr_fixdep$PE$stim_1
+    temp$Pedlrfixdep_2_pe = Pedlr_fixdep$PE$stim_2
+    temp$Pedlrfixdep_3_pe = Pedlr_fixdep$PE$stim_3
     # Pedlr_interdep
     temp$Pedlrinterdep_1_reward = Pedlr_interdep$values$stim_1
     temp$Pedlrinterdep_2_reward = Pedlr_interdep$values$stim_2
     temp$Pedlrinterdep_3_reward = Pedlr_interdep$values$stim_3
+    temp$Pedlrinterdep_1_pe = Pedlr_interdep$PE$stim_1
+    temp$Pedlrinterdep_2_pe = Pedlr_interdep$PE$stim_2
+    temp$Pedlrinterdep_3_pe = Pedlr_interdep$PE$stim_3
     
     # Bind run and participant specific data together
     data_est_values = rbind(data_est_values, temp)
@@ -714,6 +735,111 @@ Anova(lme)
 emmeans::emmeans(lme,
                  pairwise ~ model)
 ```
+
+---
+
+# Pedlr_step: Difference alpha0 and alpha1
+
+```{r}
+data_alpha_diff = data_best_fit %>%
+  .[model == 'Pedlr_step',] %>%
+  .[, diff_1m0 := alpha1 - alpha0]
+
+ggplot(data = data_alpha_diff,
+       aes(x = group,
+           y = diff_1m0,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0) +
+  geom_point() +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black') +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5)
+  
+```
+
+```{r}
+t.test(data_alpha_diff[group == 'older']$diff_1m0,
+       data_alpha_diff[group == 'younger']$diff_1m0,)
+```
+
+---
+
+# Distribution RW LRs
+
+```{r}
+data_rw_lr = data_best_fit %>%
+  .[model == 'Rw',]
+
+ggplot(data = data_rw_lr,
+       aes(x = group,
+           y = alpha,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0) +
+  geom_point(position = position_jitter(width = 0.05,
+                                        height = 0,
+                                        seed = 666)) +
+  gghalves::geom_half_violin(position = position_nudge(x = -0.1)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5)
+
+```
+
+---
+
+# RW: distribution of PE
+
+```{r}
+est_columns = colnames(data_est_values)[grep('*_pe', colnames(data_est_values))]
+
+# Get data structure comparing participant estimate to model values
+data_pe_comp = data_est_values %>%
+  # Numerate estimation trials
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  # Melt estimates
+  .[, (est_columns) := lapply(.SD, as.numeric), .SDcols = est_columns] %>%
+  data.table::melt(measure.vars = est_columns) %>%
+  .[, ':='(model = unlist(strsplit(as.character(variable), '_'))[1],
+           option = unlist(strsplit(as.character(variable), '_'))[2]),
+    by = c('participant_id', 'run', 'trial', 'variable')] %>%
+  # Standardize model names
+  .[model == 'Pedlrsimple', model := 'Pedlr_simple'] %>%
+  .[model == 'Pedlrsimpleconst', model := 'Pedlr_simple_const'] %>%
+  .[model == 'Pedlrstep', model := 'Pedlr_step'] %>%
+  .[model == 'Pedlrfixdep', model := 'Pedlr_fixdep'] %>%
+  .[model == 'Pedlrinterdep', model := 'Pedlr_interdep'] %>%
+  # Factorize estimate variable
+  .[, model := factor(model, levels = c('Rw',
+                                        'Pedlr_simple',
+                                        'Pedlr_simple_const',
+                                        'Pedlr',
+                                        'Pedlr_step',
+                                        'Pedlr_fixdep',
+                                        'Pedlr_interdep'))] %>%
+  # Sort data table
+  .[order(rank(participant_id), rank(run), rank(trial), rank(option), rank(model))]
+```
+
+```{r}
+data_rw_pe = data_pe_comp %>%
+  .[model == 'Rw',] %>%
+  .[, .(perc_95 = quantile(abs(value), 0.95, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run')]
+```
+
 
 ---
 

@@ -14,7 +14,8 @@ Fit_Pedlr_step = function(data,
                           params.temperature,
                           params.reward_space_ub,
                           choice_policy,
-                          init_values = c(50,50,50)){
+                          init_values = c(50,50,50),
+                          pe_boundary_abs = NA){
   
   # Get other parameters from design
   # Number of trials
@@ -182,10 +183,10 @@ Fit_Pedlr_step = function(data,
         
         # Step function
         # If PE surpasses boundary: Use alpha1
-        if(data$is_rare[trial_count] == 1){
+        if(abs(pe) >= pe_boundary_abs){
           fpe = params.alpha1
           # If PE is in normal range: Apply standard alpha0
-        } else if(data$is_rare[trial_count] == 0){
+        } else if(abs(pe) < pe_boundary_abs){
           fpe = params.alpha0
         }
         
@@ -212,7 +213,8 @@ Fit_Pedlr_step = function(data,
                      'values' = df_values[1:params.ntrials,],
                      'PE' = df_pe,
                      'fPE' = df_fpe,
-                     'max_PE' = df_max_pe)
+                     'max_PE' = df_max_pe,
+                     'pe_boundary_abs' = pe_boundary_abs)
   return(model_data)
   
 }
