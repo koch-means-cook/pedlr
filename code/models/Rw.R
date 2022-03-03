@@ -101,11 +101,20 @@ Rw = function(design,
     
   }
   
+  # Get boundary needed for Pedlr_step model (highest PEs)
+  pe_boundary_abs = c(df_pe$stim_1,
+                      df_pe$stim_2,
+                      df_pe$stim_3)
+  pe_boundary_abs = abs(pe_boundary_abs)
+  pe_boundary_abs = pe_boundary_abs[!is.na(pe_boundary_abs)]
+  pe_boundary_abs = quantile(pe_boundary_abs, 0.95)
+  
   # Form list of returns (and cut off extra line of model values after last choice)
   model_data <- list('choices' = df_choices,
                      'values' = df_values[1:params.ntrials,],
                      'PE' = df_pe,
-                     'fPE' = df_fpe)
+                     'fPE' = df_fpe,
+                     'pe_boundary_abs' = pe_boundary_abs)
   return(model_data)
   
 }

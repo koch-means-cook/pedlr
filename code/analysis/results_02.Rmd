@@ -44,6 +44,7 @@ library(gghalves)
 library(lme4)
 library(emmeans)
 library(papeR)
+library(ggridges)
 ```
 
 ```{r, message=FALSE}
@@ -105,16 +106,20 @@ data_aic = data %>%
 
 # Get min aic model
 data_best_fit = data_aic %>%
-  .[, .SD[which.min(AIC)],
+  # Reduce to core models (Rw and Pedlr_step)
+  .[model %in% c('Rw', 'Pedlr_step')] %>%
+  .[, best_fitting_model := model[which.min(AIC)],
     by = c('participant_id', 'group', 'run', 'real_iter')] %>%
   # Take only first iteration (no variability in fits)
   .[real_iter == 1,]
+
+data_only_best_fit = data_best_fit[model == best_fitting_model,]
 ```
 
 ## Plot
 
 ```{r}
-data_plot = Prepare_data_for_plot(data_best_fit)
+data_plot = Prepare_data_for_plot(data_only_best_fit)
 dodge_width = 0.2
 
 p_fit = ggplot(data = data_plot,
@@ -133,7 +138,7 @@ Neurocodify_plot(p_fit)
 
 ```{r}
 # Count winning model
-data_best_fit %>%
+data_only_best_fit %>%
   .[, .(n_best_fit = .N),
     by = c('group', 'run', 'model')] %>%
   .[order(rank(group), rank(run), rank(-n_best_fit)), ]
@@ -143,9 +148,9 @@ data_best_fit %>%
     -   e.g. effect of rare outcome ==\> fit of pedlr
 
 ```{r}
-data_pedlr_family = data_best_fit %>%
+data_pedlr_family = data_only_best_fit %>%
   .[model != 'Rw',] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'AIC'),
+  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'),
                    measure.vars = c('alpha1', 'temperature'),
                    variable.name = 'para')
 ```
@@ -217,8 +222,12 @@ Neurocodify_plot(p_alpha1)
 ### Correlation alpha1 & rare-influence in participants best fit by Pedlr-family
 
 ```{r}
-data_model = data_pedlr_family %>%
-  data.table::dcast(participant_id + group + run + real_iter + second_ll + model + AIC ~ para, value.var = 'value')
+data_model = data_best_fit %>%
+  .[model == 'Pedlr_step',] %>%
+  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'),
+                   measure.vars = c('alpha1', 'temperature'),
+                   variable.name = 'para') %>%
+  data.table::dcast(participant_id + group + run + real_iter + second_ll + model + best_fitting_model + AIC ~ para, value.var = 'value')
 
 # Get influence of rare value
 data_rare_inf = Load_data() %>%
@@ -339,7 +348,7 @@ ggplot(data = data_sanity,
 #### Stats
 
 ```{r}
-bla = lm(preminuspost ~ alpha1,
+bla = lm(preminuspost ~ alpha1 * group,
          data = data_sanity)
 summary(bla)
 ```
@@ -457,8 +466,7 @@ data_experiment = Load_data()
 
 ```{r}
 # Make sure data used excludes participants with dubious ratings
-data_rat = data %>%
-  Apply_exclusion_criteria(choice_based_exclusion = FALSE)
+data_rat = data
 
 # Allocate data table that will hold model values and indivisual estimate
 data_est_values = data.table()
@@ -519,7 +527,9 @@ for(i_id in unique(data_rat$participant_id)){
                                 params.temperature = data_para[para == 'temperature']$second_solution,
                                 params.reward_space_ub = 100,
                                 choice_policy = 'softmax',
-                                init_values = c(50,50,50))
+                                init_values = c(50,50,50),
+                                # Set PE boundary by 95th percentile of absolute RW PEs
+                                pe_boundary_abs = Rw$pe_boundary_abs)
     
     # Fit pedlr_fixdep model to choices
     data_para = data_fit[model == 'Pedlr_fixdep']
@@ -550,6 +560,7 @@ for(i_id in unique(data_rat$participant_id)){
     temp$Rw_1_pe = Rw$PE$stim_1
     temp$Rw_2_pe = Rw$PE$stim_2
     temp$Rw_3_pe = Rw$PE$stim_3
+    temp$pe_95th_Rw = Rw$pe_boundary_abs
     # Pedlr_simple
     temp$Pedlrsimple_1_reward = Pedlr_simple$values$stim_1
     temp$Pedlrsimple_2_reward = Pedlr_simple$values$stim_2
@@ -606,6 +617,7 @@ est_columns = colnames(data_est_values)[grep('*_reward', colnames(data_est_value
 
 # Get data structure comparing participant estimate to model values
 data_values_comp = data_est_values[with_rating == TRUE] %>%
+  Apply_exclusion_criteria(choice_based_exclusion = FALSE) %>%
   # Numerate estimation trials
   .[, est_trial := seq(.N),
     by = c('participant_id', 'run')] %>%
@@ -741,33 +753,214 @@ emmeans::emmeans(lme,
 # Pedlr_step: Difference alpha0 and alpha1
 
 ```{r}
-data_alpha_diff = data_best_fit %>%
+data_alpha_ratio = data_best_fit %>%
+  # Take pedlr step of each participant, even if not best fit
   .[model == 'Pedlr_step',] %>%
+  # Get ratio between alpha0 and alpha1
+  .[, ratio_1t0 := alpha1 / alpha0] %>%
+  # Stratify to overweighters and underweighters
+  .[ratio_1t0 > 1, weight_high_pe := 'overweight'] %>%
+  .[ratio_1t0 < 1, weight_high_pe := 'underweight'] %>%
+  # Also look at difference
   .[, diff_1m0 := alpha1 - alpha0]
+```
 
-ggplot(data = data_alpha_diff,
+```{r}
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_alpha_ratio),
        aes(x = group,
-           y = diff_1m0,
+           y = ratio_1t0,
            color = group,
            fill = group)) +
-  geom_hline(yintercept = 0) +
-  geom_point() +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
   geom_boxplot(outlier.shape = NA,
-               color = 'black') +
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
   stat_summary(fun = 'mean',
                geom = 'point',
                na.rm = TRUE,
                shape = 23,
                fill = 'white',
-               size = 1.5,
-               stroke = 0.5)
+               size = 3,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
   
 ```
 
 ```{r}
-t.test(data_alpha_diff[group == 'older']$diff_1m0,
-       data_alpha_diff[group == 'younger']$diff_1m0,)
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_alpha_ratio),
+       aes(x = group,
+           y = diff_1m0,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
 ```
+
+```{r}
+t.test(data_alpha_ratio[group == 'younger']$diff_1m0,
+       data_alpha_ratio[group == 'older']$diff_1m0,)
+```
+
+
+
+
+---
+
+# Sanity checks in participants with different alpha0/alpha1 relationship
+
+```{r}
+data_sanity_split = data_sanity %>%
+  data.table::merge.data.table(., data_alpha_ratio,
+                               by = c('participant_id', 'group', 'run', 'real_iter', 'model',
+                                      'AIC', 'second_ll', 'alpha1', 'temperature', 'best_fitting_model')) %>%
+  .[,weight_high_pe := factor(weight_high_pe)]
+```
+
+```{r}
+p = ggplot(data = Prepare_data_for_plot(data_sanity_split),
+       aes(x = weight_high_pe,
+           color = group,
+           fill = group)) +
+  geom_bar() +
+  facet_wrap(~run) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides)
+Neurocodify_plot(p)
+```
+
+### Sanity check: Overweighters = higher influence of rare events?
+
+```{r}
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_sanity_split),
+       aes(x = weight_high_pe,
+           y = preminuspost,
+           color = weight_high_pe,
+           fill = weight_high_pe)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+```
+
+```{r}
+t.test(data_sanity_split[weight_high_pe == 'overweight']$preminuspost,
+       data_sanity_split[weight_high_pe == 'underweight']$preminuspost)
+```
+
+```{r}
+lme = lme4::lmer(preminuspost ~ group * weight_high_pe + run + (1 | participant_id),
+                 data = data_sanity_split)
+Anova(lme)
+```
+
+### Sanity check: Overweighters = stronger underestimation of 2nd bandit?
+
+```{r}
+data_sanity_rat_split = data_sanity_rat %>%
+  data.table::merge.data.table(., data_alpha_ratio,
+                               by = c('participant_id', 'group', 'run', 'real_iter', 'model',
+                                      'AIC', 'second_ll', 'alpha1', 'temperature', 'best_fitting_model')) %>%
+  .[ratio_1t0 > 1, weight_high_pe := 'overweight'] %>%
+  .[ratio_1t0 < 0, weight_high_pe := 'underweight'] %>%
+  .[,weight_high_pe := factor(weight_high_pe)]
+```
+
+```{r}
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_sanity_rat_split),
+       aes(x = weight_high_pe,
+           y = mean_diff_from_true_2,
+           color = weight_high_pe,
+           fill = weight_high_pe)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+```
+
+```{r}
+lme = lme4::lmer(mean_diff_from_true_2 ~ group * weight_high_pe + run + (1 | participant_id),
+                 data = data_sanity_rat_split)
+Anova(lme)
+```
+
 
 ---
 
@@ -775,27 +968,46 @@ t.test(data_alpha_diff[group == 'older']$diff_1m0,
 
 ```{r}
 data_rw_lr = data_best_fit %>%
-  .[model == 'Rw',]
+  # Only look at data from participants best fitted by RW
+  .[best_fitting_model == 'Rw' &
+      model == 'Rw',]
 
-ggplot(data = data_rw_lr,
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_rw_lr),
        aes(x = group,
            y = alpha,
            color = group,
            fill = group)) +
-  geom_hline(yintercept = 0) +
-  geom_point(position = position_jitter(width = 0.05,
-                                        height = 0,
-                                        seed = 666)) +
-  gghalves::geom_half_violin(position = position_nudge(x = -0.1)) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
   stat_summary(fun = 'mean',
                geom = 'point',
                na.rm = TRUE,
                shape = 23,
                fill = 'white',
                size = 3,
-               stroke = 0.5)
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
 
 ```
+
+```{r}
+data_rw_lr[order(rank(alpha))]
+```
+
 
 ---
 
@@ -806,6 +1018,7 @@ est_columns = colnames(data_est_values)[grep('*_pe', colnames(data_est_values))]
 
 # Get data structure comparing participant estimate to model values
 data_pe_comp = data_est_values %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
   # Numerate estimation trials
   .[, trial := seq(.N),
     by = c('participant_id', 'run')] %>%
@@ -829,15 +1042,122 @@ data_pe_comp = data_est_values %>%
                                         'Pedlr_step',
                                         'Pedlr_fixdep',
                                         'Pedlr_interdep'))] %>%
+  # Factorize other important variables
+  .[, ':='(participant_id = factor(participant_id),
+           group = factor(group),
+           run = factor(run))] %>%
   # Sort data table
   .[order(rank(participant_id), rank(run), rank(trial), rank(option), rank(model))]
 ```
+
 
 ```{r}
 data_rw_pe = data_pe_comp %>%
   .[model == 'Rw',] %>%
   .[, .(perc_95 = quantile(abs(value), 0.95, na.rm = TRUE)),
     by = c('participant_id', 'group', 'run')]
+
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_rw_pe),
+       aes(x = group,
+           y = perc_95,
+           color = group,
+           fill = group)) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+```
+
+```{r, fig.height=15}
+data_pe_dist = data_pe_comp %>%
+  .[model == 'Rw',] %>%
+  .[!is.na(value), ] %>%
+  .[, pe_abs := abs(value)]
+
+p = ggplot(data = Prepare_data_for_plot(data_pe_dist),
+           aes(x = pe_abs,
+               y = participant_id)) +
+  ggridges::geom_density_ridges(stat = 'binline',
+                                binwidth = 1,
+                                color = 'black',
+                                size = 0.3) +
+  geom_point(data = Prepare_data_for_plot(data_rw_pe),
+             aes(x = perc_95)) +
+  facet_wrap(~run)
+Neurocodify_plot(p)
+```
+
+# Average update given rare events
+
+```{r}
+data_avg_update = data_pe_comp %>%
+  # Cut down to trials in which Pedlr_step PE higher than "rare" boundary given by RW
+  .[model == 'Pedlr_step' & option == 2,] %>%
+  .[!is.na(value),] %>%
+  .[, rare_pe := (abs(value) > pe_95th_Rw)] %>%
+  .[rare_pe == TRUE, ] %>%
+  # Merge with table giving LRs
+  data.table::merge.data.table(., data_best_fit[model == 'Pedlr_step'],
+                               by = c('participant_id', 'group', 'run', 'model')) %>%
+  # Get trialwise absolute update 
+  .[, abs_update := abs(value) * alpha1,
+    by = c('participant_id', 'group', 'run', 'trial')] %>%
+  # Mean asolute update in case of rare PE
+  .[, .(mean_abs_update = mean(abs_update),
+        sd_abs_update = sd(abs_update)),
+    by = c('participant_id', 'group', 'run', 'model', 'best_fitting_model')]
+```
+
+```{r}
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_avg_update),
+       aes(x = group,
+           y = mean_abs_update,
+           color = group,
+           fill = group)) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
 ```
 
 

@@ -107,11 +107,11 @@ Log_Likelihood = function(x,
                 params.reward_space_ub = 100,
                 choice_policy = 'softmax',
                 init_values = c(50,50,50))
-    # Get PE distribution (of absolute PE)
-    pes = c(rw$PE$stim_1, rw$PE$stim_2, rw$PE$stim_3)
-    pes = abs(pes[!is.na(pes)])
+    # # Get PE distribution (of absolute PE)
+    # pes = c(rw$PE$stim_1, rw$PE$stim_2, rw$PE$stim_3)
+    # pes = abs(pes[!is.na(pes)])
     # Get highest 5% of PEs to set "rare" boundary
-    pe_boundary_abs = quantile(pes, 0.95)
+    pe_boundary_abs = rw$pe_boundary_abs
     
     params.alpha0 = x[1]
     params.alpha1 = x[2]
