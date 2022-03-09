@@ -8,13 +8,13 @@ source(file.path(here::here(), 'code', 'model_fitting', 'Fit_model.R',
 source(file.path(here::here(), 'code', 'utils', 'Prepare_data_for_fit.R',
                  fsep = .Platform$file.sep))
 
-# input_path = '/Users/koch/Docs/pedlr/data/137R4S1_exp_data.tsv'
+# input_path = '/Users/koch/Docs/pedlr/data/09RI1ZH_exp_data.tsv'
 # model = 'Pedlr_simple_const'
 # start_values = c(runif(1,0,1),runif(1,1,10))
 # lb = c(0,1)
 # ub = c(1,10)
 # random_start_values = TRUE
-# n_iter = 2
+# n_iter = 1
 
 Fit_model_wrapper = function(input_path,
                              output_path,
@@ -69,36 +69,30 @@ Fit_model_wrapper = function(input_path,
       }
     }
     
+    # Subset single run of data
+    fit_data_run1 = data[run == 1]
+    fit_data_run2 = data[run == 2]
     
-    # Separate fits for runs (each iteration)
-    for(i_run in unique(data$run)){
-      
-      message('   Fitting Run: ', i_run, '...')
-      
-      # Subset single run of data
-      fit_data = data[run == i_run]
-      # Fit selected model
-      result = Fit_model(data = fit_data,
-                         model = model,
-                         start_values = start_values,
-                         lb = lb,
-                         ub = ub)
-      # Form model fit into returnable data frame
-      result = as.data.table(result) %>%
-        .[, ':='(para = p_names,
-                 iter = i_iter,
-                 participant_id = unique(data$participant_id),
-                 run = i_run,
-                 name_design_r1 = unique(data$name_design_r1),
-                 name_design_r2 = unique(data$name_design_r2))] %>%
-        .[, data.table::setcolorder(., c("participant_id",
-                                         "run",
-                                         "name_design_r1",
-                                         "name_design_r2",
-                                         "para"))]
-      
-      output = rbind(output, result)
-    }
+    # Fit selected model
+    result = Fit_model(data_run1 = fit_data_run1,
+                       data_run2 = fit_data_run2,
+                       model = model,
+                       start_values = start_values,
+                       lb = lb,
+                       ub = ub)
+    # Form model fit into returnable data frame
+    result = as.data.table(result) %>%
+      .[, ':='(para = p_names,
+               iter = i_iter,
+               participant_id = unique(data$participant_id),
+               name_design_r1 = unique(data$name_design_r1),
+               name_design_r2 = unique(data$name_design_r2))] %>%
+      .[, data.table::setcolorder(., c("participant_id",
+                                       "name_design_r1",
+                                       "name_design_r2",
+                                       "para"))]
+    
+    output = rbind(output, result)
   }
   
   # Add age group and put on second position of cols

@@ -16,7 +16,8 @@ source(source_path)
 # lb = c(0,1)
 # ub = c(1,10)
 
-Fit_model = function(data,
+Fit_model = function(data_run1,
+                     data_run2,
                      model,
                      start_values,
                      lb,
@@ -88,8 +89,10 @@ Fit_model = function(data,
                          # Minimizer options
                          opts=opts1,
                          # Inputs to LL function
-                         data=data,
-                         design=data,
+                         data_run1=data_run1,
+                         data_run2=data_run2,
+                         design_run1=data_run1,
+                         design_run2=data_run2,
                          model = model)
   
   # Give message to user
@@ -113,8 +116,10 @@ Fit_model = function(data,
                           # Minimizer options
                           opts=opts2,
                           # Inputs to LL function
-                          data=data,
-                          design=data,
+                          data_run1=data_run1,
+                          data_run2=data_run2,
+                          design_run1=data_run1,
+                          design_run2=data_run2,
                           model = model)
   
   message('      LL: ', round(second$objective, 3))
