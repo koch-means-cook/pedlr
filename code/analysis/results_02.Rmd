@@ -76,13 +76,11 @@ data = Load_model_fits() %>%
   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
   .[, ':='(participant_id = as.factor(participant_id),
            group = as.factor(group),
-           run = as.factor(run),
            para = as.factor(para),
            model = as.factor(model))] %>%
   .[, real_iter := seq(.N),
       by = c('participant_id',
              'group',
-             'run',
              'model',
              'para')]
 # Sort model levels by number of parameters
@@ -97,9 +95,9 @@ n_participants = length(unique(data$participant_id))
 ```{r}
 data_aic = data %>%
   .[,n_para := .N,
-    by = c('participant_id', 'group', 'run', 'real_iter', 'model')] %>%
+    by = c('participant_id', 'group', 'real_iter', 'model')] %>%
   data.table::dcast(.,
-                    participant_id + group + run + real_iter + second_ll + model + n_para ~ para,
+                    participant_id + group + real_iter + second_ll + model + n_para ~ para,
                     value.var = 'second_solution') %>%
   # Calculate AIC
   .[, AIC := (2*n_para) + (2*second_ll)]
@@ -109,7 +107,7 @@ data_best_fit = data_aic %>%
   # Reduce to core models (Rw and Pedlr_step)
   .[model %in% c('Rw', 'Pedlr_step')] %>%
   .[, best_fitting_model := model[which.min(AIC)],
-    by = c('participant_id', 'group', 'run', 'real_iter')] %>%
+    by = c('participant_id', 'group', 'real_iter')] %>%
   # Take only first iteration (no variability in fits)
   .[real_iter == 1,]
 
@@ -130,7 +128,6 @@ p_fit = ggplot(data = data_plot,
                  width = dodge_width,
                  position = position_dodge(width = dodge_width)) +
   scale_fill_manual(values = custom_guides) +
-  facet_wrap(~run) +
   theme(legend.position = 'top',
         axis.text.x = element_text(angle = -45, hjust = 0))
 Neurocodify_plot(p_fit)
@@ -140,7 +137,7 @@ Neurocodify_plot(p_fit)
 # Count winning model
 data_only_best_fit %>%
   .[, .(n_best_fit = .N),
-    by = c('group', 'run', 'model')] %>%
+    by = c('group', 'model')] %>%
   .[order(rank(group), rank(run), rank(-n_best_fit)), ]
 ```
 
@@ -150,24 +147,18 @@ data_only_best_fit %>%
 ```{r}
 data_pedlr_family = data_only_best_fit %>%
   .[model != 'Rw',] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'),
+  data.table::melt(id.vars = c('participant_id', 'group', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'),
                    measure.vars = c('alpha1', 'temperature'),
                    variable.name = 'para')
 ```
 
 ```{r}
-# data_plot = Prepare_data_for_plot(data_aic) %>%
-#   .[real_iter == 1 & model == 'Pedlr_simple'] %>%
-#   data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'AIC'),
-#                    measure.vars = c('alpha1', 'temperature'),
-#                    variable.name = 'para')
-
 data_plot = Prepare_data_for_plot(data_pedlr_family)
 
 dodge_width = 0.3
 
 p_alpha1 = ggplot(data = data_plot[para == 'alpha1'],
-       aes(x = run,
+       aes(x = group,
            y = log(value),
            color = group,
            fill = group)) +
@@ -196,7 +187,7 @@ data_plot = Prepare_data_for_plot(data_pedlr_family)
 dodge_width = 0.3
 
 p_alpha1 = ggplot(data = data_plot[para == 'alpha1'],
-       aes(x = run,
+       aes(x = group,
            y = value,
            color = group,
            fill = group)) +
@@ -224,10 +215,10 @@ Neurocodify_plot(p_alpha1)
 ```{r}
 data_model = data_best_fit %>%
   .[model == 'Pedlr_step',] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'),
+  data.table::melt(id.vars = c('participant_id', 'group', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'),
                    measure.vars = c('alpha1', 'temperature'),
                    variable.name = 'para') %>%
-  data.table::dcast(participant_id + group + run + real_iter + second_ll + model + best_fitting_model + AIC ~ para, value.var = 'value')
+  data.table::dcast(participant_id + group + real_iter + second_ll + model + best_fitting_model + AIC ~ para, value.var = 'value')
 
 # Get influence of rare value
 data_rare_inf = Load_data() %>%
@@ -327,11 +318,14 @@ window_data_run = window_data %>%
   data.table::dcast(participant_id + group + run ~ paste0('prob_', window_relative),
                     value.var = 'mean_accuracy') %>%
   .[, preminuspost := prob_pre - prob_post] %>%
-  .[, run := as.factor(run)]
+  .[, run := as.factor(run)] %>%
+  # Average across run (because modeling was done across runs)
+  .[, preminuspost = mean(preminuspost),
+    by = c('participant_id', 'group', 'window_relative')]
 
 # Fuse with modelling data
 data_sanity = data.table::merge.data.table(data_model, window_data_run,
-                                           by = c('participant_id', 'group', 'run'))
+                                           by = c('participant_id', 'group'))
 ```
 
 #### Plot
@@ -424,7 +418,10 @@ check_mean_est_diff = check_est_diff %>%
   # Focus only on 2nd half
   .[half == '2', ] %>%
   # Rename estimation column
-  .[, mean_diff_from_true_2 := mean_diff_from_true]
+  .[, mean_diff_from_true_2 := mean_diff_from_true] %>%
+  # average across runs since modelling was done across runs
+  .[, .(mean_diff_from_true_2 = mean(mean_diff_from_true_2)),
+    by = c('participant_id', 'group', 'half', 'est_stim')]
 ```
 
 ```{r}
@@ -433,7 +430,7 @@ data_sanity_rat = data_sanity %>%
 
 data_sanity_rat = data.table::merge.data.table(data_sanity_rat,
                                                check_mean_est_diff,
-                                               by = c('participant_id', 'group', 'run'))
+                                               by = c('participant_id', 'group'))
 ```
 
 #### Plot
@@ -471,12 +468,14 @@ data_rat = data
 # Allocate data table that will hold model values and indivisual estimate
 data_est_values = data.table()
 
-# For each participant and run
+# For each participant
 for(i_id in unique(data_rat$participant_id)){
-  for(i_run in unique(data_rat[participant_id == i_id]$run)){
+  
+  # Select model parameters (not run sensitive, because models were fit across runs)
+  data_fit = data_rat[real_iter == 1 & participant_id == i_id]
     
-    # Select model parameters
-    data_fit = data_rat[real_iter == 1 & participant_id == i_id & run == i_run]
+  #  For each run
+  for(i_run in unique(data_rat[participant_id == i_id]$run)){
     
     # Select behavioral data (important for individual estimates)
     temp = data_experiment[participant_id == i_id & run == i_run]
@@ -1075,7 +1074,7 @@ ggplot(data,
 ```{r}
 data_sanity_split = data_sanity %>%
   data.table::merge.data.table(., data_alpha_ratio,
-                               by = c('participant_id', 'group', 'run', 'real_iter', 'model',
+                               by = c('participant_id', 'group', 'real_iter', 'model',
                                       'AIC', 'second_ll', 'alpha1', 'temperature', 'best_fitting_model')) %>%
   .[,weight_high_pe := factor(weight_high_pe)]
 ```
@@ -1091,7 +1090,7 @@ p = ggplot(data = Prepare_data_for_plot(data_sanity_split),
            color = group,
            fill = group)) +
   geom_bar() +
-  facet_wrap(group~run) +
+  facet_wrap(~group) +
   scale_fill_manual(values = custom_guides) +
   scale_color_manual(values = custom_guides)
 Neurocodify_plot(p)
@@ -1137,7 +1136,7 @@ t.test(data_sanity_split[weight_high_pe == 'overweight']$preminuspost,
 ```
 
 ```{r}
-lme = lme4::lmer(preminuspost ~ group * weight_high_pe + run + (1 | participant_id),
+lme = lme4::lmer(preminuspost ~ group * weight_high_pe + (1 | participant_id),
                  data = data_sanity_split)
 Anova(lme)
 ```
@@ -1147,7 +1146,7 @@ Anova(lme)
 ```{r}
 data_sanity_rat_split = data_sanity_rat %>%
   data.table::merge.data.table(., data_alpha_ratio,
-                               by = c('participant_id', 'group', 'run', 'real_iter', 'model',
+                               by = c('participant_id', 'group', 'real_iter', 'model',
                                       'AIC', 'second_ll', 'alpha1', 'temperature', 'best_fitting_model')) %>%
   .[ratio_1t0 > 1, weight_high_pe := 'overweight'] %>%
   .[ratio_1t0 < 0, weight_high_pe := 'underweight'] %>%
@@ -1187,7 +1186,7 @@ Neurocodify_plot(p)
 ```
 
 ```{r}
-lme = lme4::lmer(mean_diff_from_true_2 ~ group * weight_high_pe + run + (1 | participant_id),
+lme = lme4::lmer(mean_diff_from_true_2 ~ group * weight_high_pe + (1 | participant_id),
                  data = data_sanity_rat_split)
 Anova(lme)
 ```

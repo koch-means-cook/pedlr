@@ -107,7 +107,6 @@ Log_Likelihood = function(x,
       
       # Get PEs of Rw model for this participant and run
       id = unique(data$participant_id)
-      run_id = unique(data$run)
       rw_file = file.path(here::here(),
                           'derivatives',
                           'model_fitting',
@@ -118,8 +117,8 @@ Log_Likelihood = function(x,
                                  sep = '\t',
                                  na.strings = 'n/a')
       # Get optimized parameters for RW model
-      rw_params_alpha = rw_fit[run == run_id & file == 1 & iter == 1 & para == 'alpha']$second_solution
-      rw_params_temp = rw_fit[run == run_id & file == 1 & iter == 1 & para == 'temperature']$second_solution
+      rw_params_alpha = rw_fit[file == 1 & iter == 1 & para == 'alpha']$second_solution
+      rw_params_temp = rw_fit[file == 1 & iter == 1 & para == 'temperature']$second_solution
       # Recreate data based on optimzed parameters
       rw = Fit_Rw(data = data,
                   params.alpha = rw_params_alpha,
