@@ -748,6 +748,106 @@ emmeans::emmeans(lme,
                  pairwise ~ model)
 ```
 
+## Correlation: Model predictions vs. participant's estimation
+
+```{r}
+data_est_val_cor = data_values_comp %>%
+  # Exclude real estimation value from models (was in there for easier plotting)
+  .[model != 'est',] %>%
+  # Get correlation between estimate and model value
+  .[, .(cor = cor(value, estimate)),
+    by = c('participant_id', 'group', 'run', 'model', 'option')] %>%
+  .[, option := as.factor(option)]
+```
+
+```{r}
+dodge_width = 0.5
+
+p = ggplot(data = Prepare_data_for_plot(data_est_val_cor),
+           aes(x = model,
+               y = cor,
+               color = group,
+               fill = group)) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = dodge_width/2,
+                                             jitter.height = 0,
+                                             seed = 666)) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               position = position_dodge(width = dodge_width),
+               width = dodge_width) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  facet_grid(~option) +
+  theme(axis.text.x = element_text(angle = 90))
+Neurocodify_plot(p)
+```
+
+```{r}
+# Rw vs. Pedlr_simple
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       data_est_val_cor[model == 'Pedlr_simple' & option == '2', cor],
+       paired = TRUE)
+
+# Rw vs. Pedlr_simple_const
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       data_est_val_cor[model == 'Pedlr_simple_const' & option == '2', cor],
+       paired = TRUE)
+
+# Rw vs Pedlr
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       data_est_val_cor[model == 'Pedlr' & option == '2', cor],
+       paired = TRUE)
+
+# Rw vs Pedlr_step
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       data_est_val_cor[model == 'Pedlr_step' & option == '2', cor],
+       paired = TRUE)
+
+# Rw vs. Pedlr_fixdep
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       data_est_val_cor[model == 'Pedlr_fixdep' & option == '2', cor],
+       paired = TRUE)
+
+# Rw vs. Pedlr_interdep
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       data_est_val_cor[model == 'Pedlr_interdep' & option == '2', cor],
+       paired = TRUE)
+
+lme = lme4::lmer(cor ~ group * model * option + (1 | participant_id),
+                 data = data_est_val_cor)
+Anova(lme)
+```
+
+### Correlation against 0
+
+```{r}
+# Rw vs. Pedlr_simple
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       mu = 0)
+
+# Rw vs. Pedlr_simple_const
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       mu = 0)
+
+# Rw vs Pedlr
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       mu = 0)
+
+# Rw vs Pedlr_step
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       mu = 0)
+
+# Rw vs. Pedlr_fixdep
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       mu = 0)
+
+# Rw vs. Pedlr_interdep
+t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+       mu = 0)
+```
+
+
 ---
 
 # Pedlr_step: Difference alpha0 and alpha1
@@ -764,6 +864,50 @@ data_alpha_ratio = data_best_fit %>%
   # Also look at difference
   .[, diff_1m0 := alpha1 - alpha0]
 ```
+
+### alpha1
+
+```{r}
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_alpha_ratio),
+       aes(x = group,
+           y = alpha1,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+```
+
+```{r}
+t.test(data_alpha_ratio[group == 'younger']$alpha1,
+       data_alpha_ratio[group == 'older']$alpha1)
+```
+
+
+### Ratio a1/a0
 
 ```{r}
 dodge_width = 0.075
@@ -801,6 +945,13 @@ Neurocodify_plot(p)
 ```
 
 ```{r}
+t.test(data_alpha_ratio[group == 'younger' & !is.infinite(ratio_1t0)]$ratio_1t0,
+       data_alpha_ratio[group == 'older']$ratio_1t0)
+```
+
+### Diff alpha1 - alpha0
+
+```{r}
 dodge_width = 0.075
 jitter_width = dodge_width/2
 
@@ -836,10 +987,85 @@ Neurocodify_plot(p)
 
 ```{r}
 t.test(data_alpha_ratio[group == 'younger']$diff_1m0,
-       data_alpha_ratio[group == 'older']$diff_1m0,)
+       data_alpha_ratio[group == 'older']$diff_1m0)
 ```
 
+### Temperature
 
+```{r}
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = Prepare_data_for_plot(data_alpha_ratio),
+       aes(x = group,
+           y = temperature,
+           color = group,
+           fill = group)) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+```
+
+```{r}
+t.test(data_alpha_ratio[group == 'younger']$temperature,
+       data_alpha_ratio[group == 'older']$temperature)
+```
+
+```{r}
+Softmax_choice <- function(value_1, value_2, temperature){
+  
+  # Probabilistic model choice with choice probabilities controlled by soft-max function
+  # Softmax function depends on temperature parameter (sigmoid steepness)
+  choice_prob_1 = (
+    exp(value_1/temperature) / (exp(value_1/temperature) + exp(value_2/temperature))
+  )
+  
+ return(choice_prob_1)
+}
+
+
+data = data.table()
+template = data.table(val_1 = seq(-50, 50),
+                  val_2 = 0)
+for(temp in seq(1,30)){
+  bla = template
+  bla$temperature = temp
+  data = rbind(data, bla)
+}
+
+data = data %>%
+  .[, prob_1 := Softmax_choice(val_1,
+                               val_2,
+                               temperature),
+    by = c('temperature')] %>%
+  .[, temperature := as.factor(temperature)]
+
+ggplot(data,
+       aes(x = val_1 - val_2,
+           y = prob_1,
+           color = temperature,
+           group = temperature)) +
+  geom_line()
+
+```
 
 
 ---
@@ -855,12 +1081,17 @@ data_sanity_split = data_sanity %>%
 ```
 
 ```{r}
+data_sanity_split[is.na(weight_high_pe)]
+```
+
+
+```{r}
 p = ggplot(data = Prepare_data_for_plot(data_sanity_split),
        aes(x = weight_high_pe,
            color = group,
            fill = group)) +
   geom_bar() +
-  facet_wrap(~run) +
+  facet_wrap(group~run) +
   scale_fill_manual(values = custom_guides) +
   scale_color_manual(values = custom_guides)
 Neurocodify_plot(p)
@@ -1022,6 +1253,20 @@ data_pe_comp = data_est_values %>%
   # Numerate estimation trials
   .[, trial := seq(.N),
     by = c('participant_id', 'run')] %>%
+  # Get value of next trial for each option (Pedlr_step model)
+  .[, nextTrial_Pedlrstep_1_value := binhf::shift(Pedlrstep_1_reward, -1),
+    by = c('participant_id', 'run')] %>%
+  .[, nextTrial_Pedlrstep_2_value := binhf::shift(Pedlrstep_2_reward, -1),
+    by = c('participant_id', 'run')] %>%
+  .[, nextTrial_Pedlrstep_3_value := binhf::shift(Pedlrstep_3_reward, -1),
+    by = c('participant_id', 'run')] %>%
+  # Get distance between bandit 1 and 2 after update
+  .[, nextTrial_Pedlrstep_2m1_value := nextTrial_Pedlrstep_2_value - nextTrial_Pedlrstep_1_value] %>%
+  # Delete last entry of next trial columns, because there is no update in the last trial
+  .[trial == max(trial), ':='(nextTrial_Pedlrstep_1_value = NA,
+                              nextTrial_Pedlrstep_2_value = NA,
+                              nextTrial_Pedlrstep_3_value = NA,
+                              nextTrial_Pedlrstep_2m1_value = NA)] %>%
   # Melt estimates
   .[, (est_columns) := lapply(.SD, as.numeric), .SDcols = est_columns] %>%
   data.table::melt(measure.vars = est_columns) %>%
@@ -1110,23 +1355,67 @@ Neurocodify_plot(p)
 # Average update given rare events
 
 ```{r}
-data_avg_update = data_pe_comp %>%
+data_update = data_pe_comp %>%
   # Cut down to trials in which Pedlr_step PE higher than "rare" boundary given by RW
   .[model == 'Pedlr_step' & option == 2,] %>%
   .[!is.na(value),] %>%
   .[, rare_pe := (abs(value) > pe_95th_Rw)] %>%
-  .[rare_pe == TRUE, ] %>%
+  # Rare given by individual RW PE
+   .[rare_pe == TRUE, ] %>%
+  # Rare given by design
+  #.[is_rare == TRUE, ] %>%
   # Merge with table giving LRs
   data.table::merge.data.table(., data_best_fit[model == 'Pedlr_step'],
                                by = c('participant_id', 'group', 'run', 'model')) %>%
-  # Get trialwise absolute update 
-  .[, abs_update := abs(value) * alpha1,
-    by = c('participant_id', 'group', 'run', 'trial')] %>%
+    # get over vs underweighter
+  .[alpha1 > alpha0, weight_rare_pe := 'overweight'] %>%
+  .[alpha1 < alpha0, weight_rare_pe := 'underweight'] %>%
+  .[, weight_rare_pe := factor(weight_rare_pe)] %>%
+  # Get trialwise absolute update, expressed as fraction of current value
+  .[, abs_relative_update := (abs(value) * alpha1) / Pedlrstep_2_reward,
+    by = c('participant_id', 'group', 'run', 'trial')]
+
+data_avg_update = data_update %>%
   # Mean asolute update in case of rare PE
-  .[, .(mean_abs_update = mean(abs_update),
-        sd_abs_update = sd(abs_update)),
-    by = c('participant_id', 'group', 'run', 'model', 'best_fitting_model')]
+  .[, .(mean_abs_relative_update = mean(abs_relative_update),
+        sd_abs_relative_update = sd(abs_relative_update),
+        mean_nextTrial_Pedlrstep_2m1_value = mean(nextTrial_Pedlrstep_2m1_value)),
+    by = c('participant_id', 'group', 'run', 'model', 'best_fitting_model', 'weight_rare_pe')]
 ```
+
+### Modeled distance between 2 and 1 in next trial after rare outcome
+
+```{r}
+p = ggplot(data = Prepare_data_for_plot(data_avg_update),
+           aes(x = group,
+               y = mean_nextTrial_Pedlrstep_2m1_value,
+               fill = group,
+               color = group)) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+  #facet_grid(~weight_rare_pe)
+Neurocodify_plot(p)
+```
+
+### Average update following rare outcomes
 
 ```{r}
 dodge_width = 0.075
@@ -1134,7 +1423,7 @@ jitter_width = dodge_width/2
 
 p = ggplot(data = Prepare_data_for_plot(data_avg_update),
        aes(x = group,
-           y = mean_abs_update,
+           y = mean_abs_relative_update,
            color = group,
            fill = group)) +
   geom_point(position = position_jitternudge(jitter.width = jitter_width,
@@ -1156,8 +1445,30 @@ p = ggplot(data = Prepare_data_for_plot(data_avg_update),
                stroke = 0.5) +
   scale_fill_manual(values = custom_guides) +
   scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
+  theme(legend.position = 'none') +
+  facet_grid(~weight_rare_pe)
 Neurocodify_plot(p)
+```
+
+### Correlation between alpha 1 and influence of rare events
+
+```{r}
+p = ggplot(data = data_sanity_split[ratio_1t0 < 50],
+       aes(x = ratio_1t0,
+           y = preminuspost,
+           color = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formular = y ~ x)
+Neurocodify_plot(p)
+```
+
+```{r}
+lm = lm(data = data_sanity_split[ratio_1t0 < 50],
+        preminuspost ~ ratio_1t0 * group)
+summary(lm)
 ```
 
 
