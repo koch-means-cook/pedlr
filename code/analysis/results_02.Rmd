@@ -84,7 +84,12 @@ data = Load_model_fits() %>%
              'model',
              'para')]
 # Sort model levels by number of parameters
-data$model = factor(data$model, levels = c('Rw', 'Pedlr_simple', 'Pedlr_simple_const', 'Pedlr', 'Pedlr_step', 'Pedlr_fixdep', 'Pedlr_interdep'))
+data$model = factor(data$model, levels = c('Rw',
+                                           'Pedlr_simple',
+                                           'Pedlr_simple_const',
+                                           'Pedlr', 'Pedlr_step',
+                                           'Pedlr_fixdep',
+                                           'Pedlr_interdep'))
 
 # get number of participants (to adjust figure height)
 n_participants = length(unique(data$participant_id))
@@ -114,7 +119,9 @@ data_best_fit = data_aic %>%
 data_only_best_fit = data_best_fit[model == best_fitting_model,]
 ```
 
-## Plot
+## Plot .{tabset}
+
+### Rw & Pedlr_step
 
 ```{r}
 data_plot = Prepare_data_for_plot(data_only_best_fit)
@@ -138,11 +145,49 @@ Neurocodify_plot(p_fit)
 data_only_best_fit %>%
   .[, .(n_best_fit = .N),
     by = c('group', 'model')] %>%
-  .[order(rank(group), rank(run), rank(-n_best_fit)), ]
+  .[order(rank(group), rank(-n_best_fit)), ]
 ```
 
 -   look at fit as function of behavioral results
     -   e.g. effect of rare outcome ==\> fit of pedlr
+
+### Rw & Pedlr_step
+
+```{r}
+data_best_fit_all = data_aic %>%
+  .[, best_fitting_model := model[which.min(AIC)],
+    by = c('participant_id', 'group', 'real_iter')] %>%
+  # Take only first iteration (no variability in fits)
+  .[real_iter == 1,] %>%
+  .[model == best_fitting_model,]
+```
+
+
+```{r}
+data_plot = Prepare_data_for_plot(data_best_fit_all)
+dodge_width = 0.2
+
+p_fit = ggplot(data = data_plot,
+       aes(x = model,
+           color = group,
+           fill = group)) +
+  geom_bar(stat = 'count',
+                 width = dodge_width,
+                 position = position_dodge(width = dodge_width)) +
+  scale_fill_manual(values = custom_guides) +
+  theme(legend.position = 'top',
+        axis.text.x = element_text(angle = -45, hjust = 0))
+Neurocodify_plot(p_fit)
+```
+
+```{r}
+# Count winning model
+data_best_fit_all %>%
+  .[, .(n_best_fit = .N),
+    by = c('group', 'model')] %>%
+  .[order(rank(group), rank(-n_best_fit)), ]
+```
+
 
 ```{r}
 data_pedlr_family = data_only_best_fit %>%
@@ -274,8 +319,8 @@ Windowrize = function(data,
 # i_run = '1'
 
 # For each participant & run
-for(i_id in unique(data_model$participant_id)){
-  for(i_run in unique(data_model$run)){
+for(i_id in unique(data_rare_inf$participant_id)){
+  for(i_run in unique(data_rare_inf$run)){
     
     # Select data
     temp_data = data_rare_inf[participant_id == i_id &
@@ -320,8 +365,8 @@ window_data_run = window_data %>%
   .[, preminuspost := prob_pre - prob_post] %>%
   .[, run := as.factor(run)] %>%
   # Average across run (because modeling was done across runs)
-  .[, preminuspost = mean(preminuspost),
-    by = c('participant_id', 'group', 'window_relative')]
+  .[, .(preminuspost = mean(preminuspost)),
+    by = c('participant_id', 'group')]
 
 # Fuse with modelling data
 data_sanity = data.table::merge.data.table(data_model, window_data_run,
@@ -404,6 +449,8 @@ check_est_diff = check_est %>%
 
 # Get mean estimation accuracy across estimation trials
 check_mean_est_diff = check_est_diff %>%
+  # Apply exclusion criterion for rating trials
+  Apply_exclusion_criteria(choice_based_exclusion = FALSE) %>%
   .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
     by = c('participant_id', 'group', 'run', 'est_stim')] %>%
   .[, .(mean_diff_from_true = mean(diff_from_true, na.rm = TRUE)),
@@ -425,8 +472,7 @@ check_mean_est_diff = check_est_diff %>%
 ```
 
 ```{r}
-data_sanity_rat = data_sanity %>%
-  Apply_exclusion_criteria(choice_based_exclusion = FALSE)
+data_sanity_rat = data_sanity
 
 data_sanity_rat = data.table::merge.data.table(data_sanity_rat,
                                                check_mean_est_diff,
@@ -447,7 +493,7 @@ ggplot(data = data_sanity_rat,
 #### Stats
 
 ```{r}
-bla = lm(mean_diff_from_true_2 ~ alpha1,
+bla = lm(mean_diff_from_true_2 ~ alpha1 * group,
          data = data_sanity_rat)
 summary(bla)
 ```
@@ -475,7 +521,7 @@ for(i_id in unique(data_rat$participant_id)){
   data_fit = data_rat[real_iter == 1 & participant_id == i_id]
     
   #  For each run
-  for(i_run in unique(data_rat[participant_id == i_id]$run)){
+  for(i_run in unique(data_experiment[participant_id == i_id]$run)){
     
     # Select behavioral data (important for individual estimates)
     temp = data_experiment[participant_id == i_id & run == i_run]
@@ -670,15 +716,11 @@ data_sse = data_values_comp %>%
   .[model != 'est',] %>%
   # Get squared error (model prediction vs. participants estimation) for each estimation trial & model
   .[, error_squared := (value - estimate)^2] %>%
-  # Sum of squared errors across rating trials
+  # Sum of squared errors across all rating trials (also across runs)
   .[, .(sse = sum(error_squared),
         rmse = sqrt(mean(error_squared))),
-    by = c('participant_id', 'group', 'run', 'model', 'option')] %>%
-  .[, option := as.factor(option)] %>%
-  # Get average over runs
-  .[, .(mean_sse = mean(sse),
-        mean_rmse = mean(rmse)),
-    by = c('participant_id', 'group', 'model', 'option')]
+    by = c('participant_id', 'group', 'model', 'option')] %>%
+  .[, option := as.factor(option)]
 ```
 
 ```{r}
@@ -688,7 +730,7 @@ dodge_width = 0.5
 
 p = ggplot(data = data_plot,
            aes(x = model,
-               y = mean_rmse,
+               y = rmse,
                color = group,
                fill = group)) +
   geom_point(position = position_jitterdodge(dodge.width = dodge_width,
@@ -708,37 +750,37 @@ Neurocodify_plot(p)
 
 ```{r}
 # Rw vs. Pedlr_simple
-t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
-       data_sse[model == 'Pedlr_simple' & option == '2', mean_rmse],
+t.test(data_sse[model == 'Rw' & option == '2', rmse],
+       data_sse[model == 'Pedlr_simple' & option == '2', rmse],
        paired = TRUE)
 
 # Rw vs. Pedlr_simple_const
-t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
-       data_sse[model == 'Pedlr_simple_const' & option == '2', mean_rmse],
+t.test(data_sse[model == 'Rw' & option == '2', rmse],
+       data_sse[model == 'Pedlr_simple_const' & option == '2', rmse],
        paired = TRUE)
 
 # Rw vs Pedlr
-t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
-       data_sse[model == 'Pedlr' & option == '2', mean_rmse],
+t.test(data_sse[model == 'Rw' & option == '2', rmse],
+       data_sse[model == 'Pedlr' & option == '2', rmse],
        paired = TRUE)
 
 # Rw vs Pedlr_step
-t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
-       data_sse[model == 'Pedlr_step' & option == '2', mean_rmse],
+t.test(data_sse[model == 'Rw' & option == '2', rmse],
+       data_sse[model == 'Pedlr_step' & option == '2', rmse],
        paired = TRUE)
 
 # Rw vs. Pedlr_fixdep
-t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
-       data_sse[model == 'Pedlr_fixdep' & option == '2', mean_rmse],
+t.test(data_sse[model == 'Rw' & option == '2', rmse],
+       data_sse[model == 'Pedlr_fixdep' & option == '2', rmse],
        paired = TRUE)
 
 # Rw vs. Pedlr_interdep
-t.test(data_sse[model == 'Rw' & option == '2', mean_rmse],
-       data_sse[model == 'Pedlr_interdep' & option == '2', mean_rmse],
+t.test(data_sse[model == 'Rw' & option == '2', rmse],
+       data_sse[model == 'Pedlr_interdep' & option == '2', rmse],
        paired = TRUE)
 
-lme = lme4::lmer(mean_rmse ~ group * model * option + (1 | participant_id),
-                 data = data_sse)
+lme = lme4::lmer(rmse ~ group * model + (1 | participant_id),
+                 data = data_sse[option == '2'])
 Anova(lme)
 ```
 
@@ -813,36 +855,46 @@ t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
        data_est_val_cor[model == 'Pedlr_interdep' & option == '2', cor],
        paired = TRUE)
 
-lme = lme4::lmer(cor ~ group * model * option + (1 | participant_id),
-                 data = data_est_val_cor)
+lme = lme4::lmer(cor ~ group * model + (1 | participant_id),
+                 data = data_est_val_cor[option == '2'])
 Anova(lme)
 ```
+
+```{r}
+emmeans::emmeans(lme,
+                 pairwise ~ model)
+```
+
 
 ### Correlation against 0
 
 ```{r}
-# Rw vs. Pedlr_simple
+# Rw
 t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
        mu = 0)
 
-# Rw vs. Pedlr_simple_const
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+# Pedlr_simple
+t.test(data_est_val_cor[model == 'Pedlr_simple' & option == '2', cor],
        mu = 0)
 
-# Rw vs Pedlr
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+# Pedlr_simple_const
+t.test(data_est_val_cor[model == 'Pedlr_simple_const' & option == '2', cor],
        mu = 0)
 
-# Rw vs Pedlr_step
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+# Pedlr
+t.test(data_est_val_cor[model == 'Pedlr' & option == '2', cor],
        mu = 0)
 
-# Rw vs. Pedlr_fixdep
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+# Pedlr_step
+t.test(data_est_val_cor[model == 'Pedlr_step' & option == '2', cor],
        mu = 0)
 
-# Rw vs. Pedlr_interdep
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
+# Pedlr_fixdep
+t.test(data_est_val_cor[model == 'Pedlr_fixdep' & option == '2', cor],
+       mu = 0)
+
+# Pedlr_interdep
+t.test(data_est_val_cor[model == 'Pedlr_interdep' & option == '2', cor],
        mu = 0)
 ```
 
@@ -1072,15 +1124,11 @@ ggplot(data,
 # Sanity checks in participants with different alpha0/alpha1 relationship
 
 ```{r}
-data_sanity_split = data_sanity %>%
+data_sanity_split = data_sanity[best_fitting_model == 'Pedlr_step'] %>%
   data.table::merge.data.table(., data_alpha_ratio,
                                by = c('participant_id', 'group', 'real_iter', 'model',
                                       'AIC', 'second_ll', 'alpha1', 'temperature', 'best_fitting_model')) %>%
   .[,weight_high_pe := factor(weight_high_pe)]
-```
-
-```{r}
-data_sanity_split[is.na(weight_high_pe)]
 ```
 
 
@@ -1136,9 +1184,9 @@ t.test(data_sanity_split[weight_high_pe == 'overweight']$preminuspost,
 ```
 
 ```{r}
-lme = lme4::lmer(preminuspost ~ group * weight_high_pe + (1 | participant_id),
+lm = lm(preminuspost ~ group * weight_high_pe,
                  data = data_sanity_split)
-Anova(lme)
+Anova(lm)
 ```
 
 ### Sanity check: Overweighters = stronger underestimation of 2nd bandit?
@@ -1186,9 +1234,9 @@ Neurocodify_plot(p)
 ```
 
 ```{r}
-lme = lme4::lmer(mean_diff_from_true_2 ~ group * weight_high_pe + (1 | participant_id),
-                 data = data_sanity_rat_split)
-Anova(lme)
+lm = lm(mean_diff_from_true_2 ~ group * weight_high_pe,
+        data = data_sanity_rat_split)
+Anova(lm)
 ```
 
 
@@ -1365,7 +1413,7 @@ data_update = data_pe_comp %>%
   #.[is_rare == TRUE, ] %>%
   # Merge with table giving LRs
   data.table::merge.data.table(., data_best_fit[model == 'Pedlr_step'],
-                               by = c('participant_id', 'group', 'run', 'model')) %>%
+                               by = c('participant_id', 'group', 'model')) %>%
     # get over vs underweighter
   .[alpha1 > alpha0, weight_rare_pe := 'overweight'] %>%
   .[alpha1 < alpha0, weight_rare_pe := 'underweight'] %>%
@@ -1444,8 +1492,7 @@ p = ggplot(data = Prepare_data_for_plot(data_avg_update),
                stroke = 0.5) +
   scale_fill_manual(values = custom_guides) +
   scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none') +
-  facet_grid(~weight_rare_pe)
+  theme(legend.position = 'none')
 Neurocodify_plot(p)
 ```
 

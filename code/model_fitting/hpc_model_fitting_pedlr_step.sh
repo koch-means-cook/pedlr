@@ -88,7 +88,7 @@ for DATA in ${DATA_LIST}; do
 	MODEL="Pedlr_step"
 	START_VALUES="0.5,0.5,5"
 	LB="0,0,1"
-	UB="1,1,10"
+	UB="1,1,20"
 
 	# Give message to user
 	echo "${SUB_LABEL}: ${MODEL}"

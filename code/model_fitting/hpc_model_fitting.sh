@@ -88,7 +88,7 @@ for DATA in ${DATA_LIST}; do
   MODEL="Rw"
   START_VALUES="0.5,5"
   LB="0,1"
-  UB="1,10"
+  UB="1,20"
 
 	# Give message to user
 	echo "${SUB_LABEL}: ${MODEL}"
@@ -141,7 +141,7 @@ for DATA in ${DATA_LIST}; do
 	MODEL="Pedlr_simple"
 	START_VALUES="0.5,5"
 	LB="0,1"
-	UB="1,10"
+	UB="1,20"
 
 	# Give message to user
 	echo "${SUB_LABEL}: ${MODEL}"
@@ -194,7 +194,7 @@ for DATA in ${DATA_LIST}; do
 	MODEL="Pedlr_simple_const"
 	START_VALUES="0.5,5"
 	LB="0,1"
-	UB="1,10"
+	UB="1,20"
 
 	# Give message to user
 	echo "${SUB_LABEL}: ${MODEL}"
@@ -247,7 +247,7 @@ for DATA in ${DATA_LIST}; do
 	MODEL="Pedlr"
 	START_VALUES="0.5,0.5,5"
 	LB="0,0,1"
-	UB="1,1,10"
+	UB="1,1,20"
 
 	# Give message to user
 	echo "${SUB_LABEL}: ${MODEL}"
@@ -300,7 +300,7 @@ for DATA in ${DATA_LIST}; do
 	MODEL="Pedlr_fixdep"
 	START_VALUES="0.5,0.5,5"
 	LB="0,0,1"
-	UB="1,1,10"
+	UB="1,1,20"
 
 	# Give message to user
 	echo "${SUB_LABEL}: ${MODEL}"
@@ -353,7 +353,7 @@ for DATA in ${DATA_LIST}; do
 	MODEL="Pedlr_interdep"
 	START_VALUES="0.5,0.5,0.5,5"
 	LB="0,0,0,1"
-	UB="1,1,1,10"
+	UB="1,1,1,20"
 
 	# Give message to user
 	echo "${SUB_LABEL}: ${MODEL}"
