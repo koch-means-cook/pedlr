@@ -119,7 +119,7 @@ data_best_fit = data_aic %>%
 data_only_best_fit = data_best_fit[model == best_fitting_model,]
 ```
 
-## Plot .{tabset}
+## Plot {.tabset}
 
 ### Rw & Pedlr_step
 
@@ -2006,15 +2006,126 @@ data_comp_prepost_model = data.table::merge.data.table(model_info, window_data_r
     by = c('model')]
 ```
 
-# ```{r}
-# data_plot = Prepare_data_for_plot(data_comp_prepost_model)
-# 
-# ggplot(data = data_plot,
-#        aes(x = preminuspost,
-#            y = preminuspost_model)) +
-#   geom_point(size = 0.5) +
-#   coord_fixed() +
-#   facet_grid(~model)
-#   
-# ```
+--- 
+
+# Alignment rare outcomes and PEs flagged as rare by RW model
+
+```{r}
+data_flag_check = data_est_values %>%
+  Add_comp(.) %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'group', 'run')] %>%
+  # Get PE for each trial, regardless of choice
+  .[, Pedlrstep_overall_pe := sum(c(Pedlrstep_1_pe, Pedlrstep_2_pe, Pedlrstep_3_pe),
+                                  na.rm = TRUE),
+    by = c('participant_id', 'group', 'run', 'trial')] %>%
+  # See which PEs get flagged as surprising outcome
+  .[, rare_flag_rw := abs(Pedlrstep_overall_pe) > pe_95th_Rw,
+    by = c('participant_id', 'group', 'run', 'trial')] %>%
+  # Get actual rare outcomes collected by participant
+  .[, actual_rare_outcome := is_rare == TRUE & option_choice == 2,
+    by = c('participant_id', 'group', 'run', 'trial')] %>%
+  # Narrow down columns
+  .[, c('participant_id', 'group', 'run', 'trial', 'trial_type', 'is_rare',
+        'option_choice', 'comp', 'pe_95th_Rw', 'Pedlrstep_overall_pe',
+        'rare_flag_rw', 'actual_rare_outcome')]
+
+  # ROC
+data_flag_roc = data_flag_check %>%
+  .[, ':='(false_positive = (rare_flag_rw == TRUE & actual_rare_outcome == FALSE),
+           false_negative = (rare_flag_rw == FALSE & actual_rare_outcome == TRUE),
+           correct_rejection = (rare_flag_rw == FALSE & actual_rare_outcome == FALSE),
+           correct = (rare_flag_rw == TRUE & actual_rare_outcome == TRUE))] %>%
+  .[, .(false_positive = sum(false_positive, na.rm = TRUE) / .N,
+        false_negative = sum(false_negative, na.rm = TRUE) / .N,
+        correct_rejection = sum(correct_rejection, na.rm = TRUE) / .N,
+        correct = sum(correct, na.rm = TRUE) / .N),
+    by = c('group')] %>%
+  data.table::melt.data.table(measure.vars = c('false_positive', 'false_negative', 'correct_rejection', 'correct'))
+```
+
+```{r}
+# RW flag ROC
+data_plot = Prepare_data_for_plot(data_flag_roc)
+ggplot(data = data_plot[variable != 'correct_rejection'],
+       aes(x = variable,
+           y = value,
+           group = group,
+           color = group)) +
+  geom_path(alpha = 0.8, size = 2) +
+  scale_color_manual(values = custom_guides)
+```
+
+Out of all real rare outcomes: How many do we catch
+
+```{r}
+data_flag_check[is_rare == 1 & option_choice == 2] %>%
+  .[, .(perc_captured_rare = mean(rare_flag_rw, na.rm = TRUE)),
+    by = c('group')]
+```
+
+
+```{r}
+data_flag_check[rare_flag_rw == TRUE & trial > 10]
+```
+
+
+```{r}
+ggplot(data_pe_dist[trial > 10],
+       aes(x = value)) +
+  geom_histogram()
+```
+
+---
+
+# Uncertainty ratings
+
+```{r}
+data_uncer = data_est_values[with_rating == 1] %>%
+  Apply_exclusion_criteria(choice_based_exclusion = FALSE) %>%
+  .[, est_trial := seq(.N),
+    by = c('participant_id', 'group', 'run')] %>%
+  # Within subject difference between options
+  .[, ':='(diff_2m1 = est_2_range - est_1_range,
+           diff_2m3 = est_2_range - est_3_range)] %>%
+   .[, .(mean_diff_2m1 = mean(diff_2m1, na.rm= TRUE),
+         mean_diff_2m3 = mean(diff_2m3, na.rm= TRUE)),
+    by = c('participant_id', 'group')] %>%
+  data.table::melt.data.table(id.vars = c('participant_id', 'group'),
+                              measure.vars = c('mean_diff_2m1', 'mean_diff_2m3'))
+```
+
+```{r}
+dodge_width = 0.3
+
+ggplot(data = Prepare_data_for_plot(data_uncer),
+       aes(x = variable,
+           y = value,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitterdodge(jitter.width = dodge_width/2,
+                                             jitter.height = 0,
+                                             dodge.width = dodge_width,
+                                             seed = 666)) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width,
+               position = position_dodge(width = dodge_width)) +
+    stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5,
+               position = position_dodge(width = dodge_width)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides)
+```
+
+```{r}
+t.test(data_uncer[variable == 'mean_diff_2m3' & group == 'older']$value, mu = 0)
+```
 

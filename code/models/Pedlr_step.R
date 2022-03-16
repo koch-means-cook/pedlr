@@ -106,7 +106,15 @@ Pedlr_step = function(design,
     } else if(abs(pe) < pe_boundary_abs){
       fpe = params.alpha0
     }
-    updated_value = choice_value + fpe * pe
+    
+    # # If rare event: Use alpha1
+    # if(design[trial_count]$is_rare == 1 & choice_stim == 2){
+    #   fpe = params.alpha1
+    #   # If normal event: Apply standard alpha0
+    # } else {
+    #   fpe = params.alpha0
+    # }
+    # updated_value = choice_value + fpe * pe
     
     # Update entries
     # choice, pe, and fpe are updated in current trial
