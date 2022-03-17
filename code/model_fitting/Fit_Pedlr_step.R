@@ -38,12 +38,19 @@ Fit_Pedlr_step = function(data,
   df_max_pe = data.frame(matrix(NA, params.ntrials, 1))
   colnames(df_max_pe) = 'pe_max'
   
+  # Initialize df keeping rare trials
+  df_rare = data.frame(matrix(NA, params.ntrials, 1))
+  colnames(df_rare) = 'rare_trial'
+  
   # Initialize running maximum of PE (to scale alpha1, see model)
   max_pe_so_far = NA
   
   # Loop over trials
   for(trial_count in 1:params.ntrials){
     #for(trial_count in 1:3){
+    
+    # Reset rare trial bool
+    rare_trial = NA
     
     # Get current comparison (choice options as 2 entry vector)
     comp_stim = c(data$option_left[trial_count], data$option_right[trial_count])
@@ -181,12 +188,22 @@ Fit_Pedlr_step = function(data,
                                   df_pe$stim_2[1:trial_count],
                                   df_pe$stim_3[1:trial_count])), na.rm = TRUE)
         
+        # # Step function
+        # # If PE surpasses boundary: Use alpha1
+        # if(abs(pe) >= pe_boundary_abs){
+        #   fpe = params.alpha1
+        #   # If PE is in normal range: Apply standard alpha0
+        # } else if(abs(pe) < pe_boundary_abs){
+        #   fpe = params.alpha0
+        # }
+        
         # Step function
-        # If PE surpasses boundary: Use alpha1
-        if(abs(pe) >= pe_boundary_abs){
+        # In case of rare event use alpha 1
+        rare_trial = data[trial_count]$is_rare == 1 & choice_stim == 2
+        if(rare_trial){
           fpe = params.alpha1
-          # If PE is in normal range: Apply standard alpha0
-        } else if(abs(pe) < pe_boundary_abs){
+          # If not rare: Apply standard alpha0
+        } else if(!rare_trial){
           fpe = params.alpha0
         }
         
@@ -201,6 +218,7 @@ Fit_Pedlr_step = function(data,
       df_choices$forced_choice[trial_count] = forced_choice
       df_fpe[trial_count, choice_stim] = fpe
       df_max_pe$pe_max[trial_count] = max_pe_so_far
+      df_rare$rare_trial[trial_count] = rare_trial
       # Value is updated for all following trials (exception of last trial and false forced choices)
       if(trial_count != params.ntrials & !is.na(pe)){
         df_values[(trial_count + 1):nrow(df_values), choice_stim] = updated_value 
@@ -214,6 +232,7 @@ Fit_Pedlr_step = function(data,
                      'PE' = df_pe,
                      'fPE' = df_fpe,
                      'max_PE' = df_max_pe,
+                     'rare_trial' = df_rare,
                      'pe_boundary_abs' = pe_boundary_abs)
   return(model_data)
   

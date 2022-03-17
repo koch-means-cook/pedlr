@@ -105,32 +105,32 @@ Log_Likelihood = function(x,
       # Pedlr with step function
     } else if(model == 'Pedlr_step'){
       
-      # Get PEs of Rw model for this participant and run
-      id = unique(data$participant_id)
-      rw_file = file.path(here::here(),
-                          'derivatives',
-                          'model_fitting',
-                          paste(id,
-                                '-fit-Rw.tsv',
-                                sep = ''))
-      rw_fit = data.table::fread(rw_file,
-                                 sep = '\t',
-                                 na.strings = 'n/a')
-      # Get optimized parameters for RW model
-      rw_params_alpha = rw_fit[file == 1 & iter == 1 & para == 'alpha']$second_solution
-      rw_params_temp = rw_fit[file == 1 & iter == 1 & para == 'temperature']$second_solution
-      # Recreate data based on optimzed parameters
-      rw = Fit_Rw(data = data,
-                  params.alpha = rw_params_alpha,
-                  params.temperature = rw_params_temp,
-                  params.reward_space_ub = 100,
-                  choice_policy = 'softmax',
-                  init_values = c(50,50,50))
-      # # Get PE distribution (of absolute PE)
-      # pes = c(rw$PE$stim_1, rw$PE$stim_2, rw$PE$stim_3)
-      # pes = abs(pes[!is.na(pes)])
-      # Get highest 5% of PEs to set "rare" boundary
-      pe_boundary_abs = rw$pe_boundary_abs
+      # # Get PEs of Rw model for this participant and run
+      # id = unique(data$participant_id)
+      # rw_file = file.path(here::here(),
+      #                     'derivatives',
+      #                     'model_fitting',
+      #                     paste(id,
+      #                           '-fit-Rw.tsv',
+      #                           sep = ''))
+      # rw_fit = data.table::fread(rw_file,
+      #                            sep = '\t',
+      #                            na.strings = 'n/a')
+      # # Get optimized parameters for RW model
+      # rw_params_alpha = rw_fit[file == 1 & iter == 1 & para == 'alpha']$second_solution
+      # rw_params_temp = rw_fit[file == 1 & iter == 1 & para == 'temperature']$second_solution
+      # # Recreate data based on optimzed parameters
+      # rw = Fit_Rw(data = data,
+      #             params.alpha = rw_params_alpha,
+      #             params.temperature = rw_params_temp,
+      #             params.reward_space_ub = 100,
+      #             choice_policy = 'softmax',
+      #             init_values = c(50,50,50))
+      # # # Get PE distribution (of absolute PE)
+      # # pes = c(rw$PE$stim_1, rw$PE$stim_2, rw$PE$stim_3)
+      # # pes = abs(pes[!is.na(pes)])
+      # # Get highest 5% of PEs to set "rare" boundary
+      # pe_boundary_abs = rw$pe_boundary_abs
       
       params.alpha0 = x[1]
       params.alpha1 = x[2]
@@ -143,8 +143,7 @@ Log_Likelihood = function(x,
                                   params.temperature = params.temperature,
                                   params.reward_space_ub = 100,
                                   choice_policy = 'softmax',
-                                  init_values = c(50, 50, 50),
-                                  pe_boundary_abs = pe_boundary_abs)
+                                  init_values = c(50, 50, 50))
       
       # Pedlr model with constant alpha0 
     } else if(model == 'Pedlr_simple_const'){ 

@@ -651,6 +651,7 @@ for(i_id in unique(data_rat$participant_id)){
     temp$Pedlrstep_3_pe = Pedlr_step$PE$stim_3
     temp$Pedlrstep_modelchoice = Pedlr_step$choices$choice
     temp$Pedlrstep_modelchoiceprob = Pedlr_step$choices$choice_prob
+    temp$Pedlrstep_idxrare = Pedlr_step$rare_trial
     # Pedlr_fixdep
     temp$Pedlrfixdep_1_reward = Pedlr_fixdep$values$stim_1
     temp$Pedlrfixdep_2_reward = Pedlr_fixdep$values$stim_2

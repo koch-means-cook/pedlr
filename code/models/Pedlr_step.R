@@ -98,23 +98,23 @@ Pedlr_step = function(design,
                               df_pe$stim_2[1:trial_count],
                               df_pe$stim_3[1:trial_count])), na.rm = TRUE)
     
-    # Step function
-    # If PE surpasses boundary: Use alpha1
-    if(abs(pe) >= pe_boundary_abs){
-      fpe = params.alpha1
-      # If PE is in normal range: Apply standard alpha0
-    } else if(abs(pe) < pe_boundary_abs){
-      fpe = params.alpha0
-    }
-    
-    # # If rare event: Use alpha1
-    # if(design[trial_count]$is_rare == 1 & choice_stim == 2){
+    # # Step function
+    # # If PE surpasses boundary: Use alpha1
+    # if(abs(pe) >= pe_boundary_abs){
     #   fpe = params.alpha1
-    #   # If normal event: Apply standard alpha0
-    # } else {
+    #   # If PE is in normal range: Apply standard alpha0
+    # } else if(abs(pe) < pe_boundary_abs){
     #   fpe = params.alpha0
     # }
-    # updated_value = choice_value + fpe * pe
+    
+    # If rare event: Use alpha1
+    if(design[trial_count]$is_rare == 1 & choice_stim == 2){
+      fpe = params.alpha1
+      # If normal event: Apply standard alpha0
+    } else {
+      fpe = params.alpha0
+    }
+    updated_value = choice_value + fpe * pe
     
     # Update entries
     # choice, pe, and fpe are updated in current trial
