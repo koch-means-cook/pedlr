@@ -84,7 +84,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 	TRUE_PARAMETERS="0.2,7"
   FIT_START_VALUES="0.5,5"
   FIT_LB="0,1"
-  FIT_UB="1,10"
+  FIT_UB="1,20"
 
 	# Give message to user
 	echo "${DESIGN_LABEL}: ${MODEL}"
@@ -202,7 +202,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 	TRUE_PARAMETERS="0.4,7"
   FIT_START_VALUES="0.5,5"
   FIT_LB="0,1"
-  FIT_UB="1,10"
+  FIT_UB="1,20"
 
 	# Give message to user
 	echo "${DESIGN_LABEL}: ${MODEL}"
@@ -261,7 +261,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 	TRUE_PARAMETERS="0.4,7"
   FIT_START_VALUES="0.5,5"
   FIT_LB="0,1"
-  FIT_UB="1,10"
+  FIT_UB="1,20"
 
 	# Give message to user
 	echo "${DESIGN_LABEL}: ${MODEL}"
@@ -320,7 +320,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 	TRUE_PARAMETERS="0.2,0.7,7"
 	FIT_START_VALUES="0.5,0.5,5"
 	FIT_LB="0,0,1"
-	FIT_UB="1,1,10"
+	FIT_UB="1,1,20"
 
 
 
@@ -381,7 +381,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 	TRUE_PARAMETERS="0.2,0.7,7"
 	FIT_START_VALUES="0.5,0.5,5"
 	FIT_LB="0,0,1"
-	FIT_UB="1,1,10"
+	FIT_UB="1,1,20"
 
 	# Give message to user
 	echo "${DESIGN_LABEL}: ${MODEL}"
@@ -440,7 +440,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 	TRUE_PARAMETERS="0.2,0.7,0.3,7"
 	FIT_START_VALUES="0.5,0.5,0.5,5"
 	FIT_LB="0,0,0,1"
-	FIT_UB="1,1,1,10"
+	FIT_UB="1,1,1,20"
 
 	# Give message to user
 	echo "${DESIGN_LABEL}: ${MODEL}"
