@@ -21,7 +21,8 @@ source(file.path(here::here(), 'code', 'parameter_recovery', 'Parameter_recovery
 
 Parameter_recovery_wrapper = function(output_path,
                                       model,
-                                      design_path,
+                                      design_path_run1,
+                                      design_path_run2,
                                       true_parameters,
                                       fit_start_values,
                                       fit_lb,
@@ -35,7 +36,11 @@ Parameter_recovery_wrapper = function(output_path,
     p_names = c('alpha', 'temperature')
   } else if(model == 'Pedlr_simple'){
     p_names = c('alpha1', 'temperature')
-  }else if(model == 'Pedlr'){
+  } else if(model == 'Pedlr_simple_const'){
+    p_names = c('alpha1', 'temperature')
+  } else if(model == 'Pedlr'){
+    p_names = c('alpha0', 'alpha1', 'temperature')
+  } else if(model == 'Pedlr_step'){
     p_names = c('alpha0', 'alpha1', 'temperature')
   } else if(model == 'Pedlr_fixdep'){
     p_names = c('alpha0', 'alpha1', 'temperature')
@@ -76,11 +81,16 @@ Parameter_recovery_wrapper = function(output_path,
     }
     
     # Give message to user
-    message('   Fitting Design: ', basename(design_path), '...')
+    message('   Fitting Designs: ',
+            basename(design_path_run1),
+            ' and ',
+            basename(design_path_run2),
+            '...')
     
     # Run parameter recovery
     result = Parameter_recovery(model,
-                                design_path,
+                                design_path_run1,
+                                design_path_run2,
                                 true_parameters,
                                 fit_start_values,
                                 fit_lb,
@@ -90,10 +100,12 @@ Parameter_recovery_wrapper = function(output_path,
     result = as.data.table(result) %>%
       .[, ':='(para = p_names,
                iter = i_iter,
-               design = basename(design_path),
+               design_run1 = basename(design_path_run1),
+               design_run2 = basename(design_path_run2),
                true = true_parameters)] %>%
       .[, data.table::setcolorder(., c("iter",
-                                       "design",
+                                       "design_run1",
+                                       "design_run2",
                                        "para",
                                        "true"))]
     
@@ -144,11 +156,16 @@ option_list = list(
               default = NULL,
               help = 'Name of model fitting should be based on',
               metavar = 'MODEL'),
-  make_option(c('-d', '--design_path'),
+  make_option(c('-d1', '--design_path_run1'),
               type='character',
               default = NULL,
-              help = 'Path to design file used to simulate data',
-              metavar = 'DESIGN_PATH'),
+              help = 'Path to design file used to simulate first run of data',
+              metavar = 'DESIGN_PATH_RUN1'),
+  make_option(c('-d2', '--design_path_run2'),
+              type='character',
+              default = NULL,
+              help = 'Path to design file used to simulate second run of data',
+              metavar = 'DESIGN_PATH_RUN2'),
   make_option(c('-t', '--true_parameters'),
               type='character',
               default = NULL,
@@ -196,7 +213,8 @@ opt = parse_args(opt_parser)
 # Cal wrapper with command line inputs
 Parameter_recovery_wrapper(output_path = opt$output_path,
                            model = opt$model,
-                           design_path = opt$design_path,
+                           design_path_run1 = opt$design_path_run1,
+                           design_path_run2 = opt$design_path_run2,
                            true_parameters = opt$true_parameters,
                            fit_start_values = opt$fit_start_values,
                            fit_lb = opt$fit_lb,

@@ -182,6 +182,7 @@ Get_exclusions = function(){
   # different
   temp = est_1v3[excl == TRUE, c('participant_id', 'group', 'run')]
   temp$reason = 'Consistently similar estimate for bandit 1 and 3'
+  temp[participant_id == '8TYYUVQ']$reason = 'No variance in estimation'
   temp$mod = 'rating_performance'
   excludes = rbind(excludes, temp)
   
