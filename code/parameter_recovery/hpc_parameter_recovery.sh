@@ -68,8 +68,8 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 
   # Function inputs
 	# Insert random run into designs to shuffle if run1 or run2 is first
-  DESIGN_PATH_RUN1="${PATH_DATA}/${DESIGN_LABEL}_run${DESIGN_RUNS[0]}.tsv"
-	DESIGN_PATH_RUN2="${PATH_DATA}/${DESIGN_LABEL}_run${DESIGN_RUNS[1]}.tsv"
+  DESIGN_PATH_RUN1="${PATH_DATA}/${DESIGN_LABEL}_run-${DESIGN_RUNS[0]}.tsv"
+	DESIGN_PATH_RUN2="${PATH_DATA}/${DESIGN_LABEL}_run-${DESIGN_RUNS[1]}.tsv"
 	RANDOM_TRUE_PARAMETERS="TRUE"
 	RANDOM_FIT_START_VALUES="TRUE"
   N_ITER=5
