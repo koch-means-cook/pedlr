@@ -65,13 +65,14 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 
 	# Randomize runs of design
 	DESIGN_RUNS=($(seq 1 2 | shuf))
-
-  # Function inputs
 	# Insert random run into designs to shuffle if run1 or run2 is first
   DESIGN_PATH_RUN1="${PATH_DATA}/${DESIGN_LABEL}_run-${DESIGN_RUNS[0]}.tsv"
 	DESIGN_PATH_RUN2="${PATH_DATA}/${DESIGN_LABEL}_run-${DESIGN_RUNS[1]}.tsv"
+
+  # Function inputs
 	RANDOM_TRUE_PARAMETERS="TRUE"
 	RANDOM_FIT_START_VALUES="TRUE"
+	RANDOM_DESIGN_RUN_ORDER="TRUE"
   N_ITER=5
 
 
@@ -127,6 +128,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 		 --fit_ub ${FIT_UB} \
 		 --random_true_parameters ${RANDOM_TRUE_PARAMETERS} \
 		 --random_fit_start_values ${RANDOM_FIT_START_VALUES} \
+		 --random_design_run_order ${RANDOM_DESIGN_RUN_ORDER} \
 		 --n_iter ${N_ITER}" >> job.slurm
 
   	# submit job to cluster queue and remove it to avoid confusion:
@@ -186,6 +188,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 		 --fit_ub ${FIT_UB} \
 		 --random_true_parameters ${RANDOM_TRUE_PARAMETERS} \
 		 --random_fit_start_values ${RANDOM_FIT_START_VALUES} \
+		 --random_design_run_order ${RANDOM_DESIGN_RUN_ORDER} \
 		 --n_iter ${N_ITER}" >> job.slurm
 
   	# submit job to cluster queue and remove it to avoid confusion:
@@ -245,6 +248,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 		 --fit_ub ${FIT_UB} \
 		 --random_true_parameters ${RANDOM_TRUE_PARAMETERS} \
 		 --random_fit_start_values ${RANDOM_FIT_START_VALUES} \
+		 --random_design_run_order ${RANDOM_DESIGN_RUN_ORDER} \
 		 --n_iter ${N_ITER}" >> job.slurm
 
   	# submit job to cluster queue and remove it to avoid confusion:
@@ -304,6 +308,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 		 --fit_ub ${FIT_UB} \
 		 --random_true_parameters ${RANDOM_TRUE_PARAMETERS} \
 		 --random_fit_start_values ${RANDOM_FIT_START_VALUES} \
+		 --random_design_run_order ${RANDOM_DESIGN_RUN_ORDER} \
 		 --n_iter ${N_ITER}" >> job.slurm
 
   	# submit job to cluster queue and remove it to avoid confusion:
@@ -365,6 +370,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 		 --fit_ub ${FIT_UB} \
 		 --random_true_parameters ${RANDOM_TRUE_PARAMETERS} \
 		 --random_fit_start_values ${RANDOM_FIT_START_VALUES} \
+		 --random_design_run_order ${RANDOM_DESIGN_RUN_ORDER} \
 		 --n_iter ${N_ITER}" >> job.slurm
 
   	# submit job to cluster queue and remove it to avoid confusion:
@@ -424,6 +430,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 		 --fit_ub ${FIT_UB} \
 		 --random_true_parameters ${RANDOM_TRUE_PARAMETERS} \
 		 --random_fit_start_values ${RANDOM_FIT_START_VALUES} \
+		 --random_design_run_order ${RANDOM_DESIGN_RUN_ORDER} \
 		 --n_iter ${N_ITER}" >> job.slurm
 
 		# submit job to cluster queue and remove it to avoid confusion:
@@ -483,6 +490,7 @@ for DESIGN_COUNT in ${DATA_LIST}; do
 		 --fit_ub ${FIT_UB} \
 		 --random_true_parameters ${RANDOM_TRUE_PARAMETERS} \
 		 --random_fit_start_values ${RANDOM_FIT_START_VALUES} \
+		 --random_design_run_order ${RANDOM_DESIGN_RUN_ORDER} \
 		 --n_iter ${N_ITER}" >> job.slurm
 
   	# submit job to cluster queue and remove it to avoid confusion:

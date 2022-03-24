@@ -29,6 +29,7 @@ Parameter_recovery_wrapper = function(output_path,
                                       fit_ub,
                                       random_true_parameters,
                                       random_fit_start_values,
+                                      random_design_run_order,
                                       n_iter){
   
   # Set parameter names for model
@@ -78,6 +79,14 @@ Parameter_recovery_wrapper = function(output_path,
         val = round(runif(1, fit_lb[i], fit_ub[i]), 3)
         fit_start_values = c(fit_start_values, val)
       }
+    }
+    # Design run order
+    if(random_design_run_order){
+      randomize = c(design_path_run1,
+                    design_path_run2)
+      randomize = sample(randomize)
+      design_path_run1 = randomize[1]
+      design_path_run2 = randomize[2]
     }
     
     # Give message to user
@@ -200,6 +209,11 @@ option_list = list(
               default = NULL,
               help = 'TRUE or FALSE if random start values should be used',
               metavar = 'RANDOM_FIT_START_VALUES'),
+  make_option(c('-z', '--random_design_run_order'),
+              type='character',
+              default = NULL,
+              help = 'TRUE or FALSE if first and second run of design should be randomized in order',
+              metavar = 'RANDOM_DESIGN_RUN_ORDER'),
   make_option(c('-n', '--n_iter'),
               type='integer',
               default = NULL,
@@ -221,6 +235,7 @@ Parameter_recovery_wrapper(output_path = opt$output_path,
                            fit_ub = opt$fit_ub,
                            random_true_parameters = opt$random_true_parameters,
                            random_fit_start_values = opt$random_fit_start_values,
+                           random_design_run_order = opt$random_design_run_order,
                            n_iter = opt$n_iter)
 
-# Rscript Parameter_recovery_wrapper.R --output_path "/Users/koch/Docs/pedlr/derivatives/parameter_recovery/_bla.tsv" --model Rw --design_path "/Users/koch/Docs/pedlr/pedlr-task/client/public/designs/design-01_run-1.tsv" --true_parameters 0.3,7 --fit_start_values 0.5,5 --fit_lb 0,1 --fit_ub 0.1,10 --random_true_parameters TRUE --random_fit_start_values TRUE --n_iter 2
+# Rscript Parameter_recovery_wrapper.R --output_path "/Users/koch/Docs/pedlr/derivatives/parameter_recovery/_bla.tsv" --model Rw --design_path_run1 "/Users/koch/Docs/pedlr/pedlr-task/client/public/designs/design-01_run-1.tsv" --design_path_run2 "/Users/koch/Docs/pedlr/pedlr-task/client/public/designs/design-01_run-2.tsv" --true_parameters 0.3,7 --fit_start_values 0.5,5 --fit_lb 0,1 --fit_ub 0.1,10 --random_true_parameters TRUE --random_fit_start_values TRUE --random_design_run_order TRUE --n_iter 1

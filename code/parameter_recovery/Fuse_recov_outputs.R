@@ -21,6 +21,7 @@ Fuse_recov_outputs = function(delete_source = FALSE){
   # Get designs
   path = file.path(here::here(), 'pedlr-task', 'client', 'public', 'designs', '*.tsv')
   designs = tools::file_path_sans_ext(basename(Sys.glob(path)))
+  designs = substr(designs, 1, 9)
   
   # Create name of outfile
   out_file = file.path(fuse_path,
@@ -31,7 +32,13 @@ Fuse_recov_outputs = function(delete_source = FALSE){
   # Loop over data of each design
   for(des in designs){
     # Loop over different models
-    for(model in c('Rw', 'Pedlr_simple', 'Pedlr', 'Pedlr_fixdep', 'Pedlr_interdep')){
+    for(model in c('Rw',
+                   'Pedlr_step',
+                   'Pedlr_simple',
+                   'Pedlr_simple_const',
+                   'Pedlr',
+                   'Pedlr_fixdep',
+                   'Pedlr_interdep')){
       
       # Get data for design and model
       pattern = paste(des,'*', model, '-*', '.tsv', sep = '')
@@ -59,6 +66,9 @@ Fuse_recov_outputs = function(delete_source = FALSE){
         # If source files should be deleted
         if(delete_source){
           unlink(data)
+          
+          # Give message to user
+          message(paste('   Deleted source for ', basename(out_file), '...', sep = ''))
         }
         
       }
@@ -74,8 +84,6 @@ Fuse_recov_outputs = function(delete_source = FALSE){
   
   # Give message to user
   message(paste('Created ', out_file, '...', sep = ''))
-  # Give message to user
-  message(paste('   Deleted source for ', basename(out_file), '...', sep = ''))
   message('...done')
   
 }
