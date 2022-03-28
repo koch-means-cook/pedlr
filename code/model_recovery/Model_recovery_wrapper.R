@@ -3,7 +3,7 @@ library(here)
 library(optparse)
 library(magrittr)
 
-source(file.path(here::here(), 'code', 'Model_recovery', 'Model_recovery.R',
+source(file.path(here::here(), 'code', 'model_recovery', 'Model_recovery.R',
                  fsep = .Platform$file.sep))
 
 # gen_model = 'Rw'
