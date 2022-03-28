@@ -97,6 +97,8 @@ n_participants = length(unique(data$participant_id))
 
 # Which model fits the data best?
 
+## Absolute best fit
+
 AIC-based model comparison.
 We focus on the key models, Rescorla-Wagner vs. Pedlr_step.
 Additionally, we had a number of competing models trying to capture different aspects of rare PE influences.
@@ -124,9 +126,9 @@ data_best_fit = data_aic %>%
 data_only_best_fit = data_best_fit[model == best_fitting_model,]
 ```
 
-## Plot {.tabset}
+### Plot {.tabset}
 
-### Focus: Rw & Pedlr_step
+#### Focus: Rw & Pedlr_step
 
 ```{r}
 data_plot = Prepare_data_for_plot(data_only_best_fit)
@@ -160,7 +162,7 @@ knitr::kable(table) %>%
 -   look at fit as function of behavioral results
     -   e.g. effect of rare outcome ==\> fit of pedlr
 
-### All models
+#### All models
 
 ```{r}
 data_best_fit_all = data_aic %>%
@@ -268,6 +270,71 @@ knitr::kable(table) %>%
 
 <!-- Neurocodify_plot(p_alpha1) -->
 <!-- ``` -->
+
+---
+
+## Relative best fit
+
+```{r}
+data_aic_diff = data_best_fit %>%
+  # Put into long format to compare AIC as difference
+  data.table::dcast(participant_id + group + real_iter + best_fitting_model ~ model, value.var = 'AIC') %>%
+  # RW - Pedlr_step: above 0 = better fit pedlr_step
+  .[, AIC_RWmPedlr_step := Rw - Pedlr_step]
+```
+
+### Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(data_aic_diff)
+
+dodge_width = 0.075
+jitter_width = dodge_width/2
+
+p = ggplot(data = data_plot,
+       aes(x = group,
+           y = AIC_RWmPedlr_step,
+           color = group,
+           fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
+  geom_point(position = position_jitternudge(jitter.width = jitter_width,
+                                             jitter.height = 0,
+                                             nudge.x = dodge_width + jitter_width/2,
+                                             seed = 666),
+             alpha = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = dodge_width/2) +
+  gghalves::geom_half_violin(color = NA,
+                             position = position_nudge(x = -dodge_width)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 3,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+```
+
+```{r}
+# Overall best fitting model
+t.test(data_aic_diff$Rw,
+       data_aic_diff$Pedlr_step,
+       paired = TRUE)
+
+# Group comparison
+t.test(data_aic_diff[group == 'younger']$AIC_RWmPedlr_step,
+       data_aic_diff[group == 'older']$AIC_RWmPedlr_step)
+```
+
+Sample-wide AIC comparison (Pedlr_step vs. Rw): Pedlr_step wins
+
+---
 
 ## Does the best fitting model capture the central effect?
 
@@ -388,6 +455,7 @@ window_data_run = window_data %>%
 data_sanity = data.table::merge.data.table(data_model, window_data_run,
                                            by = c('participant_id', 'group'))
 ```
+
 #### All participants (including those with other models fitting best)
 
 ```{r}
@@ -1324,6 +1392,77 @@ p = ggplot(data = Prepare_data_for_plot(data_sanity_split),
 Neurocodify_plot(p)
 ```
 
+#### Permutation test
+
+```{r}
+# Function to get within age group difference (n overweight - n underweight)
+# and then across age group difference (diff young - diff_old)
+GetWeight_OvermUnder_YoungmOld = function(data){
+  temp = data %>%
+    .[, c('group', 'weight_high_pe')] %>%
+    .[, .(n = .N),
+    by = c('group', 'weight_high_pe')] %>%
+    data.table::dcast(group ~ weight_high_pe, value.var = 'n') %>%
+    .[, diff := overweight - underweight]
+  weight_age_diff = temp[group == 'younger']$diff - temp[group == 'older']$diff
+  return(weight_age_diff)
+}
+
+# Get difference for real data
+real_weight_age_diff = GetWeight_OvermUnder_YoungmOld(data_sanity_split)
+
+# Create permuted data
+n_perm = 10000
+# Copy original data for each permutation
+data_perm = do.call("rbind", replicate(n_perm, data_sanity_split, simplify = FALSE)) %>%
+  # Add permutation iteration identifier
+  .[, perm_iter := rep(seq(n_perm), each = nrow(data_sanity_split))] %>%
+  # # Draw weighter variable randomly (coin flip what kind if weighter you are)
+  # .[, weight_high_pe := sample(unique(weight_high_pe),
+  #                              nrow(data_sanity_split),
+  #                              replace = TRUE),
+  #   by = 'perm_iter'] %>%
+  # Sample weighter variable, keeping frequency of each weight as in original sample
+  .[, weight_high_pe := sample(weight_high_pe),
+    by = 'perm_iter'] %>%
+  # Get difference for each permutation
+  .[, .(weight_age_diff = GetWeight_OvermUnder_YoungmOld(.SD)),
+    by = 'perm_iter']
+```
+
+
+```{r}
+data_plot = data_perm
+
+ggplot(data = data_perm,
+       aes(x = weight_age_diff)) +
+  geom_histogram(binwidth = 2) +
+  geom_vline(xintercept = real_weight_age_diff,
+             color = 'red')
+
+# Get percentage of samples lower than real value
+mean(data_perm$weight_age_diff < real_weight_age_diff)
+
+quantile(data_perm$weight_age_diff, probs = .025)
+```
+
+#### Chi square test
+
+```{r}
+data_chi = data_sanity_split %>%
+  .[, c('group', 'weight_high_pe')] %>%
+  data.table::dcast(group ~ weight_high_pe, fun.aggregate = length)
+groups = data_chi$group
+data_chi = data_chi[,c('overweight', 'underweight')]
+rownames(data_chi) = groups
+
+
+bla = chisq.test(data_chi)
+bla
+bla$expected
+```
+
+
 ### Only Pedlr_step
 
 ```{r}
@@ -1338,6 +1477,21 @@ p = ggplot(data = Prepare_data_for_plot(data_sanity_split[best_fitting_model == 
 Neurocodify_plot(p)
 ```
 
+#### Chi square test
+
+```{r}
+data_chi = data_sanity_split[best_fitting_model == 'Pedlr_step'] %>%
+  .[, c('group', 'weight_high_pe')] %>%
+  data.table::dcast(group ~ weight_high_pe, fun.aggregate = length)
+groups = data_chi$group
+data_chi = data_chi[,c('overweight', 'underweight')]
+rownames(data_chi) = groups
+
+
+bla = chisq.test(data_chi)
+bla
+bla$expected
+```
 
 ## Overweighters = higher influence of rare events? {.tabset}
 

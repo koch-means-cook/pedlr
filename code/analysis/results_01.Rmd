@@ -401,24 +401,27 @@ bweights
 ```{r}
 out = data.table(bla$coefficients)
 
-plot_t = data.table(x = seq(-5,5, by = 0.01),
-                    y = dt(seq(-5,5, by = 0.01), df=bla$df[2]))
- p = ggplot(data = plot_t,
-       aes(x = x,
-           y = y)) +
+plot_t = data.table(x = seq(-5,5, by = 0.001),
+                    y = dt(seq(-5,5, by = 0.001), df=bla$df[2]))
+p = ggplot(data = plot_t,
+           aes(x = x,
+               y = y)) +
   geom_path() +
-   # Mark cut-offs
+  # Mark cut-offs
   geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
              linetype = 'dashed') +
-   # Mark t-value of group statistic
+  # Mark t-value of group statistic
   geom_vline(xintercept = out$`t value`[2],
              color = 'red') +
-   labs(x = 't-Value',
-        y = 'Density',
-        main = 't-Distribution for group effect') +
-   scale_y_continuous(expand = c(0,0))
- Neurocodify_plot(p) +
-   theme(panel.grid = element_blank())
+  labs(x = 't-Value',
+       y = 'Density',
+       main = 't-Distribution for group effect') +
+  scale_y_continuous(expand = c(0,0))
+Neurocodify_plot(p) +
+  theme(panel.grid = element_blank())
+
+p_value = plot_t[x == round(out$`t value`[2], 3)]$y
+p_value
 ```
 
 
@@ -511,6 +514,139 @@ data_test = check_risk %>%
 knitr::kable(data_test) %>%
   kableExtra::kable_styling()
 ```
+
+### Robust regression
+
+### Standard OLS
+
+#### Regression model
+
+```{r}
+# Standard OLS
+ols = lm(perc_choice_2 ~ group * run,
+         data = check_risk)
+summary(ols)
+```
+
+#### Plot residuals, QQ, weighting, and leverage
+
+```{r}
+# Plot residuals, QQ, weighting, and leverage
+opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
+plot(ols, las = 1)
+```
+
+#### Display by cooks distance
+
+```{r}
+# Display values with large cook's distance
+cooks_d <- cooks.distance(ols)
+r <- stdres(ols)
+a <- cbind(check_risk, cooks_d, r)
+# Conventional cut-off (https://stats.oarc.ucla.edu/r/dae/robust-regression/)
+cutoff = 4/nrow(check_risk)
+# Only absolute residuals matter
+a = a %>%
+  .[, ':='(abs_r = abs(r),
+           cutoff = cooks_d > cutoff)] %>%
+  .[order(rank(-abs_r))]
+a
+```
+
+### Robust regression
+
+Both robust regression approaches agree in significant group effect.
+
+#### Robust Regression with Huber weights
+
+```{r}
+# Robust Regression model (huber weights)
+rr.huber = MASS::rlm(perc_choice_2 ~ group * run,
+                     data = check_risk)
+bla = summary(rr.huber)
+bla
+
+# Look at weights created by RR (low weights = "outlier-y behavior")
+hweights = check_risk %>%
+  .[, ':='(resid = rr.huber$resid,
+           weight = rr.huber$w)] %>%
+  # Sort by weight
+  .[order(rank(weight)),]
+hweights
+```
+
+```{r}
+out = data.table(bla$coefficients)
+
+plot_t = data.table(x = seq(-5,5, by = 0.01),
+                    y = dt(seq(-5,5, by = 0.01), df=bla$df[2]))
+ p = ggplot(data = plot_t,
+       aes(x = x,
+           y = y)) +
+  geom_path() +
+   # Mark cut-offs
+  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
+             linetype = 'dashed') +
+   # Mark t-value of group statistic
+  geom_vline(xintercept = out$`t value`[2],
+             color = 'red') +
+   labs(x = 't-Value',
+        y = 'Density',
+        main = 't-Distribution for group effect') +
+   scale_y_continuous(expand = c(0,0))
+ Neurocodify_plot(p) +
+   theme(panel.grid = element_blank())
+ 
+ p_value = plot_t[x == round(out$`t value`[2], 2)]$y
+p_value
+```
+
+
+#### Robust Regression with Bisquare weights
+
+```{r}
+# Robust regression (bisquare weights)
+rr.bisquare = MASS::rlm(perc_choice_2 ~ group * run,
+                     data = check_risk,
+                     psi = psi.bisquare)
+bla = summary(rr.bisquare)
+bla
+
+# Look at weights created by RR (low weights = "outlier-y behavior")
+bweights = check_risk %>%
+  .[, ':='(resid = rr.bisquare$resid,
+           weight = rr.bisquare$w)] %>%
+  # Sort by weight
+  .[order(rank(weight)),]
+bweights
+```
+
+```{r}
+out = data.table(bla$coefficients)
+
+plot_t = data.table(x = seq(-5,5, by = 0.001),
+                    y = dt(seq(-5,5, by = 0.001), df=bla$df[2]))
+p = ggplot(data = plot_t,
+           aes(x = x,
+               y = y)) +
+  geom_path() +
+  # Mark cut-offs
+  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
+             linetype = 'dashed') +
+  # Mark t-value of group statistic
+  geom_vline(xintercept = out$`t value`[2],
+             color = 'red') +
+  labs(x = 't-Value',
+       y = 'Density',
+       main = 't-Distribution for group effect') +
+  scale_y_continuous(expand = c(0,0))
+Neurocodify_plot(p) +
+  theme(panel.grid = element_blank())
+
+p_value = plot_t[x == round(out$`t value`[2], 2)]$y
+p_value
+```
+
 
 ---
 
