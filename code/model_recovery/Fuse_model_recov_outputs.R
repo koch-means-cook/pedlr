@@ -15,7 +15,7 @@ Fuse_model_recov_outputs = function(delete_source = FALSE){
   # Get repo dir
   base_path = here::here()
   # Get dir of data to fuse
-  fuse_path = file.path(base_path, 'derivatives', 'parameter_recovery',
+  fuse_path = file.path(base_path, 'derivatives', 'model_recovery',
                         fsep = .Platform$file.sep)
   
   # Get designs
@@ -25,7 +25,7 @@ Fuse_model_recov_outputs = function(delete_source = FALSE){
   
   # Create name of outfile
   out_file = file.path(fuse_path,
-                       'param_recov.tsv',
+                       'model_recov.tsv',
                        fsep = .Platform$file.sep)
   out = data.table()
   
@@ -33,10 +33,10 @@ Fuse_model_recov_outputs = function(delete_source = FALSE){
   for(des in designs){
     # Loop over different models
     for(model in c('Rw',
-                   'Pedlr_step',
                    'Pedlr_simple',
                    'Pedlr_simple_const',
                    'Pedlr',
+                   'Pedlr_step',
                    'Pedlr_fixdep',
                    'Pedlr_interdep')){
       
@@ -57,8 +57,6 @@ Fuse_model_recov_outputs = function(delete_source = FALSE){
           file_count = file_count[length(file_count)]
           file_count = as.numeric(substr(file_count, 1,3))
           temp$file = file_count
-          # Add model as column
-          temp$model = model
           # Bind individual file to complete file of participant
           out = rbind(out, temp)
         }
@@ -102,5 +100,5 @@ opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
 
 # Call function
-Fuse_recov_outputs(delete_source = opt$delete_source)
+Fuse_model_recov_outputs(delete_source = opt$delete_source)
 
