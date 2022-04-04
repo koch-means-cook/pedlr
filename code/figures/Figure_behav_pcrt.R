@@ -14,6 +14,184 @@ library(magick)
 library(patchwork)
 library(sdamr)
 
+Figure_pc_learn = function(){
+  
+  # Get directory of repository
+  base_path = here::here()
+  
+  # Load pre-written functions
+  source_path = file.path(base_path, 'code', 'utils',
+                          fsep = .Platform$file.sep)
+  source_files = list.files(source_path, pattern = "[.][rR]$",
+                            full.names = TRUE, recursive = TRUE)
+  invisible(lapply(source_files, function(x) source(x)))
+  
+  # Get color schemes
+  custom_guides = Get_plot_guides()
+  
+  data = Load_data() %>%
+    Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
+    Add_comp(.) %>%
+    .[, run := as.factor(run)] %>%
+    # Get trial counter
+    .[, trial := seq(.N),
+      by = c('participant_id', 'run')] %>%
+    # Bin trials
+    .[, bin := rep(seq(4), each = .N/length(seq(4))),
+      by = c('participant_id', 'run')] %>%
+    .[, bin := factor(bin)] %>%
+    # Focus on free choice trials
+    .[trial_type == 'choice',] %>%
+    # Get if trial was answered correctly
+    .[, correct_choice := if(option_left > option_right) 'left' else 'right',
+      by = c('participant_id', 'run', 'trial')] %>%
+    .[, correct := correct_choice == choice] %>%
+    # Get percentage of correct choices (exclude timeouts from overall trials)
+    .[, .(perc_correct = mean(correct, na.rm = TRUE)),
+      by = c('participant_id', 'group', 'run', 'bin', 'comp')] %>%
+    # Average across runs
+    .[, .(perc_correct = mean(perc_correct, na.rm = TRUE)),
+      by = c('participant_id', 'group', 'bin', 'comp')]
+  # level and rename bins
+  data$bin = factor(data$bin)
+  levels(data$bin) = c('0-60', '61-120', '121-180', '181-240')
+  # level and rename comps
+  data$comp = factor(data$comp)
+  levels(data$comp) = c('Low-Mid', 'Mid-High', 'Low-High')
+  
+  data_mean = data %>%
+    .[, .(perc_correct = mean(perc_correct),
+          sd = sd(perc_correct)),
+      by = c('bin', 'comp')] %>%
+    .[, ':='(ymin = perc_correct - sd,
+             ymax = perc_correct + sd)]
+  
+  dodge_width = 0.5
+  
+  p = ggplot(data = Prepare_data_for_plot(data),
+         aes(x = bin,
+             y = perc_correct,
+             color = comp,
+             fill = comp)) +
+    geom_boxplot(outlier.shape = NA,
+                 position = position_dodge(width = dodge_width),
+                 width = dodge_width/2,
+                 color = 'black',
+                 alpha = 0.2,
+                 size = 0.1,
+                 show.legend = FALSE) +
+    geom_line(data = Prepare_data_for_plot(data_mean),
+              aes(group = comp),
+              size = 1,
+              position = position_dodge(width = dodge_width)) +
+    geom_point(data = Prepare_data_for_plot(data_mean),
+               shape = 23,
+               fill = 'white',
+               size = 1.5,
+               stroke = 1,
+               position = position_dodge(width = dodge_width)) +
+    labs(x = 'Trials',
+         y = 'Percentage correct') +
+    scale_y_continuous(limits = c(0,1))
+  
+  p = Neurocodify_plot(p) +
+    theme(panel.grid = element_blank(),
+          axis.title.x = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(10,0,0,0,'pt')),
+          axis.title.y = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(0,10,0,0,'pt')),
+          legend.title = element_blank(),
+          legend.direction = 'vertical',
+          legend.position = c(0.5,0.22),
+          legend.key = element_rect(fill = 'transparent'),
+          legend.background = element_rect(fill = 'transparent'),
+          plot.margin = margin(0,10,10,0,'pt'))
+  
+  return(p)
+  
+}
+
+Figure_pc_run = function(){
+  
+  # Get directory of repository
+  base_path = here::here()
+  
+  # Load pre-written functions
+  source_path = file.path(base_path, 'code', 'utils',
+                          fsep = .Platform$file.sep)
+  source_files = list.files(source_path, pattern = "[.][rR]$",
+                            full.names = TRUE, recursive = TRUE)
+  invisible(lapply(source_files, function(x) source(x)))
+  
+  # Get color schemes
+  custom_guides = Get_plot_guides()
+  
+  data = Load_data() %>%
+    Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
+    Add_comp(.) %>%
+    .[, run := as.factor(run)] %>%
+    # Get trial counter
+    .[, trial := seq(.N),
+      by = c('participant_id', 'run')] %>%
+    # Focus on free choice trials
+    .[trial_type == 'choice',] %>%
+    # Get if trial was answered correctly
+    .[, correct_choice := if(option_left > option_right) 'left' else 'right',
+      by = c('participant_id', 'run', 'trial')] %>%
+    .[, correct := correct_choice == choice] %>%
+    # Get percentage of correct choices (exclude timeouts from overall trials)
+    .[, .(perc_correct = mean(correct, na.rm = TRUE)),
+      by = c('participant_id', 'group', 'run')]
+  
+  dodge_width = 0.5
+  
+  p = ggplot(data = Prepare_data_for_plot(data),
+             aes(x = run,
+                 y = perc_correct)) +
+    geom_point(size = 0.4,
+               position = position_jitter(width = 0.1,
+                                          height = 0,
+                                          seed = 666)) +
+    geom_boxplot(width = 0.4,
+                 color = 'black',
+                 outlier.shape = NA) +
+    stat_summary(fun = 'mean',
+                 geom = 'line',
+                 group = 'run',
+                 na.rm = TRUE,
+                 size = 0.5) +
+    stat_summary(fun = 'mean',
+                 geom = 'point',
+                 na.rm = TRUE,
+                 shape = 23,
+                 fill = 'white',
+                 size = 1.5,
+                 stroke = 0.5) +
+    labs(x = 'Run',
+         y = 'Percentage correct') +
+    scale_y_continuous(limits = c(0,1))
+  
+  p = Neurocodify_plot(p) +
+    theme(panel.grid = element_blank(),
+          axis.title.x = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(10,0,0,0,'pt')),
+          axis.title.y = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(0,10,0,0,'pt')),
+          legend.title = element_blank(),
+          legend.direction = 'vertical',
+          legend.position = c(0.5,0.22),
+          legend.key = element_rect(fill = 'transparent'),
+          legend.background = element_rect(fill = 'transparent'),
+          plot.margin = margin(0,0,10,10,'pt'))
+  
+  return(p)
+  
+}
+
 Figure_pc_overall = function(){
   
   # Get directory of repository
@@ -31,7 +209,7 @@ Figure_pc_overall = function(){
   
   # Load data
   data = Load_data() %>%
-    Apply_exclusion_criteria(.) %>%
+    Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
     Add_comp(.) %>%
     .[, run := as.factor(run)]
   
@@ -48,21 +226,17 @@ Figure_pc_overall = function(){
     .[, correct := correct_choice == choice] %>%
     # Get percentage of correct choices (exclude timeouts from overall trials)
     .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
-      by = c('participant_id', 'group', 'run', 'comp')]
+      by = c('participant_id', 'group', 'comp')]
   
   # Prepare plotting data
   data_plot = Prepare_data_for_plot(check_noc)
-  
-  # Convert to percentages
-  data_plot$perc_correct = 100*data_plot$perc_correct
   
   # Rename plotted factor levels
   levels(data_plot$comp) = c('LM',
                              'MH',
                              'LH')
-  levels(data_plot$run) = c('Run 1',
-                            'Run 2')
   
+  dodge_width = 0.3
   
   # Plot (size 3x3 inches)
   p_pc_overall = ggplot(data = data_plot,
@@ -71,14 +245,14 @@ Figure_pc_overall = function(){
                             color = group,
                             fill = group)) +
     geom_point(size = 0.4,
-               position = position_jitterdodge(dodge.width = 0.6,
-                                               jitter.width = 0.2,
+               position = position_jitterdodge(dodge.width = dodge_width,
+                                               jitter.width = dodge_width/2,
                                                jitter.height = 0,
                                                seed = 666)) +
-    geom_boxplot(width = 0.4,
-                 color = 'black',
+    geom_boxplot(color = 'black',
                  outlier.shape = NA,
-                 position = position_dodge(width = 0.6)) +
+                 width = dodge_width,
+                 position = position_dodge(width = dodge_width)) +
     stat_summary(fun = 'mean',
                  geom = 'point',
                  na.rm = TRUE,
@@ -86,26 +260,34 @@ Figure_pc_overall = function(){
                  fill = 'white',
                  size = 1.5,
                  stroke = 0.5,
-                 position = position_dodge(width = 0.6)) +
+                 position = position_dodge(width = dodge_width)) +
     scale_color_manual(values = custom_guides) +
     scale_fill_manual(values = custom_guides) +
-    facet_grid( ~ run) +
-    scale_x_discrete(labels = c('LM\n', 'MH\n', 'LH\n')) +
+    scale_x_discrete(labels = c('Low\n-\nMid', 'Mid\n-\nHigh', 'Low\n-\nHigh')) +
     labs(x = 'Presented combination of arms',
          y = 'Optimal choices (in %)') +
-    theme(strip.text.y = element_text(angle = 0))
+    theme(strip.text.y = element_text(angle = 0),
+          axis.text.x = element_text(lineheight = 0.7),
+          axis.title.x = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(10,0,0,0,'pt')),
+          axis.title.y = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(0,10,0,0,'pt')))
   
   # Additional design
   p_pc_overall = Neurocodify_plot(p_pc_overall) +
     theme(panel.grid = element_blank(),
-          legend.position = c(0.05,0.1),
-          legend.background = element_rect(fill = '#f5f5f5'),
+          legend.position = 'right',
           legend.title = element_blank(),
           legend.key.size = unit(5, 'pt'),
+          legend.key = element_rect(fill = 'transparent'),
           legend.text = element_text(size = 8),
-          legend.justification = c(0,0),
-          legend.direction = 'horizontal',
-          legend.margin = margin(0,0,0,0,'pt'))
+          legend.justification = c(0.5,0.5),
+          legend.direction = 'vertical',
+          legend.margin = margin(0,0,0,0,'pt'),
+          legend.background = element_rect(fill = 'transparent'),
+          plot.margin = margin(10,10,0,0,'pt'))
   
   return(p_pc_overall)
   
@@ -128,7 +310,7 @@ Figure_behav_rt_diff = function(){
   
   # Load data
   data = Load_data() %>%
-    Apply_exclusion_criteria(.) %>%
+    Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
     Add_comp(.) %>%
     .[, run := as.factor(run)]
   
@@ -206,10 +388,17 @@ Figure_behav_rt_diff = function(){
     scale_color_manual(values = custom_guides) +
     scale_fill_manual(values = custom_guides) +
     labs(x = 'Age group',
-         y = "Difference in mean log(RT)\n(LM - MH)")
+         y = "Difference in mean log(RT)\n(Low-Mid vs. Mid-High)")
   p_rt_diff = Neurocodify_plot(p_rt_diff) +
     theme(panel.grid = element_blank(),
-          legend.position = 'None')
+          legend.position = 'None',
+          axis.title.x = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(10,0,0,0,'pt')),
+          axis.title.y = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(0,10,0,0,'pt')),
+          plot.margin = margin(10,0,0,10,'pt'))
   
   return(p_rt_diff)
   
@@ -231,18 +420,18 @@ Figure_behav_pcrt = function(){
   custom_guides = Get_plot_guides()
   
   # Get plots
-  p_pc_overall = Figure_pc_overall() +
-    theme(plot.margin = margin(0,10,0,0, 'pt'))
-  p_rt_diff = Figure_behav_rt_diff() +
-    theme(plot.margin = margin(0,0,0,10, 'pt'))
+  p_pc_learning = Figure_pc_learn()
+  p_pc_run = Figure_pc_run()
+  p_pc_overall = Figure_pc_overall()
+  p_rt_diff = Figure_behav_rt_diff()
   
   # Combine plots
-  behav_pcrt = cowplot::plot_grid(p_pc_overall, p_rt_diff,
-                                  rel_widths = c(2,1),
+  behav_pcrt = cowplot::plot_grid(p_pc_learning, p_pc_run, p_pc_overall, p_rt_diff,
+                                  rel_widths = c(3,2),
                                   rel_heights = c(1,1),
-                                  axis = 'tblr',
-                                  align = 'hv',
-                                  labels = c('A','B'))
+                                  axis = 'tb',
+                                  align = 'h',
+                                  labels = c('A','B', 'C', 'D'))
   
   return(behav_pcrt)
   

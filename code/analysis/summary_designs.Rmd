@@ -157,6 +157,32 @@ ggplot(data = data_plot,
   guides(alpha = FALSE)
 ```
 
+# Vary range
+
+```{r}
+data_range = data %>%
+  .[, .(stim = c(option_left, option_right),
+        outcome = c(reward_stim_1, reward_stim_2)),
+    by = c('n_design', 'task_version')] %>%
+  .[, stim := as.factor(stim)] %>%
+  # Add each value once so all outcomes are counted for each stimulus
+  .[, .(outcome = c(outcome, seq(1,100))),
+    by = c('n_design', 'task_version', 'stim')] %>%
+  # get average outcome for each design and stimulus
+  .[, .(bandit_mean = mean(outcome)),
+    by = c('n_design', 'task_version', 'stim')] %>%
+  # Get vary range across all designs
+  .[, .(min = min(bandit_mean),
+        max = max(bandit_mean)),
+    by = c('stim')] %>%
+  # get range
+  .[, range := max - min]
+
+knitr::kable(data_range) %>%
+  kableExtra::kable_styling()
+```
+
+
 # Estimation trials
 
 ```{r, fig.height=n_designs/3, fig.width=6, out.width='100%'}

@@ -149,10 +149,14 @@ Figure_dist_schema = function(){
           legend.position = 'none',
           panel.grid = element_blank(),
           #axis.text = element_text(size = 15),
-          axis.title = element_text(size = 10),
-          axis.title.y = element_text(margin = margin(0,10,0,0, unit = 'pt')),
+          axis.title.x = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(10,0,0,0, unit = 'pt')),
+          axis.title.y = element_text(size = 10,
+                                      face = 'bold',
+                                      margin = margin(0,10,0,0, unit = 'pt')),
           axis.ticks.length = unit(4, units = 'pt'),
-          plot.margin = margin(0,0,0,0))
+          plot.margin = margin(0,0,0,10))
   
   return(p_dist_schema)
     
@@ -175,12 +179,17 @@ Figure_task = function(){
                    fsep = .Platform$file.sep)
   task = magick::image_read_pdf(file)
   p_task = magick::image_ggplot(task, interpolate = FALSE) +
-    theme(plot.margin = margin(0,0,0,0))
+    theme(plot.margin = margin(0,10,0,0))
   
   p_dist_schema = Figure_dist_schema()
   
-  p_task_complete = p_task + p_dist_schema +
-    patchwork::plot_annotation(tag_levels = 'A')
+  # p_task_complete = p_task + p_dist_schema +
+  #   patchwork::plot_annotation(tag_levels = 'A')
+  
+  p_task_complete = cowplot::plot_grid(p_task, p_dist_schema,
+                         ncol = 2,
+                         rel_widths = c(1,1),
+                         labels = c('A', 'B'))
 
 
   return(p_task_complete)
