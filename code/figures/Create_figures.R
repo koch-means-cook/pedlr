@@ -23,7 +23,10 @@ Create_figures = function(){
   p_pr = Figure_parameter_recovery()
   file = file.path(base_path, 'derivatives', 'figures', 'f_pr.pdf',
                    fsep = .Platform$file.sep)
-  ggsave(file, p_pr, width = 6, height = 2)
+  ggsave(file,
+         p_pr,
+         width = 6,
+         height = 2)
   
   
   # Task figure
@@ -44,7 +47,7 @@ Create_figures = function(){
          plot = p_pcrt,
          device = 'pdf',
          width = 6,
-         height = 6)
+         height = 8)
   
   # Behavioral data (rare influence)
   p_ri = Figure_behav_ri()

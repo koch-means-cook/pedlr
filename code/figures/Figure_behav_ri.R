@@ -14,6 +14,8 @@ library(magick)
 library(patchwork)
 library(sdamr)
 
+
+
 Figure_behav_rie = function(){
   
   # Get directory of repository
@@ -88,7 +90,8 @@ Figure_behav_rie = function(){
     scale_x_continuous(breaks = seq(min(data_plot$window_relative),
                                     max(data_plot$window_relative))) +
     scale_y_continuous(limits = c(0,1)) +
-    ggtext::geom_richtext(x = 0,
+    ggtext::geom_richtext(data = data_plot[window_relative %in% c('-1', '1', '2')][1],
+                          x = 0,
                           y = 0.4,
                           label = 'Rare outcome<br>in mid bandit',
                           fill = 'white',
@@ -96,17 +99,9 @@ Figure_behav_rie = function(){
                           angle = 90,
                           size = 3,
                           hjust = 0.5) +
-    labs(x = 'Relative position of low-mid comparison',
+    labs(x = 'Relative position of Low-Mid trial',
          y = 'p(choice = Mid | Low-Mid)') +
-    theme(legend.position = c(0.17,0.12),
-          legend.title = element_blank(),
-          legend.text = element_text(size = 7),
-          legend.background = element_rect(color = 'transparent',
-                                           fill = 'transparent',
-                                           size = 0.5),
-          legend.key = element_rect(fill = 'transparent'),
-          legend.direction = 'vertical',
-          legend.margin = margin(0,0,5,5, 'pt'),
+    theme(legend.position = 'none',
           axis.title.x = element_text(size = 10,
                                       face = 'bold',
                                       margin = margin(10,0,0,0,'pt')),
@@ -196,7 +191,8 @@ Figure_behav_ric = function(){
     scale_x_continuous(breaks = seq(min(data_plot$window_relative),
                                     max(data_plot$window_relative))) +
     scale_y_continuous(limits = c(0,1)) +
-    ggtext::geom_richtext(x = 0,
+    ggtext::geom_richtext(data = data_plot[window_relative %in% c('-1', '1', '2')][1],
+                          x = 0,
                           y = 0.4,
                           label = '20-40th percentile<br>outcome in mid bandit',
                           fill = 'white',
@@ -204,9 +200,17 @@ Figure_behav_ric = function(){
                           angle = 90,
                           size = 3,
                           hjust = 0.5) +
-    labs(x = 'Relative position of low-mid comparison',
+    labs(x = 'Relative position of Low-Mid trial',
          y = '') +
-    theme(legend.position = 'none',
+    theme(legend.position = 'left',
+          legend.title = element_blank(),
+          legend.text = element_text(size = 7),
+          legend.background = element_rect(color = 'transparent',
+                                           fill = 'transparent',
+                                           size = 0.5),
+          legend.key = element_rect(fill = 'transparent'),
+          legend.direction = 'vertical',
+          legend.margin = margin(0,0,0,0, 'pt'),
           axis.title.x = element_text(size = 10,
                                       face = 'bold',
                                       margin = margin(10,0,0,0,'pt')),
@@ -228,11 +232,11 @@ Figure_behav_ri = function(){
   p_ric = Figure_behav_ric()
   p_behav_ri = cowplot::plot_grid(p_rie, p_ric,
                                   ncol = 2,
-                                  rel_widths = c(1,1),
+                                  rel_widths = c(3,4),
                                   rel_heights = c(1,1),
-                                  axis = 'tblr',
+                                  axis = 'tb',
                                   align = 'hv',
-                                  labels = c('A','B'))
+                                  labels = c('',''))
   
   return(p_behav_ri)
   
