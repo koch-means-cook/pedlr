@@ -66,7 +66,7 @@ Figure_behav_ed = function(){
                  stroke = 0.5,
                  show.legend = FALSE,
                  position = position_dodge(width = dodge_width)) +
-    labs(x = 'Compared arms',
+    labs(x = 'Compared bandits',
          y = 'Bias in estimated distance') +
     scale_y_continuous(breaks = seq(-40, 40, by = 10)) +
     scale_color_manual(values = custom_guides) +

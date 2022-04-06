@@ -95,6 +95,19 @@ data$model = factor(data$model, levels = c('Rw',
 n_participants = length(unique(data$participant_id))
 ```
 
+# Variability in fitting iterations
+
+```{r}
+data_fit_var = data %>%
+  .[, .(sd_solution = sd(second_solution)),
+    by = c('participant_id', 'group', 'model', 'para')] %>%
+  .[, .(average_sd_solution = mean(sd_solution)),
+    by = c(c('model', 'para'))]
+knitr::kable(data_fit_var) %>%
+  kableExtra::kable_styling()
+```
+
+
 # Which model fits the data best?
 
 ## Absolute best fit
@@ -1768,8 +1781,8 @@ file = file.path(base_path, 'derivatives', 'figures', 'f_mv_ri.tsv',
 data.table::fwrite(data_plot, file, sep = '\t', na = 'n/a', row.names = FALSE)
 
 p = ggplot(data = data_plot,
-       aes(x = diff_1m0_z,
-           y = preminuspost_z,
+       aes(x = diff_1m0,
+           y = preminuspost,
            color = group)) +
   geom_hline(yintercept = 0,
              size = 0.5) +
@@ -1777,22 +1790,20 @@ p = ggplot(data = data_plot,
   geom_smooth(method = 'lm',
               formula = y ~ x,
               color = 'black') +
-  scale_color_manual(values = custom_guides) +
-  scale_y_continuous(limits = c(-4, 4)) +
-  scale_x_continuous(limits = c(-4, 4))
+  scale_color_manual(values = custom_guides)
 Neurocodify_plot(p)
 ```
 
 
 ```{r}
 lm = lm(data = data_sanity_split,
-        preminuspost_z ~ diff_1m0_z)
+        preminuspost ~ diff_1m0)
 summary(lm)
 ```
 
 ```{r}
 lm = lm(data = data_sanity_split[best_fitting_model == 'Pedlr_step'],
-        preminuspost_z ~ diff_1m0_z)
+        preminuspost ~ diff_1m0)
 summary(lm)
 ```
 
@@ -1876,8 +1887,8 @@ file = file.path(base_path, 'derivatives', 'figures', 'f_mv_ed.tsv',
 data.table::fwrite(data_plot, file, sep = '\t', na = 'n/a', row.names = FALSE)
 
 p = ggplot(data = data_plot,
-       aes(x = diff_1m0_z,
-           y = behav_contrast_z,
+       aes(x = diff_1m0,
+           y = diff_EmR_2m1,
            color = group)) +
   geom_hline(yintercept = 0,
              size = 0.5) +
@@ -1885,21 +1896,19 @@ p = ggplot(data = data_plot,
   geom_smooth(method = 'lm',
               formula = y ~ x,
               color = 'black') +
-  scale_color_manual(values = custom_guides) +
-  scale_y_continuous(limit = c(-4,4)) +
-  scale_x_continuous(limit = c(-4,4))
+  scale_color_manual(values = custom_guides)
 Neurocodify_plot(p)
 ```
 
 ```{r}
 lm = lm(data = check_est_dist,
-        behav_contrast_z ~ diff_1m0_z)
+        diff_EmR_2m1 ~ diff_1m0)
 summary(lm)
 ```
 
 ```{r}
 lm = lm(data = check_est_dist[best_fitting_model == 'Pedlr_step'],
-        behav_contrast_z ~ diff_1m0_z)
+        diff_EmR_2m1 ~ diff_1m0)
 summary(lm)
 ```
 
