@@ -69,35 +69,45 @@ Create_figures = function(){
          width = 2.5,
          height = 3)
   
-  # Model (model comparison)
-  p_mc = Figure_model_comp()
-  out_file = file.path(base_path, 'derivatives', 'figures', 'f_mc.pdf',
-                       fsep = .Platform$file.sep)
-  ggsave(filename = out_file,
-         plot = p_mc,
-         device = 'pdf',
-         width = 6,
-         height = 3)
+  # # Model (model comparison)
+  # p_mc = Figure_model_comp()
+  # out_file = file.path(base_path, 'derivatives', 'figures', 'f_mc.pdf',
+  #                      fsep = .Platform$file.sep)
+  # ggsave(filename = out_file,
+  #        plot = p_mc,
+  #        device = 'pdf',
+  #        width = 6,
+  #        height = 3)
+  # 
+  # # Model (model validation)
+  # p_mv = Figure_model_val()
+  # out_file = file.path(base_path, 'derivatives', 'figures', 'f_mv.pdf',
+  #                      fsep = .Platform$file.sep)
+  # ggsave(filename = out_file,
+  #        plot = p_mv,
+  #        device = 'pdf',
+  #        width = 6,
+  #        height = 3)
+  # 
+  # # Model (weighting analysis)
+  # p_mw = Figure_model_wei()
+  # out_file = file.path(base_path, 'derivatives', 'figures', 'f_mw.pdf',
+  #                      fsep = .Platform$file.sep)
+  # ggsave(filename = out_file,
+  #        plot = p_mw,
+  #        device = 'pdf',
+  #        width = 6,
+  #        height = 3)
   
-  # Model (model validation)
-  p_mv = Figure_model_val()
-  out_file = file.path(base_path, 'derivatives', 'figures', 'f_mv.pdf',
+  # Model results
+  p_mr = Figure_model_results()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_mr.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
-         plot = p_mv,
+         plot = p_mr,
          device = 'pdf',
          width = 6,
-         height = 3)
-  
-  # Model (weighting analysis)
-  p_mw = Figure_model_wei()
-  out_file = file.path(base_path, 'derivatives', 'figures', 'f_mw.pdf',
-                       fsep = .Platform$file.sep)
-  ggsave(filename = out_file,
-         plot = p_mw,
-         device = 'pdf',
-         width = 6,
-         height = 3)
+         height = 8)
   
   
 }
