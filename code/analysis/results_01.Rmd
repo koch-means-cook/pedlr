@@ -99,6 +99,7 @@ check_noc = data %>%
     by = c('participant_id', 'group', 'run', 'comp')]
 ```
 
+
 ## Plot
 
 ```{r}
@@ -155,6 +156,11 @@ papeR::prettify(Anova(lme_noc))
 emmeans::emmeans(lme_noc,
                  pairwise ~ run)
 ```
+
+```{r}
+check_noc
+```
+
 
 ### Main effect comp
 
@@ -220,6 +226,17 @@ t.test(outlier_excl[group == 'older']$mean_bandit_effect,
 ```{r}
 data_plot = Prepare_data_for_plot(bla_mean_correct) 
 
+file = file.path(base_path,
+                 'derivatives',
+                 'figures',
+                 'f_pc_diff.tsv',
+                 fsep = .Platform$file.sep)
+data.table::fwrite(data_plot,
+                   file,
+                   sep = '\t',
+                   na = 'n/a',
+                   row.names = FALSE)
+
 nudge_with = 0.15
 
 p = ggplot(data = data_plot,
@@ -227,6 +244,8 @@ p = ggplot(data = data_plot,
                y = mean_bandit_effect,
                color = group,
                fill = group)) +
+  geom_hline(yintercept = 0,
+             size = 0.5) +
   geom_point(position = sdamr::position_jitternudge(nudge.x = -nudge_with,
                                                     jitter.width = 0.05,
                                                     jitter.height = 0,
@@ -864,10 +883,32 @@ data_plot = Prepare_data_for_plot(window_data_participant) %>%
   .[, window_relative := as.numeric(as.character(window_relative))] %>%
   .[!window_relative == 0, ]
 
+save_path = file.path(base_path,
+                      'derivatives',
+                      'figures',
+                      'f_rie.tsv',
+                      fsep = .Platform$file.sep)
+data.table::fwrite(data_plot,
+                   save_path,
+                   sep = '\t',
+                   row.names = FALSE,
+                   na = 'n/a')
+
 data_plot_mean = data_plot %>%
   .[, .(accuracy = mean(accuracy),
         sem_accuracy = sd(accuracy) / sqrt(.N)),
     by = c('group', 'window_relative')]
+
+save_path = file.path(base_path,
+                      'derivatives',
+                      'figures',
+                      'f_rie_mean.tsv',
+                      fsep = .Platform$file.sep)
+data.table::fwrite(data_plot_mean,
+                   save_path,
+                   sep = '\t',
+                   row.names = FALSE,
+                   na = 'n/a')
 
 dodge_width = 0.3
 
@@ -1023,10 +1064,32 @@ data_plot = Prepare_data_for_plot(window_data_participant_normal) %>%
   .[, window_relative := as.numeric(as.character(window_relative))] %>%
   .[!window_relative == 0, ]
 
+save_path = file.path(base_path,
+                      'derivatives',
+                      'figures',
+                      'f_ric.tsv',
+                      fsep = .Platform$file.sep)
+data.table::fwrite(data_plot,
+                   save_path,
+                   sep = '\t',
+                   row.names = FALSE,
+                   na = 'n/a')
+
 data_plot_mean = data_plot %>%
   .[, .(accuracy = mean(accuracy),
         sem_accuracy = sd(accuracy) / sqrt(.N)),
     by = c('group', 'window_relative')]
+
+save_path = file.path(base_path,
+                      'derivatives',
+                      'figures',
+                      'f_ric_mean.tsv',
+                      fsep = .Platform$file.sep)
+data.table::fwrite(data_plot_mean,
+                   save_path,
+                   sep = '\t',
+                   row.names = FALSE,
+                   na = 'n/a')
 
 dodge_width = 0.3
 
@@ -1172,6 +1235,17 @@ emmeans::emmeans(lme_rt_comp,
 
 ```{r}
 data_plot = Prepare_data_for_plot(check_rt_mean)
+
+save_path = file.path(base_path,
+                      'derivatives',
+                      'figures',
+                      'f_rt.tsv',
+                      fsep = .Platform$file.sep)
+data.table::fwrite(data_plot,
+                   save_path,
+                   sep = '\t',
+                   row.names = FALSE,
+                   na = 'n/a')
 
 dodge_width = 0.3
 
@@ -1526,6 +1600,17 @@ emmeans::emmeans(lme_diff_EmR,
 
 ```{r}
 data_plot = Prepare_data_for_plot(check_est_dist)
+
+save_path = file.path(base_path,
+                      'derivatives',
+                      'figures',
+                      'f_ed.tsv',
+                      fsep = .Platform$file.sep)
+data.table::fwrite(data_plot,
+                   save_path,
+                   sep = '\t',
+                   row.names = FALSE,
+                   na = 'n/a')
 
 dodge_width = 0.2
 

@@ -31,50 +31,6 @@ Figure_parameter_recovery = function(){
     # Rename alpha (Rw) to alpha0 (for convenience of plotting)
     .[para == 'alpha', para := 'alpha0']
   
-  # Function to plot single model recovery
-  Get_cormat_across = function(data,
-                               model_name,
-                               colnames,
-                               plot_title){
-    # Prepare data for correlation
-    corr_data = data %>%
-      .[, recov := second_solution] %>%
-      data.table::dcast(model + design + file + iter ~ para, value.var = c('true', 'recov'))
-    
-    # Specify data to plot correlation of
-    data_plot = cor(corr_data[model == model_name, ..colnames]) %>%
-      reshape2::melt(.) %>%
-      as.data.table(.) %>%
-      .[, row := seq(.N)] %>%
-      # Only select correlation between true and recovered params (and not truth vs truth)
-      .[, need := unlist(strsplit(as.character(Var1), '_'))[1] != unlist(strsplit(as.character(Var2), '_'))[1],
-        by = 'row'] %>%
-      .[need == TRUE, c('Var1', 'Var2', 'value')]
-    # Eliminate duplicates (e.g. true_a1 vs. recov_a1 and recov_a1 vs. true_a1)
-    data_plot = data_plot[1:(nrow(data_plot)/2)]
-    # Eliminate levels
-    data_plot$Var1 = as.character(data_plot$Var1)
-    data_plot$Var2 = as.character(data_plot$Var2)
-    
-    
-    # Plot correlation matrix
-    p = ggplot(data_plot,
-               aes(x = Var1, y = Var2, fill = value)) +
-      theme_minimal()+ 
-      geom_tile() +
-      scale_fill_viridis(option='D', limits = c(-1,1)) +
-      coord_fixed() +
-      labs(title = plot_title,
-           x = 'Recovery',
-           y = 'True') +
-      theme(plot.title = element_text(hjust = 0.5,
-                                      size = 8),
-            legend.position = 'None',
-            axis.title = element_text(size = 10, face = 'bold'),
-            axis.text.x = element_text(angle = 0))
-    
-    return(p)
-  }
   
   # Rw
   p_rw = Get_cormat_across(data = data,
