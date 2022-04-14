@@ -50,6 +50,8 @@ library(papeR)
 # Get directory of repository
 base_path = here::here()
 
+data_dir = file.path('/Users/schuck', 'data', 'pedlr-main-data')
+
 # Load pre-written functions
 source_path = file.path(base_path, 'code', 'utils',
                         fsep = .Platform$file.sep)
@@ -67,7 +69,23 @@ custom_guides = Get_plot_guides()
 
 ```{r}
 # load data
-DATA = Load_data()
+# List of all data points
+data_list = Sys.glob(file.path(data_dir,
+                               '*.tsv',
+                               fsep = .Platform$file.sep))
+
+
+DATA = data.table()
+for(file in data_list){
+  # load individual file in data directory
+  temp = data.table::fread(file = file,
+                           sep = '\t',
+                           na.strings = 'n/a',
+                           header = TRUE)
+  # Bind all participants into one file
+  DATA = rbind(DATA, temp)
+}
+
 ids = unique(DATA$participant_id)
 agegroup = tapply(DATA$group, DATA$participant_id, function(x) which(unique(x) == c('younger', 'older')))
 #source('/gdrive/workbench/R/tools/misc/gen_functions.R')
@@ -80,9 +98,8 @@ DATA$correct_choice[DATA$forced_left == 1] = DATA$choice[DATA$forced_left == 1] 
 DATA$correct_choice[DATA$forced_right == 1] = DATA$choice[DATA$forced_right == 1] == 'right'
 
 # Get chosen option (1 = left, 2 = right, 3 = none/timeout) (ERROR: this seems to default choice to left in case of NA)
-tmpidx = cbind(1:(length(ids) * 480), unlist(sapply(DATA$choice, function(x) which(x == c('left', 'right', NA)))))
-# Set timeouts to NA
-tmpidx[tmpidx[,2] == 3, 2] = NA
+
+tmpidx = cbind(1:(length(ids) * 480), factor(DATA$choice, c('left', 'right'), c(1, 2)))
 # Get chosen bandit (option choice col)
 cmat = cbind(DATA$option_left, DATA$option_right)
 DATA$chosen_bandit = cmat[tmpidx]
@@ -266,17 +283,21 @@ tmpfunc = function(y, cidx, wdsz = 5) {
     function(u) y[u])
 }
 
-n_participants = length(ids)
-
 rare_effect = array(NA, dim = c(10, 2, n_participants))
+cbandit = 3
 for (crun in 1:2) {
   for (cid in 1:n_participants) {
     # Set data: Current run and participant
     cDATA = subset(DATA, DATA$run == crun & DATA$participant_id == ids[cid])
     # Index data: Rare outcomes, chosen freely (why only free choice? a rare outcome can also influence our choices if you were forced to select it!)
-    cidx = which(cDATA$is_rare == 1 & cDATA$trial_type=='choice' & cDATA$chosen_bandit==2)
+    cthresh = quantile(cDATA$outcome[cDATA$chosen_bandit==cbandit], 0.90, na.rm = TRUE)
+    # cidx = which(cDATA$is_rare == 1 & cDATA$trial_type=='choice' & cDATA$chosen_bandit==2)
+    cidx = which(cDATA$outcome > cthresh & cDATA$chosen_bandit==cbandit)
+
+    #cidx = which(cDATA$outcome < cthresh & cDATA$trial_type=='choice' & cDATA$chosen_bandit==3)
     # Look at only 1v2 comparisons in free choice trials (set all others to NA)
-    cDATA$correct_choice[cDATA$bandit != '12' | cDATA$trial_type!='choice'] = NA
+    #cDATA$correct_choice[cDATA$bandit != '12' | cDATA$trial_type!='choice'] = NA
+    cDATA$correct_choice[cDATA$bandit != '23' | cDATA$trial_type!='choice'] = NA
 
     # Apply function to get effect of rare events
     rare_effect[,crun, cid] = apply(
@@ -294,22 +315,26 @@ for (crun in 1:2) {
 # timepoint 5 is by definition 1 (correct), so we can remove
 rare_effect[5,,] = NA
 
+#rare_effect = apply(rare_effect, c(2, 3), function(x) (x/mean(x[2:4], na.rm = TRUE))*100)
+
 # take mean over runs
-rare_effect_mean = apply(rare_effect, c(1, 3), mean)
+rare_effect_mean = apply(rare_effect, c(1, 3), mean, na.rm = TRUE)
 
 # make age group specific means / sds
 young_means = apply(rare_effect_mean[,agegroup == 1], 1, mean, na.rm = TRUE)
 old_means = apply(rare_effect_mean[,agegroup == 2], 1, mean, na.rm = TRUE)
 
-young_sds = apply(rare_effect_mean[,agegroup == 1], 1, function(x) sd(x, na.rm = TRUE)/sqrt(count(x)))
-old_sds = apply(rare_effect_mean[,agegroup == 2], 1, function(x) sd(x, na.rm = TRUE)/sqrt(count(x)))
+young_sds = apply(rare_effect_mean[,agegroup == 1], 1, function(x) sd(x, na.rm = TRUE)/sqrt(sum(!is.na(x))))
+old_sds = apply(rare_effect_mean[,agegroup == 2], 1, function(x) sd(x, na.rm = TRUE)/sqrt(sum(!is.na(x))))
 
-# plot(-4:5, young_means, type = 'o', bty = 'n', ylim = c(0.5, 1), pch = 16, col = hcl.colors(2, 'Dark3')[1], lwd = 1.5, xlab = 'trial', ylab = 'correct LM choice')
-# #se_bars(-4:5, young_means, young_sds, col = hcl.colors(2, 'Dark3')[1], lwd = 1.5)
-# 
-# lines(-4.1:5.1, old_means, type = 'o', col = hcl.colors(2, 'Dark3')[2], pch = 16, lwd = 1.5)
+
+
+plot(-4:5, young_means, type = 'o', bty = 'n', ylim = c(0.5, 1), pch = 16, col = hcl.colors(2, 'Dark3')[1], lwd = 1.5, xlab = 'trial', ylab = 'correct LM choice')
+se_bars(-4:5, young_means, young_sds, col = hcl.colors(2, 'Dark3')[1], lwd = 1.5)
+#
+lines(-4.1:5.1, old_means, type = 'o', col = hcl.colors(2, 'Dark3')[2], pch = 16, lwd = 1.5)
 # #se_bars(-4.1:5.1, old_means, old_sds, col = hcl.colors(2, 'Dark3')[2], lwd = 1.5)
-# 
+#
 # legend('topright', legend = c('younger', 'older'), col = hcl.colors(2, 'Dark3'), pch = 16, lwd = 1.5, bty = 'n', cex = 1)
 
 # test pre vs post trial
@@ -342,7 +367,7 @@ Windowrize = function(data,
   result$window_relative = seq(max(index_rare - window_size + 1, 1),
                                index_rare + window_size) - index_rare
   result[window_relative == 0]$correct_choice = NA
-  
+
   result$window_center = as.factor(result$window_center)
   result$window_relative = as.factor(result$window_relative)
   return(result)
@@ -384,14 +409,14 @@ window_data_run = window_data %>%
 window_data_participant = window_data_run %>%
   .[, .(accuracy = mean(mean_accuracy, na.rm = TRUE)),
     by = c('participant_id', 'group', 'window_relative')]
-  
+
 # Get age group specific mean and sd
 window_data_group = window_data_participant %>%
   .[, .(mean_accuracy = mean(accuracy, na.rm = TRUE),
         sd_accuracy = sd(accuracy, na.rm = TRUE)),
     by = c('group', 'window_relative')] %>%
   .[order(rank(group), rank(window_relative)),]
-  
+
 
 # test pre vs post trial
 # younger
@@ -441,7 +466,7 @@ Windowrize = function(data,
   result$window_relative = seq(max(index_rare - window_size + 1, 1),
                                index_rare + window_size) - index_rare
   result[window_relative == 0]$correct_choice = NA
-  
+
   result$window_center = as.factor(result$window_center)
   result$window_relative = as.factor(result$window_relative)
   return(result)
@@ -484,14 +509,14 @@ window_data_run = window_data %>%
 window_data_participant = window_data_run %>%
   .[, .(accuracy = mean(mean_accuracy, na.rm = TRUE)),
     by = c('participant_id', 'group', 'window_relative')]
-  
+
 # Get age group specific mean and sd
 window_data_group = window_data_participant %>%
   .[, .(mean_accuracy = mean(accuracy, na.rm = TRUE),
         sd_accuracy = sd(accuracy, na.rm = TRUE)),
     by = c('group', 'window_relative')] %>%
   .[order(rank(group), rank(window_relative)),]
-  
+
 
 # test pre vs post trial
 # younger
