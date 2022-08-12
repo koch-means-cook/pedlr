@@ -66,7 +66,9 @@ for(i in seq(length(files_r1))){
   file_r1 = files_r1[i]
   file_r2 = files_r2[i]
   temp_r1 = data.table::fread(file_r1, sep = '\t', na.strings = 'n/a')
+  temp_r1$design_name = substr(basename(file_r1), 0,15)
   temp_r2 = data.table::fread(file_r2, sep = '\t', na.strings = 'n/a')
+  temp_r2$design_name = substr(basename(file_r2), 0,15)
   temp = rbind(temp_r1, temp_r2)
   temp$n_design = i
   data = rbind(data, temp)
@@ -80,27 +82,27 @@ n_designs = max(unique(data$n_design))
 data_plot = data %>%
   .[, .(stim = c(option_left, option_right),
         outcome = c(reward_stim_1, reward_stim_2)),
-    by = c('n_design', 'task_version')] %>%
+    by = c('n_design', 'task_version', 'design_name')] %>%
   .[, stim := as.factor(stim)] %>%
   # Add each value once so all outcomes are counted for each stimulus
   .[, .(outcome = c(outcome, seq(1,100))),
-    by = c('n_design', 'task_version', 'stim')] %>%
+    by = c('n_design', 'task_version', 'design_name', 'stim')] %>%
   # Count occurence of outcomes for each stimulus
   .[, .(count = .N),
-    by = c('n_design', 'task_version', 'stim', 'outcome')] %>%
+    by = c('n_design', 'task_version', 'design_name', 'stim', 'outcome')] %>%
   # Subtract the artificially added outcomes
   .[, count := count - 1]
 
 data_plot_mean = data %>%
   .[, .(stim = c(option_left, option_right),
         outcome = c(reward_stim_1, reward_stim_2)),
-    by = c('n_design', 'task_version')] %>%
+    by = c('n_design', 'task_version', 'design_name')] %>%
   .[, stim := as.factor(stim)] %>%
   .[, .(mean_outcome = mean(outcome)),
-    by = c('n_design', 'task_version', 'stim')]
+    by = c('n_design', 'task_version', 'design_name', 'stim')]
 
 data_plot_diff = data_plot_mean %>%
-  data.table::dcast(., n_design + task_version ~ paste0('mean_', stim), value.var = 'mean_outcome') %>%
+  data.table::dcast(., n_design + task_version + design_name ~ paste0('mean_', stim), value.var = 'mean_outcome') %>%
   .[, ':='(diff2m1 = mean_2 - mean_1,
            diff3m2 = mean_3 - mean_2)] %>%
   .[, ':='(loc2m1 = mean_1 + (diff2m1/2),
@@ -156,6 +158,21 @@ ggplot(data = data_plot,
         panel.grid = element_blank()) +
   guides(alpha = FALSE)
 ```
+
+## Distance between bandits
+
+```{r}
+bla = data_plot_diff %>%
+  data.table::melt(.,
+                   id.vars = c('n_design', 'task_version', 'design_name')) %>%
+  .[variable %in% c('diff2m1', 'diff3m2'), ]
+ggplot(bla,
+       aes(x = variable,
+           y = value)) +
+  geom_point() +
+  geom_boxplot(outlier.shape = NA)
+```
+
 
 # Vary range
 
@@ -233,4 +250,5 @@ mean(diff(data_plot$trial)[diff(data_plot$trial) > 0])
 sd(diff(data_plot$trial)[diff(data_plot$trial) > 0])
 
 ```
+
 

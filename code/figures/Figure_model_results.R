@@ -281,7 +281,7 @@ Figure_mw_group = function(){
     facet_wrap(~group) +
     scale_fill_manual(values = custom_guides) +
     scale_color_manual(values = custom_guides) +
-    labs(x = 'Relative weighting of extreme outcomes',
+    labs(x = 'Weighting of extreme outcomes',
          y = 'Number of participants')
   p = Neurocodify_plot(p) +
     theme(legend.position = 'none',

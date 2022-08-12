@@ -314,7 +314,7 @@ p = ggplot(data = data_plot,
 Neurocodify_plot(p)
 ```
 
-## Robust regression approach {.tabset}
+## Robust regression approach (bandit effect) {.tabset}
 
 ### Standard OLS
 
@@ -1595,6 +1595,15 @@ emmeans::emmeans(lme_diff_EmR,
 emmeans::emmeans(lme_diff_EmR,
                  pairwise ~ variable | group)
 ```
+
+```{r}
+# Interaction (contrast of contrast, effect in younger - effect in older)
+# https://cran.r-project.org/web/packages/emmeans/vignettes/interactions.html (Section: "Simple contrasts")
+em_pairwise = emmeans::emmeans(lme_diff_EmR,
+                               pairwise ~ variable | group)
+emmeans::contrast(em_pairwise, 'consec', simple = 'group', combine = TRUE)
+```
+
 
 ## Plot
 
