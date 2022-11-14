@@ -1,8 +1,9 @@
-reg_model = function(x,
-                     cdf,
-                     model,
-                     tau = 0.2,
-                     plot = FALSE) {
+Regression_model = function(x,
+                            cdf,
+                            glmods,
+                            model,
+                            tau = 0.2,
+                            plot = FALSE) {
   
   # Allocate matrices to store important variables
   values = updates = fupdates = alphas = matrix(NA, 3, 240*2)
@@ -44,10 +45,10 @@ reg_model = function(x,
       cvals[outcome_trials[[cbandit]]+1] = ccvals
       
       # Compute value & prediction error for current bandit
-      cVPE = comp_value(V = cvals,
-                        x = x,
-                        bandit = cbandit,
-                        tau = tau)
+      cVPE = Compute_value(V = cvals,
+                           x = x,
+                           bandit = cbandit,
+                           tau = tau)
       
       # Enter values, LR, and PE into allocated matrices
       values[cbandit,ccidx] = cVPE$V

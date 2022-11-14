@@ -1,7 +1,7 @@
-comp_value = function(V,
-                      x,
-                      bandit,
-                      tau) {
+Compute_value = function(V,
+                         x,
+                         bandit,
+                         tau) {
   
   # Get index for all rewards relevant for current bandit
   idx = which(!is.na(V))
