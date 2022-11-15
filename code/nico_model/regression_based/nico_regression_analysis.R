@@ -4,7 +4,7 @@ pksload = unlist(lapply(packages, require, character.only = TRUE, quietly = TRUE
 data_path = '/Users/schuck/data/pedlr-main-data'
 code_path = '/Users/schuck/code/pedlr/code/nico_model/regression_based'
 
-source(paste(code_path, '/../../../../R_tools/basic_functions.R', sep = ''))
+#source(paste(code_path, '/../../../../R_tools/basic_functions.R', sep = ''))
 source(paste(code_path, '/get_data.R', sep = ''))
 source(paste(code_path, '/LRfunction.R', sep = ''))
 source(paste(code_path, '/comp_value.R', sep = ''))
@@ -82,6 +82,7 @@ for (cid in 1:nid) {
 
 # Figure 1: beta's of RW model
 # younger
+# test if V1 and V2 are significantly different from 0
 cmat = coefs[c(2:3, 6),agegroup==1,1]
 t.test(cmat[1,])
 t.test(cmat[2,])
@@ -96,6 +97,7 @@ beeswarm(cmat~imat, at = c(k), add = TRUE, pch = 21, col = '#555555BB', bg = cco
 
 
 # older
+# test if V1 and V2 are significantly different from 0
 cmat = coefs[c(2:3, 6),agegroup==2,1]
 t.test(cmat[1,])
 t.test(cmat[2,])

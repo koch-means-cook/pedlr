@@ -1,5 +1,6 @@
 library(here)
 library(data.table)
+library(nloptr)
 
 Fit_models_new = function(data,
                           algorithm,
@@ -61,9 +62,6 @@ Fit_models_new = function(data,
   # Get number of models
   n_models = length(glmods)
   
-  # Send message to user
-  message(paste('Starting ID', participant_id, '...\n'), appendLF = FALSE)
-  
   # Set empty data.table
   out = data.table::data.table()
   
@@ -81,14 +79,14 @@ Fit_models_new = function(data,
     }
     
     # Fit model
-    cmod = nloptr(x0 = x0[[model_count]],
-                  eval_f = LL_reg,
-                  lb = lb[[model_count]],
-                  ub = ub[[model_count]],
-                  opts = copts,
-                  data = data,
-                  glmods = glmods,
-                  model = model_count)
+    cmod = nloptr::nloptr(x0 = x0[[model_count]],
+                          eval_f = LL_reg,
+                          lb = lb[[model_count]],
+                          ub = ub[[model_count]],
+                          opts = copts,
+                          data = data,
+                          glmods = glmods,
+                          model = model_count)
     
     # Run regression with best fitting parameters
     cres = Regression_model(x = cmod$solution,
@@ -107,7 +105,7 @@ Fit_models_new = function(data,
     
     
     # Enter variables into output array
-    # LR
+    # Learning rates for each possible PE (0-100)
     LRs = tapply(c(lr, rep(NA, 100)), c(round(abs(pe)), seq(0, 99)), mean, na.rm = TRUE)
     LRs = cbind(seq(length(LRs)), LRs)
     LRs = as.data.table(LRs)
@@ -147,9 +145,6 @@ Fit_models_new = function(data,
     out = rbind(out, temp)
 
   }
-  
-  # Send message to user
-  message(paste('done!'), appendLF = FALSE)
   
   # Return fitting for all models
   return(out)

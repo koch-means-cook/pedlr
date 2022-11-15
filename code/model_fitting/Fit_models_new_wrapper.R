@@ -1,5 +1,6 @@
 library(here)
 library(optparse)
+library(nloptr)
 
 Fit_models_new_wrapper = function(participant_id,
                                   starting_values,
@@ -47,40 +48,48 @@ Fit_models_new_wrapper = function(participant_id,
   data = data %>%
     .[, bandit := paste(substr(comp, 1, 1), substr(comp, 3,3), sep = '')]
   
-  # Set starting values
-  # 1 parameter models: learning rate
-  # 3 parameter models: low, high, slope
-  lb = list(0.01,
-            0.01,
-            c(exp(-5), exp(-5), -20),
-            c(exp(-5), exp(-5), -20))
-  ub = list(1,
-            1,
-            c(1, 1, 20),
-            c(1, 1, 20))
-  # Set starting values either fixed or random, depending on function input
-  if(starting_values == 'fixed'){
-    x0 = list(0.2,
-              0.2,
-              c(0.2, 0.5, 1),
-              c(0.2, 0.5, 1))
-  } else if(starting_values == 'random'){
-    # Use same random starting value for similar models
-    rand_alpha = runif(1, min = lb[[1]], max = ub[[1]])
-    rand_l = runif(1, min = lb[[3]][1], max = ub[[3]][1])
-    rand_u = runif(1, min = lb[[3]][2], max = ub[[3]][2])
-    rand_s = runif(1, min = lb[[3]][3], max = ub[[3]][3])
-    x0 = list(rand_alpha,
-              rand_alpha,
-              c(rand_l, rand_u, rand_s),
-              c(rand_l, rand_u, rand_s))
-  }
   
   # Allocate data frame for storage of all iterations
   out = data.table()
   
+  # Give message to user
+  message(paste('Starting ID', participant_id, '...\n', sep = ''), appendLF = FALSE)
+  
+  
   # Loop over iterations
   for(n_iter in seq(iterations)){
+    
+    # Set starting values
+    # 1 parameter models: learning rate
+    # 3 parameter models: low, high, slope
+    lb = list(0.01,
+              0.01,
+              c(exp(-5), exp(-5), -20),
+              c(exp(-5), exp(-5), -20))
+    ub = list(1,
+              1,
+              c(1, 1, 20),
+              c(1, 1, 20))
+    # Set starting values either fixed or random, depending on function input
+    if(starting_values == 'fixed'){
+      x0 = list(0.2,
+                0.2,
+                c(0.2, 0.5, 1),
+                c(0.2, 0.5, 1))
+    } else if(starting_values == 'random'){
+      # Use same random starting value for similar models
+      rand_alpha = runif(1, min = lb[[1]], max = ub[[1]])
+      rand_l = runif(1, min = lb[[3]][1], max = ub[[3]][1])
+      rand_u = runif(1, min = lb[[3]][2], max = ub[[3]][2])
+      rand_s = runif(1, min = lb[[3]][3], max = ub[[3]][3])
+      x0 = list(rand_alpha,
+                rand_alpha,
+                c(rand_l, rand_u, rand_s),
+                c(rand_l, rand_u, rand_s))
+    }
+    
+    # Send message to user
+    message(paste('   Iteration:   ', n_iter, '...', sep = ''), appendLF = FALSE)
     
     # Fit model
     fit = Fit_models_new(data = data,
@@ -96,11 +105,31 @@ Fit_models_new_wrapper = function(participant_id,
     
     # Concatenate data
     out = rbind(out, fit)
-    
+   
+    # Send message to user
+    message(paste('done!\n', sep = ''), appendLF = FALSE)
+     
   }
   
+  # Add fitting variables to output
+  out$starting_values = starting_values
+  out$algorithm = algorithm
+  out$xtol_rel = xtol_rel
+  out$maxeval = maxeval
+  out$n_iterations = iterations
+  
+  # Add demographic variable to output
+  out$age = unique(data$age)
+  out$sex = unique(data$sex)
+  out$group = unique(data$group)
+  
+  # Change column order
+  out = setcolorder(out, neworder = c('participant_id', 'group', 'age', 'sex',
+                                      'starting_values', 'algorithm', 'xtol_rel',
+                                      'maxeval', 'n_iterations', 'iter'))
+  
   # Save outputs
-  file_name = paste(participant_id, '-', 'fit', '-', 'new', '.tsv', sep = '')
+  file_name = paste('fit', '-', participant_id, '_', 'sv', '-', starting_values, '.tsv', sep = '')
   save_dir = file.path(base_path, 'derivatives', 'model_fitting', file_name,
                        fsep = .Platform$file.sep)
   data.table::fwrite(out, file = save_dir, sep = '\t', na = 'n/a',
@@ -135,17 +164,17 @@ option_list = list(
               help = 'nloptr algorithm. Example: NLOPT_GN_DIRECT_L',
               metavar = 'ALGORITHM'),
   make_option(c('-x', '--xtol_rel'),
-              type='integer',
+              type='numeric',
               default = NULL,
               help = 'Int giving tolerance for fitting. Example: 0.00001',
               metavar = 'XTOL_REL'),
   make_option(c('-m', '--maxeval'),
-              type='integer',
+              type='numeric',
               default = NULL,
               help = 'Maximum number of evaluations before fitting terminates. Example: 1000',
               metavar = 'MAXEVAL'),
   make_option(c('-i', '--iterations'),
-              type='integer',
+              type='numeric',
               default = NULL,
               help = 'Int giving number of iterations fitting is repeated. Random starting values will be different each iteration',
               metavar = 'ITERATIONS'))
@@ -161,3 +190,5 @@ Fit_models_new_wrapper(participant_id = opt$participant_id,
                        xtol_rel = opt$xtol_rel,
                        maxeval = opt$maxeval,
                        iterations = opt$iterations)
+
+# Rscript Fit_models_new_wrapper --participant_id '1NU6KP5' --starting_values 'fixed' --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.00001 --maxeval 100 --iterations 10

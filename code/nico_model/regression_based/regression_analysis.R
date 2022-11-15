@@ -48,6 +48,7 @@ bla = bla %>%
 # Get data overview
 n_id = length(unique(bla$participant_id))
 agegroup = tapply(bla$group, bla$participant_id, function(x) which(unique(x) == c('younger', 'older')))
+# Performance = average over correct choices (including forced choices)
 perf = tapply(bla$correct_choice, bla$participant_id, mean, na.rm = TRUE)
 
 # # Log likelihood function based on regression
@@ -123,7 +124,8 @@ for (id_count in 1:n_id) {
                   lb = lb[[model_count]],
                   ub = ub[[model_count]],
                   opts = copts,
-                  cdf = data,
+                  glmods = glmods,
+                  data = data,
                   model = model_count)
     
     # Run regression with best fitting parameters
@@ -164,6 +166,7 @@ for (id_count in 1:n_id) {
 
 # Figure 1: beta's of RW model
 # younger
+# Test if V1 and V2 sig from 0
 cmat = coefs[c(2:3, 6),agegroup==1,1]
 t.test(cmat[1,])
 t.test(cmat[2,])
@@ -178,6 +181,7 @@ beeswarm(cmat~imat, at = c(k), add = TRUE, pch = 21, col = '#555555BB', bg = cco
 
 
 # older
+# Test if V1 and V2 sig from 0
 cmat = coefs[c(2:3, 6),agegroup==2,1]
 t.test(cmat[1,])
 t.test(cmat[2,])
@@ -190,13 +194,17 @@ imat = matrix(c(k), dim(cmat)[1], dim(cmat)[2], byrow = FALSE)
 beeswarm(cmat~imat, at = c(k), add = TRUE, pch = 21, col = '#555555DD', bg = ccols, cex = 0.5, lwd = 0.3, corral = 'wrap', method = 'hex')
 
 # correlation analyses across age groups
+# V1, V2, alpha from rw model
 cmat = coefs[c(2:3, 6),,1]
 apply(cmat, 1, mean)
+# V1 and performance (average of correct choices, including forced_choices)
 cor.test(perf, cmat[1,])
+# V2 and performance
 cor.test(perf, cmat[2,])
+# alpha (?) and performance
 cor.test(perf, cmat[3,])
 
-
+# test model frequencies between age groups (models = rw, uncertainty, surprise)
 tab1 = tabulate(apply(AICs[agegroup == 1,1:3], 1, function(x) which.min(x)))
 tab2 = tabulate(apply(AICs[agegroup == 2,1:3], 1, function(x) which.min(x)))
 chisq.test(cbind(tab1, tab2))
@@ -300,26 +308,31 @@ beeswarm(cmat2~imat2,
 #se_bars(k, cmeans, csds)
 
 
-
+# AIC scores for both age groups
 X2 = AICs[agegroup == 2,]
 X1 = AICs[agegroup == 1,]
 
-
+# Younger, RW vs. others
 t.test(X1[,1], X1[,2], paired = TRUE)
 t.test(X1[,1], X1[,3], paired = TRUE)
 t.test(X1[,1], X1[,4], paired = TRUE)
 
+# Older, RW vs. others
 t.test(X2[,1], X2[,2], paired = TRUE)
 t.test(X2[,1], X2[,3], paired = TRUE)
 t.test(X2[,1], X2[,4], paired = TRUE)
 
+# Younger, uncertainty (?) vs. rest
 t.test(X1[,2], X1[,4], paired = TRUE)
 t.test(X1[,2], X1[,3], paired = TRUE)
 
+# Older, uncertainty (?) vs. rest
 t.test(X2[,2], X2[,3], paired = TRUE)
 t.test(X2[,2], X2[,4], paired = TRUE)
 
+# AIC ratio uncertainty/surprise; younger vs older
 t.test(X1[,2]/X1[,3], X2[,2]/X2[,3])
+# AIC difference uncertainty (?) - surprise; younger vs. older
 t.test(X1[,2]-X1[,4], X2[,2]-X2[,4])
 t.test(X1[,2]-X1[,4], X2[,2]-X2[,4])
 
