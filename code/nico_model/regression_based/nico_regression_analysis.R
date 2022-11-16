@@ -1,8 +1,12 @@
 packages = c('data.table', 'nloptr', 'zoo', 'bmsR', 'beeswarm')
 pksload = unlist(lapply(packages, require, character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE))
 
-data_path = '/Users/schuck/data/pedlr-main-data'
-code_path = '/Users/schuck/code/pedlr/code/nico_model/regression_based'
+#data_path = '/Users/schuck/data/pedlr-main-data'
+#code_path = '/Users/schuck/code/pedlr/code/nico_model/regression_based'
+data_path = file.path(here::here(), 'data',
+                      fsep = .Platform$file.sep)
+code_path = file.path(here::here(), 'code', 'nico_model', 'regression_based',
+                      fsep = .Platform$file.sep)
 
 #source(paste(code_path, '/../../../../R_tools/basic_functions.R', sep = ''))
 source(paste(code_path, '/get_data.R', sep = ''))
@@ -80,12 +84,75 @@ for (cid in 1:nid) {
   message(paste(' || \t AIC1:', sprintf("%+.1f", cAICs[1]), '\t AIC2:', sprintf("%+.1f", cAICs[2]), '\t AIC3:', sprintf("%+.1f", cAICs[3]), '\t AIC4:', sprintf("%+.1f", cAICs[4])), appendLF = TRUE)
 }
 
+# Put data in similar format to mine
+# AIC
+model_names = c('rw', 'uncertainty', 'surprise', 'uncertainty_surprise')
+data_aic_nico = as.data.table(AICs)
+colnames(data_aic_nico) = model_names
+data_aic_nico$participant_id = unique(DATA$participant_id)
+data_aic_nico = data.table::melt(data_aic_nico,
+                                 id.vars = 'participant_id',
+                                 variable.name = 'model',
+                                 value.name = 'AIC')
+
+# Coefs
+coef_names = c('intercept', 'V1', 'V2', 'V1u', 'V2u', 'alpha/l', 'u', 's')
+# Expand for each participant
+data_coefs_nico = data.table()
+for(p_count in seq(length(coefs[1,,1]))){
+  temp = as.data.table(coefs[,p_count,])
+  colnames(temp) = model_names
+  temp$coefs = coef_names
+  temp$participant_id = unique(data_aic$participant_id)[p_count]
+  data_coefs_nico = rbind(data_coefs_nico, temp)
+}
+data_coefs_nico = data.table::melt(data_coefs_nico,
+                                   id.vars = c('participant_id', 'coefs'),
+                                   measure.vars = model_names,
+                                   variable.name = 'model',
+                                   value.name = 'value')
+setcolorder(data_coefs_nico, c('participant_id', 'model', 'coefs'))
+
+data_coefs_nico = data_coefs_nico[!is.na(value)]
+data_coefs_nico[model %in% c('rw', 'uncertainty') & coefs == 'alpha/l']$coefs = 'alpha'
+data_coefs_nico[coefs == 'alpha/l']$coefs = 'l'
+
+data_nico = data.table::merge.data.table(data_aic_nico,
+                                         data_coefs_nico,
+                                         by = c('participant_id',
+                                                'model'))
+data_nico$variable = 'coefs'
+colnames(data_nico)[colnames(data_nico) == 'coefs'] = 'x'
+
+x0_names = c('alpha', 'l', 'u', 's')
+data_x0 = as.data.table(t(c(x0[[1]], x0[[3]])))
+data_x0 = data_x0[rep(seq_len(nrow(data_x0)), each = 4*length(ids))]
+colnames(data_x0) = x0_names
+data_x0$participant_id = rep(ids, each = 4)
+data_x0$model = rep(model_names, length(ids))
+data_x0 = data.table::melt(data_x0,
+                           id.vars = c('participant_id', 'model'),
+                           variable.name = 'x')
+data_x0$variable = 'x0'
+data_x0[model %in% c('rw', 'uncertainty') & x != 'alpha'] = NA
+data_x0[!model %in% c('rw', 'uncertainty') & x == 'alpha'] = NA
+data_x0 = data_x0[!is.na(variable)]
+data_x0 = data.table::merge.data.table(data_x0, data_aic,
+                                       by = c('participant_id', 'model'))
+data_nico = rbind(data_nico, data_x0)
+setcolorder(data_nico, c('participant_id', 'model', 'AIC', 'variable', 'x', 'value'))
+
+# Save nicos output in long format
+save_path = file.path(here::here(), 'derivatives', 'model_fitting', 'fitting_nico.tsv',
+                      fsep = .Platform$file.sep)
+data.table::fwrite(data_nico, file = save_path, sep = '\t', na = 'n/a')
+
 # Figure 1: beta's of RW model
 # younger
 # test if V1 and V2 are significantly different from 0
 cmat = coefs[c(2:3, 6),agegroup==1,1]
-t.test(cmat[1,])
-t.test(cmat[2,])
+t.test(cmat[1,]) # V1
+t.test(cmat[2,]) # V2
 
 cmeans = apply(cmat, 1, mean)
 ccols = rep(hcl.colors(6, 'Earth', alpha = 0.8)[1], 3)
@@ -99,8 +166,8 @@ beeswarm(cmat~imat, at = c(k), add = TRUE, pch = 21, col = '#555555BB', bg = cco
 # older
 # test if V1 and V2 are significantly different from 0
 cmat = coefs[c(2:3, 6),agegroup==2,1]
-t.test(cmat[1,])
-t.test(cmat[2,])
+t.test(cmat[1,]) # V1
+t.test(cmat[2,]) # V2
 
 cmeans = apply(cmat, 1, mean)
 ccols = rep(hcl.colors(6, 'Earth', alpha = 0.8)[1], 3)

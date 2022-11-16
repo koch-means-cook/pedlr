@@ -45,6 +45,7 @@ library(lme4)
 library(emmeans)
 library(papeR)
 library(ggridges)
+library(bmsR)
 ```
 
 ```{r, message=FALSE}
@@ -191,20 +192,20 @@ p
 # What has Nico looked at?
 
 - RW analyses (Do participants behave like in an RL task?):
-   - Prob choosing left bandit positively related to value of left bandit (younger: p < .001; older: p <.001) (?)
-   - Prob choosing right bandit negatively related to value of left bandit (both p < .001) (?)
-   - Beta of left and right values related to percent of correct choices (r = .43, r = -.41; both p < .001)
-   - Average LR = .13
-   - LR positively correlated with overall performance (r = .29; p = .003)
+   - (?) **Prob choosing left bandit positively related to value of left bandit (younger: p < .001; older: p <.001)**
+   - (?) **Prob choosing right bandit negatively related to value of left bandit (both p < .001)**
+   - (Y) Beta of left and right values related to percent of correct choices (r = .43, r = -.41; both p < .001)
+   - (Y) Average LR = .13
+   - (Y) LR positively correlated with overall performance (r = .29; p = .003)
 - Average AIC comparison between sophisticated models and RW:
-   - AIC average over all participants for each model [uncertainty_surprise (242.02) > surprise (242.47) > uncertainty (245.13) > rw (247.40)]
+   - (Y) AIC average over all participants for each model [uncertainty_surprise (242.02) < surprise (242.47) < uncertainty (245.13) < rw (247.40)]
    - Splitting by age group:
-      - YA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .01) **(CORRECTED??)**
-      - OA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .03) **(CORRECTED??)**
+      - (?) **YA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .01)** **(CORRECTED??)**
+      - (?) **OA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .03)** **(CORRECTED??)**
 - Surprise or uncertainty mechanism better explanation in different age groups?
    - Count best fit of non-nested models:
-      - YA: uncertainty (24) > surprise (18) > rw (9)
-      - OA: surprise (25) > surprise (13) = rw (13)
+      - **(N)** YA: uncertainty (24) > surprise (18) > rw (9)
+      - (Y) OA: surprise (25) > surprise (13) = rw (13)
    - Protected exceedance probability:
       - YA: uncertainty (72%)
       - OA: surprise (80.1%)
@@ -296,6 +297,124 @@ anova(m)
 mean(data_corr$alpha)
 ```
 
+# AIC average over participants
+
+## Across both age groups
+
+```{r}
+data_aic = data %>%
+  .[iter == 1 & starting_values == 'random'] %>%
+  .[, .(AIC = mean(AIC),
+        sd_AIC = sd(AIC)),
+    by = c('participant_id', 'group', 'model')]
+
+data_aic_all = data_aic %>%
+  .[, .(AIC = mean(AIC)),
+    by = 'model'] %>%
+  # Sort by lowest AIC
+  .[order(rank(AIC))]
+```
+
+## Age split
+
+```{r}
+data_aic_age = data_aic %>%
+  .[, .(AIC = mean(AIC)),
+    by = c('group', 'model')] %>%
+  # Sort by age and lowest AIC
+  .[order(group, AIC)]
+```
+
+# Best fitting model counts
+
+## For all models
+
+```{r}
+# Get winning model within each participant
+data_counts = data_aic %>%
+  .[, ':='(lowest_AIC = min(AIC),
+           loc_winning = AIC == min(AIC),
+           # Name of winning model
+           winning_model = model[AIC == min(AIC)]),
+    by = 'participant_id'] %>%
+  # Only keep winning model
+  .[loc_winning == TRUE]
+
+# Count winning models across participants
+data_counts_all = data_counts %>%
+  .[, .(n_winning = .N),
+    by = c('model')]
+
+# Count winning models within age-groups
+data_counts_age = data_counts %>%
+  .[, .(n_winning = .N),
+    by = c('group', 'model')] %>%
+  .[order(group, -rank(model))]
+  
+data_counts_all
+data_counts_age
+
+chisq.test(cbind(data_counts_age[group == 'older']$n_winning,
+                 data_counts_age[group == 'younger']$n_winning))
+
+p = ggplot(data = data_counts_age,
+           aes(x = model,
+               y = n_winning,
+               fill = model)) +
+  geom_col() +
+  facet_wrap(~group)
+p
+
+```
+### Exceedance probs
+
+```{r}
+data_ep = data_aic %>%
+  .[, nAIC := -(AIC)] %>%
+  data.table::dcast(participant_id + group ~ model, value.var = 'nAIC')
+
+bmsR::VB_bms(cbind(data_ep$rw,
+                   data_ep$uncertainty,
+                   data_ep$surprise,
+                   data_ep$uncertainty_surprise),
+             n_samples = 1000)
+```
+
+
+## For non-nested models
+
+```{r}
+# Get winning model within each participant
+data_counts_nn = data_aic %>%
+  .[model != 'uncertainty_surprise'] %>%
+  .[, ':='(lowest_AIC = min(AIC),
+           loc_winning = AIC == min(AIC),
+           # Name of winning model
+           winning_model = model[AIC == min(AIC)]),
+    by = 'participant_id'] %>%
+  # Only keep winning model
+  .[loc_winning == TRUE]
+
+# Count winning models across participants
+data_counts_nn_all = data_counts_nn %>%
+  .[, .(n_winning = .N),
+    by = c('model')]
+
+# Count winning models within age-groups
+data_counts_nn_age = data_counts_nn %>%
+  .[, .(n_winning = .N),
+    by = c('group', 'model')] %>%
+  .[order(group, -rank(model))]
+  
+data_counts_nn_all
+data_counts_nn_age
+
+chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning,
+                 data_counts_nn_age[group == 'younger']$n_winning))
+```
+
+
+---
 
 # Which model fits the data best?
 
