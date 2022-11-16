@@ -1,6 +1,7 @@
 library(here)
 library(data.table)
 library(nloptr)
+library(magrittr)
 
 Fit_models_new = function(data,
                           algorithm,
@@ -9,7 +10,7 @@ Fit_models_new = function(data,
                           x0,
                           lb,
                           ub){
-  
+
   # data = Load_data() %>%
   #   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
   #   .[participant_id == '1NU6KP5']

@@ -132,7 +132,7 @@ p
 
 ```{r}
 # See if there were really random starting values
-data[variable == 'x0'] %>%
+data[variable == 'x0' & starting_values == 'random'] %>%
   .[, .(mean_fixed = mean(value),
         sd_fixed = sd(value)),
     by = c('starting_values', 'model', 'iter', 'x')]
@@ -140,7 +140,7 @@ data[variable == 'x0'] %>%
 
 ```{r}
 # Look at difference between fits from fixed and random
-check_fixedVSrandom = data[variable == 'coefs' & iter == 1] %>%
+check_fixedVSrandom = data[variable == 'coefs'] %>%
   data.table::dcast(., participant_id + group + age + sex + iter + model + x ~ starting_values, value.var = c('value', 'AIC')) %>%
   .[, ':='(value_FmR = value_fixed - value_random,
            AIC_FmR = AIC_fixed - AIC_random)]
@@ -153,8 +153,8 @@ p = ggplot(data = check_fixedVSrandom,
                                                      seed = 666))
 p
 
-min(check_fixedVSrandom$value_FmR, na.rm = TRUE)
-max(check_fixedVSrandom$value_FmR, na.rm = TRUE)
+#min(check_fixedVSrandom$value_FmR, na.rm = TRUE)
+#max(check_fixedVSrandom$value_FmR, na.rm = TRUE)
 ```
 
 ```{r}
@@ -168,13 +168,31 @@ p = ggplot(data = check_fixedVSrandom,
 p
 ```
 
+```{r}
+# See if difference in starting values is correlated with difference in solution
+data_corr_random = data[variable != 'LRs' & x %in% c('alpha', 'l', 'u', 's')] %>%
+  data.table::dcast(participant_id + group + starting_values + iter + model + x ~ variable, value.var = 'value') %>%
+  .[starting_values == 'random'] %>%
+  .[model == 'uncertainty']
+
+p = ggplot(data = data_corr_random,
+           aes(x = x0,
+               y = coefs,
+               color = participant_id)) +
+  geom_point(size = 0.1) +
+  geom_smooth(method = 'lm',
+              formula = y ~ x,
+              size = 0.1) +
+  theme(legend.position = 'none')
+p
+```
 
 
 # What has Nico looked at?
 
 - RW analyses (Do participants behave like in an RL task?):
-   - Prob choosing left bandit positively related to value of left bandit (younger: p < .001; older: p <.001)
-   - Prob choosing right bandit negatively related to value of left bandit (both p < .001)
+   - Prob choosing left bandit positively related to value of left bandit (younger: p < .001; older: p <.001) (?)
+   - Prob choosing right bandit negatively related to value of left bandit (both p < .001) (?)
    - Beta of left and right values related to percent of correct choices (r = .43, r = -.41; both p < .001)
    - Average LR = .13
    - LR positively correlated with overall performance (r = .29; p = .003)
@@ -193,6 +211,90 @@ p
 - Chi-Square of model frequencies across age groups
    - marginal (p = .077)
 
+## RW: Relationship with performance: Beta left/right & LR
+
+```{r}
+# Load choice data
+data_behav = Load_data() %>%
+  Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
+  Add_comp(.) %>%
+  .[,run := as.factor(run)]
+
+# Percentage of optimal choices
+check_noc = data_behav %>%
+  Add_comp(.) %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  .[trial_type == 'choice',] %>%
+  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'run', 'trial')] %>%
+  .[, correct := correct_choice == choice] %>%
+  # Get percentage of correct choices (exclude timeouts from overall trials)
+  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
+    by = c('participant_id', 'group')]
+
+data_corr = data %>%
+  .[variable == 'coefs' & model == 'rw' & starting_values == 'random' & iter == 1] %>%
+  data.table::dcast(participant_id + group + AIC ~ x, value.var = 'value') %>%
+  data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
+
+# Plot correlation
+p1 = ggplot(data_corr,
+           aes(x = V1,
+               y = perc_correct)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x)
+p1
+
+p2 = ggplot(data_corr,
+           aes(x = V2,
+               y = perc_correct)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x)
+p2
+
+p3 = ggplot(data_corr,
+           aes(x = alpha,
+               y = perc_correct)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x)
+p3
+
+# V1 ~ performance
+cor.test(data_corr$V1, data_corr$perc_correct)
+m = lm(perc_correct ~ V1,
+       data = data_corr)
+Anova(m)
+
+# V2 ~ performance
+cor.test(data_corr$V2, data_corr$perc_correct)
+m = lm(perc_correct ~ V2,
+       data = data_corr)
+anova(m)
+
+# If both are in the model, only the first captures variance, likely because of
+# the high correlation between V1 and V2
+m = lm(perc_correct ~ V1 + V2,
+       data = data_corr)
+anova(m)
+
+# alpha ~ performance
+cor.test(data_corr$alpha, data_corr$perc_correct)
+m = lm(perc_correct ~ alpha,
+       data = data_corr)
+anova(m)
+
+# Full model
+m = lm(perc_correct ~ V1 + V2 + alpha,
+       data = data_corr)
+anova(m)
+
+# Average LR
+mean(data_corr$alpha)
+```
 
 
 # Which model fits the data best?
