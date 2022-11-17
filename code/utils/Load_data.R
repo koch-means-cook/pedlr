@@ -13,7 +13,7 @@ Load_data = function(){
                        fsep = .Platform$file.sep)
   # List of all data points
   data_list = Sys.glob(file.path(data_dir,
-                                 '*.tsv',
+                                 '*_exp_data.tsv',
                                  fsep = .Platform$file.sep))
   
   # Load all data

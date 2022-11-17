@@ -62,12 +62,12 @@ MEM_MB=180
 # ===
 # Set fitting parameters
 # ===
-#STARTING_VALUES="fixed"
-STARTING_VALUES="random"
+STARTING_VALUES="fixed"
+#STARTING_VALUES="random"
 ALGORITHM="NLOPT_GN_DIRECT_L"
 XTOL_REL=0.00001
-MAXEVAL=2000
-ITERATIONS=20
+MAXEVAL=100
+ITERATIONS=1
 
 # ===
 # Run model fitting

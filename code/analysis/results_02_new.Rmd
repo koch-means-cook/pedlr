@@ -64,6 +64,8 @@ invisible(lapply(source_files, function(x) source(x)))
 custom_guides = Get_plot_guides()
 ```
 
+# Setup
+
 ```{r}
 # Load data for demographics
 data_participants = Load_data() %>%
@@ -84,11 +86,48 @@ data$model = factor(data$model, levels = c('rw',
 
 # Split data by starting values (random vs. fixed)
 data_fixed = data[starting_values == 'fixed']
+file = file.path(base_path, 'derivatives', '')
 data_random = data[starting_values == 'random']
 
-# get number of participants (to adjust figure height)
+# get number of participants
 n_participants = length(unique(data$participant_id))
+
+# Load nico's model data
+file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico.tsv')
+data_fixed_nico = data.table::fread(file, sep = '\t', na.strings = 'n/a')
+# Name variable levels equally between both approaches
+data_fixed_nico = data_fixed_nico[order(participant_id, model)]
+data_fixed_nico[x == 'intercept']$x = '(Intercept)'
+# Add identifyer for nicos data
+data_fixed_nico$author = 'nico'
+
+# Prepare comparison data
+data_fit_comp = data_fixed[iter == 1 & variable %in% c('coefs', 'x0')] %>%
+  .[order(participant_id, model)]
+# Add identifyer for christoph's data
+data_fit_comp$author = 'christoph'
+# Delete additional columns to make data appandable
+select_cols = colnames(data_fixed_nico)
+data_fit_comp = data_fit_comp[,.SD, .SDcols = select_cols]
+
+# Append data of both approaches
+data_fit_comp = rbind(data_fit_comp, data_fixed_nico)
+
+# Bring into comparison format (approaches as two columns) and get difference
+data_fit_comp = data_fit_comp %>%
+  .[, ':='(variable = as.factor(variable),
+           x = as.factor(x),
+           author = as.factor(author))] %>%
+  setcolorder(., c('author', 'participant_id')) %>%
+  dcast(participant_id + model + AIC + variable + x ~ paste0('value_', author), value.var = 'value') %>%
+  .[, value_diff := value_christoph - value_nico] %>%
+  # Add approach identifiers (n evaluations, tolerance, algorithm)
+  .[, ':='(starting_values = unique(data_fixed$starting_values),
+           algorithm = unique(data_fixed$algorithm),
+           xtol_rel = unique(data_fixed$xtol_rel),
+           maxeval = unique(data_fixed$maxeval))]
 ```
+
 
 # Variability in fitting iterations
 
@@ -235,7 +274,7 @@ check_noc = data_behav %>%
     by = c('participant_id', 'group')]
 
 data_corr = data %>%
-  .[variable == 'coefs' & model == 'rw' & starting_values == 'random' & iter == 1] %>%
+  .[variable == 'coefs' & model == 'rw' & starting_values == 'fixed' & iter == 1] %>%
   data.table::dcast(participant_id + group + AIC ~ x, value.var = 'value') %>%
   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
 
@@ -303,7 +342,7 @@ mean(data_corr$alpha)
 
 ```{r}
 data_aic = data %>%
-  .[iter == 1 & starting_values == 'random'] %>%
+  .[iter == 1 & starting_values == 'fixed'] %>%
   .[, .(AIC = mean(AIC),
         sd_AIC = sd(AIC)),
     by = c('participant_id', 'group', 'model')]
@@ -313,6 +352,7 @@ data_aic_all = data_aic %>%
     by = 'model'] %>%
   # Sort by lowest AIC
   .[order(rank(AIC))]
+data_aic_all
 ```
 
 ## Age split
@@ -323,6 +363,7 @@ data_aic_age = data_aic %>%
     by = c('group', 'model')] %>%
   # Sort by age and lowest AIC
   .[order(group, AIC)]
+data_aic_age
 ```
 
 # Best fitting model counts
