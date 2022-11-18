@@ -13,8 +13,10 @@ LRfunction = function(low,
   # Normalize by maximum prediction error
   PEscaled = PEscaled/PEmax
   
+  
   # Get LR based on parameters
   alpha_star = low  + ((up-low) / (1 + PEscaled^(-exp(slope))) *2)
+  
   
   # Return LR and normalized scaled PE
   return(list(alpha_star,

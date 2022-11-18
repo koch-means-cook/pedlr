@@ -13,13 +13,40 @@ Compute_value = function(V,
   # alpha_hat = x[1]
   # w = x[2]
   
-  # Safe parameters for surprise models
-  # l
-  low = x[1]
-  # u
-  up = x[2]
-  # s
-  slope = x[3]
+  # Allocate parameters
+  # rw
+  if(is.na(x[2])){
+    alpha = x[1]
+    pi = NA
+    
+    # Uncertainty model
+  } else if(is.na(x[3])){
+    alpha = x[1]
+    pi = x[2]
+    
+    # Surprise model
+  } else if(is.na(x[4])){
+    # l
+    low = x[1]
+    # u
+    up = x[2]
+    # s
+    slope = x[3]
+    pi = NA
+    
+    # Surprise+Uncertainty model
+  } else{
+    # l
+    low = x[1]
+    # u
+    up = x[2]
+    # s
+    slope = x[3]
+    pi = x[4]
+  }
+  
+  # allocate trailing surprise
+  S = V*0
   
   # Loop over each trial
   for (i in 2:length(idx)){
@@ -30,12 +57,16 @@ Compute_value = function(V,
     # Calculate PE from current outcome
     PE[idx[i]] = R-V[idx[i-1]]
     
-    # In case of surprise model (models that include l,u,s parameters)
-    if (!is.na(x[2])) {
+    # In case of surprise model (models that include l,u,s parameters) (rw = 1 para, uncertainty = 2 para)
+    if (!is.na(x[3])) {
       #res = LRfunction(alpha_hat, w, PE[idx[i]], tau)
       
       # Calculate LR (based on experienced PE and relationship between PE and LR, given by parameters l,u,s)
-      res = LRfunction(x[1], x[2], x[3], PE[idx[i]], tau)
+      res = LRfunction(low = low,
+                       up = up,
+                       slope = slope,
+                       PE = PE[idx[i]],
+                       tau = tau)
       alpha_star = res[[1]]
       
     # In case of simple LR model
@@ -43,7 +74,7 @@ Compute_value = function(V,
       #alpha_star = alpha_hat
       
       # Set constant LR
-      alpha_star = low
+      alpha_star = alpha
     }
     
     # Calculate and enter current value 
@@ -51,17 +82,28 @@ Compute_value = function(V,
     V[idx[i]] = V[idx[i-1]]*(1-alpha_star) +  R*alpha_star
     # Safe current LR
     LR[idx[i]] = alpha_star
+    
+    # Calculate and enter trailing surprise
+    if(!is.na(pi)){
+      S[idx[i]] = S[idx[i-1]]*(1-pi) +  abs(PE[idx[i]])*pi  
+    } else{
+      S[idx[i]] = NA
+    }
+    
+    
     # Fill in values and PE for empty trials in which bandit was not chosen
     V[idx[i-1]:(idx[i]-1)] = V[idx[i-1]]
     PE[idx[i-1]:(idx[i]-1)] = PE[idx[i-1]]
+    S[idx[i-1]:(idx[i]-1)] = S[idx[i-1]]
   }
   
   # Set current value and PE to all following values (only next one is important)
   V[idx[i]:length(V)] = V[idx[i]]
   PE[idx[i]:length(V)] = PE[idx[i]]
+  S[idx[i]:length(V)] = S[idx[i]]
   
   # Return Value, PE, and LR as data.frame
-  VPE = data.frame(V, PE, LR)
+  VPE = data.frame(V, PE, LR, S)
   return(VPE)
 }
 

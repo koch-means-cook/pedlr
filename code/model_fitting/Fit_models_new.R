@@ -73,10 +73,14 @@ Fit_models_new = function(data,
     model_name = names(glmods)[model_count]
     
     # Set names of parameters
-    if(model_name %in% c('rw', 'uncertainty')){
+    if(model_name == 'rw'){
       para_names = 'alpha'
-    } else if(model_name %in% c('surprise', 'uncertainty_surprise')){
+    } else if(model_name == 'uncertainty'){
+      para_names = c('alpha', 'pi')
+    } else if(model_name == 'surprise'){
       para_names = c('l', 'u', 's')
+    }else if(model_name == 'uncertainty_surprise'){
+      para_names = c('l', 'u', 's', 'pi')
     }
     
     # Fit model
@@ -88,6 +92,7 @@ Fit_models_new = function(data,
                           data = data,
                           glmods = glmods,
                           model = model_count)
+    
     
     # Run regression with best fitting parameters
     cres = Regression_model(x = cmod$solution,

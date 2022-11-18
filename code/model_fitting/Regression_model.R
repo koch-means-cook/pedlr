@@ -6,10 +6,10 @@ Regression_model = function(x,
                             plot = FALSE) {
   
   # Allocate matrices to store important variables
-  values = updates = fupdates = alphas = matrix(NA, 3, 240*2)
+  values = updates = fupdates = alphas = surprise = matrix(NA, 3, 240*2)
   
-  # Pad x with NA (to always be length = 3)
-  x = c(x, rep(NA, 3-length(x)))
+  # Pad x with NA (to always be length = 4)
+  x = c(x, rep(NA, 4-length(x)))
   
   # Loop over runs
   for (run_count in 1:2) {
@@ -25,7 +25,7 @@ Regression_model = function(x,
     experienced_outcomes = tapply(data_run$outcome,
                                   data_run$chosen_bandit,
                                   function(x) x)
-    # Get trials for experiences outcomes
+    # Get trials for experienced outcomes
     outcome_trials  = sapply(1:3, function(x) which(data_run$chosen_bandit == x))
     
     # Loop over all three bandits
@@ -54,6 +54,7 @@ Regression_model = function(x,
       values[cbandit,ccidx] = cVPE$V
       alphas[cbandit,ccidx] = cVPE$LR
       updates[cbandit,ccidx] = cVPE$PE
+      surprise[cbandit,ccidx] = cVPE$S
       
       # # - - - - - - - - POTENTIAL BUG 
       # # (convolution with PEs from future (2 sided convolution); instead of recency weighted PE with lag of 10)
@@ -64,19 +65,25 @@ Regression_model = function(x,
       #                                         sides = 2) # should be `sides = 1`
       # # - - - - - - - - POTENTIAL BUG
       
-      # - - - - - - - - Fixed BUG 
-      # Get "recency-weighted" PEs to measure uncertainty (how strong was PE over last 10 trials incl leakage?)
-      fupdates[cbandit,ccidx] = stats::filter(cVPE$PE, 
-                                              filter = rev(0.40^(1:10)/sum(0.40^(1:10))),
-                                              method = 'convolution',
-                                              sides = 1)
-      # - - - - - - - - Fixed BUG
+      # # - - - - - - - - Fixed BUG 
+      # # Get "recency-weighted" PEs to measure uncertainty (how strong was PE over last 10 trials incl leakage?)
+      # fupdates[cbandit,ccidx] = stats::filter(cVPE$PE, 
+      #                                         filter = rev(0.40^(1:10)/sum(0.40^(1:10))),
+      #                                         method = 'convolution',
+      #                                         sides = 1)
+      # # - - - - - - - - Fixed BUG
+      
+      # - - - - - - - - Alternative
+      # Use trailing surprise
+      fupdates[cbandit,ccidx] = cVPE$S
+      # - - - - - - - - Alternative
       
     }
   }
   
-  # Enter recency-weighted and scaled PEs for each bandit (measure of uncertainty)
-  supdates = matrix(scale(c(abs(fupdates)))[,1], 3, 480)
+  # Enter trailing surprise for each bandit (measure of uncertainty)
+  #supdates = matrix(scale(c(abs(fupdates)))[,1], 3, 480)
+  supdates = matrix(c(fupdates), 3, 480)
   
   # Enter values for left option and right option
   cdf$V1 = values[cbind(cdf$option_left,1:480)]
