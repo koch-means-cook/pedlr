@@ -55,7 +55,7 @@ N_CPUS=1
 # maximum number of threads per process:
 N_THREADS=1
 # memory demand in *GB*
-MEM_MB=180
+MEM_MB=1000
 # memory demand in *MB*
 #MEM_MB="$((${MEM_GB} * 1000))"
 
@@ -66,7 +66,7 @@ STARTING_VALUES="fixed"
 #STARTING_VALUES="random"
 ALGORITHM="NLOPT_GN_DIRECT_L"
 XTOL_REL=0.00001
-MAXEVAL=100
+MAXEVAL=50000
 ITERATIONS=1
 
 # ===

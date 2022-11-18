@@ -59,6 +59,10 @@ source_files = list.files(source_path, pattern = "[.][rR]$",
                           full.names = TRUE, recursive = TRUE)
 invisible(lapply(source_files, function(x) source(x)))
 
+source_path = file.path(base_path, 'code', 'model_fitting', 'LRfunction.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
+
 
 # Get plot colors/linetypes
 custom_guides = Get_plot_guides()
@@ -119,7 +123,7 @@ data_fit_comp = data_fit_comp %>%
            x = as.factor(x),
            author = as.factor(author))] %>%
   setcolorder(., c('author', 'participant_id')) %>%
-  dcast(participant_id + model + AIC + variable + x ~ paste0('value_', author), value.var = 'value') %>%
+  dcast(participant_id + model + variable + x ~ paste0('value_', author), value.var = 'value') %>%
   .[, value_diff := value_christoph - value_nico] %>%
   # Add approach identifiers (n evaluations, tolerance, algorithm)
   .[, ':='(starting_values = unique(data_fixed$starting_values),
@@ -127,6 +131,7 @@ data_fit_comp = data_fit_comp %>%
            xtol_rel = unique(data_fixed$xtol_rel),
            maxeval = unique(data_fixed$maxeval))]
 ```
+
 
 
 # Variability in fitting iterations
@@ -237,7 +242,7 @@ p
    - (Y) Average LR = .13
    - (Y) LR positively correlated with overall performance (r = .29; p = .003)
 - Average AIC comparison between sophisticated models and RW:
-   - (Y) AIC average over all participants for each model [uncertainty_surprise (242.02) < surprise (242.47) < uncertainty (245.13) < rw (247.40)]
+   - **(N)** AIC average over all participants for each model [uncertainty_surprise (242.02) < surprise (242.47) < uncertainty (245.13) < rw (247.40)]
    - Splitting by age group:
       - (?) **YA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .01)** **(CORRECTED??)**
       - (?) **OA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .03)** **(CORRECTED??)**
@@ -246,10 +251,10 @@ p
       - **(N)** YA: uncertainty (24) > surprise (18) > rw (9)
       - (Y) OA: surprise (25) > surprise (13) = rw (13)
    - Protected exceedance probability:
-      - YA: uncertainty (72%)
-      - OA: surprise (80.1%)
+      - **(N)** YA: uncertainty (72%)
+      - (Y) OA: surprise (80.1%)
 - Chi-Square of model frequencies across age groups
-   - marginal (p = .077)
+   - **(N)** marginal (p = .077)
 
 ## RW: Relationship with performance: Beta left/right & LR
 
@@ -274,7 +279,7 @@ check_noc = data_behav %>%
     by = c('participant_id', 'group')]
 
 data_corr = data %>%
-  .[variable == 'coefs' & model == 'rw' & starting_values == 'fixed' & iter == 1] %>%
+  .[variable == 'coefs' & model == 'rw' & starting_values == 'random' & iter == 1] %>%
   data.table::dcast(participant_id + group + AIC ~ x, value.var = 'value') %>%
   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
 
@@ -452,3035 +457,476 @@ data_counts_nn_age
 
 chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning,
                  data_counts_nn_age[group == 'younger']$n_winning))
-```
 
-
----
-
-# Which model fits the data best?
-
-## Absolute best fit
-
-AIC-based model comparison.
-We focus on the key models, Rescorla-Wagner vs. Pedlr_step.
-Additionally, we had a number of competing models trying to capture different aspects of rare PE influences.
-In full these might be presented in the supplementary material.
-
-```{r}
-data_aic = data %>%
-  .[,n_para := .N,
-    by = c('participant_id', 'group', 'real_iter', 'model')] %>%
-  data.table::dcast(.,
-                    participant_id + group + real_iter + second_ll + model + n_para ~ para,
-                    value.var = 'second_solution') %>%
-  # Calculate AIC
-  .[, AIC := (2*n_para) + (2*second_ll)]
-
-# Get min aic model
-data_best_fit = data_aic %>%
-  # Reduce to core models (Rw and Pedlr_step)
-  .[model %in% c('Rw', 'Pedlr_step')] %>%
-  .[, best_fitting_model := model[which.min(AIC)],
-    by = c('participant_id', 'group', 'real_iter')] %>%
-  # Take only first iteration (no variability in fits)
-  .[real_iter == 1,]
-
-data_only_best_fit = data_best_fit[model == best_fitting_model,]
-```
-
-### Plot {.tabset}
-
-#### Focus: Rw & Pedlr_step
-
-```{r}
-data_plot = Prepare_data_for_plot(data_only_best_fit)
-
-# Export data for plotting
-file = file.path(base_path, 'derivatives', 'figures', 'f_mc_abs.tsv',
-                 fsep = .Platform$file.sep)
-data.table::fwrite(data_plot, file, sep = '\t', na = 'n/a', row.names = FALSE)
-
-dodge_width = 0.2
-
-p_fit = ggplot(data = data_plot,
-       aes(x = model,
-           color = group,
-           fill = group)) +
-  geom_bar(stat = 'count',
-                 width = dodge_width,
-                 position = position_dodge(width = dodge_width)) +
-  scale_fill_manual(values = custom_guides) +
-  theme(legend.position = 'top',
-        axis.text.x = element_text(angle = -45, hjust = 0))
-Neurocodify_plot(p_fit)
-```
-
-```{r}
-# Count winning model
-table = data_only_best_fit %>%
-  .[, .(n_best_fit = .N),
-    by = c('group', 'model')] %>%
-  .[order(rank(group), rank(-n_best_fit)), ]
-
-# Print table
-knitr::kable(table) %>%
-  kableExtra::kable_styling()
-```
-
--   look at fit as function of behavioral results
-    -   e.g. effect of rare outcome ==\> fit of pedlr
-
-##### Cotingency test
-
-```{r}
-data_fit_chi = table %>%
-  data.table::dcast(group ~ model, value.var = 'n_best_fit')
-
-bla = exact2x2::boschloo(x1 = data_fit_chi[group == 'older']$Rw,
-                         n1 = data_fit_chi[group == 'older']$Rw + data_fit_chi[group == 'younger']$Rw,
-                         x2 = data_fit_chi[group == 'older']$Pedlr_step,
-                         n2 = data_fit_chi[group == 'older']$Pedlr_step + data_fit_chi[group == 'younger']$Pedlr_step)
-bla
-```
-
-
-#### All models
-
-```{r}
-data_best_fit_all = data_aic %>%
-  .[, best_fitting_model := model[which.min(AIC)],
-    by = c('participant_id', 'group', 'real_iter')] %>%
-  # Take only first iteration (no variability in fits)
-  .[real_iter == 1,] %>%
-  .[model == best_fitting_model,]
-```
-
-
-```{r}
-data_plot = Prepare_data_for_plot(data_best_fit_all)
-dodge_width = 0.2
-
-p_fit = ggplot(data = data_plot,
-       aes(x = model,
-           color = group,
-           fill = group)) +
-  geom_bar(stat = 'count',
-                 width = dodge_width,
-                 position = position_dodge(width = dodge_width)) +
-  scale_fill_manual(values = custom_guides) +
-  theme(legend.position = 'top',
-        axis.text.x = element_text(angle = -45, hjust = 0))
-Neurocodify_plot(p_fit)
-```
-
-```{r}
-# Count winning model
-table = data_best_fit_all %>%
-  .[, .(n_best_fit = .N),
-    by = c('group', 'model')] %>%
-  .[order(rank(group), rank(-n_best_fit)), ]
-
-# Print table
-knitr::kable(table) %>%
-  kableExtra::kable_styling()
-```
-
-
-
-<!-- ### Parameters -->
-
-<!-- ```{r} -->
-<!-- data_pedlr_family = data_only_best_fit %>% -->
-<!--   .[model != 'Rw',] %>% -->
-<!--   data.table::melt(id.vars = c('participant_id', 'group', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'), -->
-<!--                    measure.vars = c('alpha1', 'temperature'), -->
-<!--                    variable.name = 'para') -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- data_plot = Prepare_data_for_plot(data_pedlr_family) -->
-
-<!-- dodge_width = 0.3 -->
-
-<!-- p_alpha1 = ggplot(data = data_plot[para == 'alpha1'], -->
-<!--        aes(x = group, -->
-<!--            y = log(value), -->
-<!--            color = group, -->
-<!--            fill = group)) + -->
-<!--   geom_point(position = position_jitterdodge(dodge.width = dodge_width, -->
-<!--                                              jitter.width = dodge_width, -->
-<!--                                              jitter.height = 0, -->
-<!--                                              seed = 666)) + -->
-<!--   geom_boxplot(width = dodge_width/2, -->
-<!--                outlier.shape = NA, -->
-<!--                color = 'black', -->
-<!--                position = position_dodge(width = dodge_width)) + -->
-<!--   gghalves::geom_half_violin(position = position_nudge(-dodge_width), -->
-<!--                              alpha = 0.5, -->
-<!--                              color = NA) + -->
-<!--   scale_color_manual(values = custom_guides) + -->
-<!--   scale_fill_manual(values = custom_guides) -->
-
-<!-- Neurocodify_plot(p_alpha1) -->
-<!-- ``` -->
-
-<!-- -   Could maybe move model estimation to log space (so in the model its not a1 \* PE BUT e\^a1 \* PE) so 0.00004 and 0.0000000007 could actually be distinguished -->
-
-<!-- ```{r} -->
-<!-- data_plot = Prepare_data_for_plot(data_pedlr_family) -->
-
-<!-- dodge_width = 0.3 -->
-
-<!-- p_alpha1 = ggplot(data = data_plot[para == 'alpha1'], -->
-<!--        aes(x = group, -->
-<!--            y = value, -->
-<!--            color = group, -->
-<!--            fill = group)) + -->
-<!--   geom_point(position = position_jitterdodge(dodge.width = dodge_width, -->
-<!--                                              jitter.width = dodge_width, -->
-<!--                                              jitter.height = 0, -->
-<!--                                              seed = 666)) + -->
-<!--   geom_boxplot(width = dodge_width/2, -->
-<!--                outlier.shape = NA, -->
-<!--                color = 'black', -->
-<!--                position = position_dodge(width = dodge_width)) + -->
-<!--   gghalves::geom_half_violin(position = position_nudge(-dodge_width), -->
-<!--                              alpha = 0.5, -->
-<!--                              color = NA) + -->
-<!--   scale_color_manual(values = custom_guides) + -->
-<!--   scale_fill_manual(values = custom_guides) -->
-
-<!-- Neurocodify_plot(p_alpha1) -->
-<!-- ``` -->
-
----
-
-## Relative best fit
-
-```{r}
-data_aic_diff = data_best_fit %>%
-  # Put into long format to compare AIC as difference
-  data.table::dcast(participant_id + group + real_iter + best_fitting_model ~ model, value.var = 'AIC') %>%
-  # RW - Pedlr_step: above 0 = better fit pedlr_step
-  .[, AIC_RWmPedlr_step := Rw - Pedlr_step]
-```
-
-### Plot
-
-```{r}
-data_plot = Prepare_data_for_plot(data_aic_diff)
-
-# Export data for plotting
-file = file.path(base_path, 'derivatives', 'figures', 'f_mc_rel.tsv',
-                 fsep = .Platform$file.sep)
-data.table::fwrite(data_plot, file, sep = '\t', na = 'n/a', row.names = FALSE)
-
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = data_plot,
-       aes(x = group,
-           y = AIC_RWmPedlr_step,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-# Overall best fitting model
-t.test(data_aic_diff$Rw,
-       data_aic_diff$Pedlr_step,
-       paired = TRUE)
-wilcox.test(data_aic_diff$Rw,
-            data_aic_diff$Pedlr_step,
-            paired = TRUE)
-
-# Group comparison
-t.test(data_aic_diff[group == 'younger']$AIC_RWmPedlr_step,
-       data_aic_diff[group == 'older']$AIC_RWmPedlr_step)
-wilcox.test(data_aic_diff[group == 'younger']$AIC_RWmPedlr_step,
-            data_aic_diff[group == 'older']$AIC_RWmPedlr_step)
-```
-
-Sample-wide AIC comparison (Pedlr_step vs. Rw): Pedlr_step wins; no age difference in model fit based on AIC comparison
-
----
-
-## Does the best fitting model capture the central effect?
-
-### Correlation alpha1 & rare-influence {.tabset}
-
-```{r}
-data_model = data_best_fit %>%
-  .[model == 'Pedlr_step',] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'),
-                   measure.vars = c('alpha1', 'temperature'),
-                   variable.name = 'para') %>%
-  data.table::dcast(participant_id + group + real_iter + second_ll + model + best_fitting_model + AIC ~ para, value.var = 'value')
-
-# Get influence of rare value
-data_rare_inf = Load_data() %>%
-  Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
-  Add_comp(.) %>%
-  .[, trial := seq(.N),
-    by = c('participant_id', 'run')] %>%
-  # Get correct answers
-   .[trial_type == 'choice', correct := if(option_left > option_right) 'left' else 'right',
-    by = c('participant_id', 'run', 'trial')] %>%
-  .[trial_type == 'forced', correct := forced,
-    by = c('participant_id', 'run', 'trial')] %>%
-  # Exclude time-out trials
-  .[!is.na(outcome), correct_choice := choice == correct,
-    by = c('participant_id', 'run', 'trial')] %>%
-  .[comp != '1v2' | trial_type != 'choice', correct_choice := NA,
-    by = c('participant_id', 'run')] %>%
-  # Get running averages
-  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 1),
-           avg_2_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 2),
-           avg_3_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 3)),
-    by = c('participant_id', 'run')]
-  
-
-# Allocate data holding +-5 trials from rare outcome of bandit 2
-window_data = data.table()
-
-#rep(NA, max(-z+wdsz, 0))
-
-# Function to get data slice +-5 trials from rare outcome of bandit 2
-Windowrize = function(data,
-                      index_rare,
-                      window_size){
-  result = data[seq(max(index_rare - window_size + 1, 1),
-                    index_rare + window_size), ]
-  result$window_center = data$trial[index_rare]
-  result$window_relative = seq(max(index_rare - window_size + 1, 1),
-                               index_rare + window_size) - index_rare
-  result[window_relative == 0]$correct_choice = NA
-  
-  result$window_center = as.factor(result$window_center)
-  result$window_relative = as.factor(result$window_relative)
-  return(result)
-}
-
-# i_id = '09RI1ZH'
-# i_run = '1'
-
-# For each participant & run
-for(i_id in unique(data_rare_inf$participant_id)){
-  for(i_run in unique(data_rare_inf$run)){
-    
-    # Select data
-    temp_data = data_rare_inf[participant_id == i_id &
-                      run == i_run]
-    
-    # Get all trials where rare outcomes were obtained
-    idx_chosen_rare_outcome = which(temp_data$is_rare == 1 &
-                                      temp_data$trial_type %in% c('choice', 'forced') &
-                                      temp_data$option_choice == 2)
-   # For each of the rare-outcome trials
-   for(rare_count in seq(1,length(idx_chosen_rare_outcome))){
-    # Get data slice
-     temp = Windowrize(data = temp_data,
-                       index_rare = idx_chosen_rare_outcome[rare_count],
-                       window_size = 3) %>%
-       .[, window_relative := factor(window_relative, levels = unique(sort(window_relative)))]
-     # Add count of the rare outcome
-     temp$i_rare = rare_count
-     # Fuse data for each participant & run
-     window_data = rbind(window_data, temp)
-   }
-  }
-}
-
-# Summarize data
-window_data_run = window_data %>%
-  # Eliminate windows which extended across trial boundaries (<1 or >240)
-  .[, relative_trial := as.numeric(as.character(window_center)) + as.numeric(as.character(window_relative))] %>%
-  .[!(relative_trial < 1 | relative_trial > 240),] %>%
-  # Sort by relative window
-  .[order(rank(group), rank(participant_id), rank(run), rank(window_relative)),] %>%
-  # Get mean accuracy across all relative window positions (-2 to +3)
-  .[, .(mean_accuracy = mean(correct_choice, na.rm = TRUE),
-        n_data = sum(!is.na(correct_choice))),
-    by = c('participant_id', 'group', 'run', 'window_relative')] %>%
-  # Get difference pre/post rare outcome
-  .[window_relative %in% c(-1,1),] %>%
-  .[window_relative == '-1', window_relative := 'pre'] %>%
-  .[window_relative == '1', window_relative := 'post'] %>%
-  data.table::dcast(participant_id + group + run ~ paste0('prob_', window_relative),
-                    value.var = 'mean_accuracy') %>%
-  .[, preminuspost := prob_pre - prob_post] %>%
-  .[, run := as.factor(run)] %>%
-  # Average across run (because modeling was done across runs)
-  .[, .(preminuspost = mean(preminuspost)),
-    by = c('participant_id', 'group')]
-
-# Fuse with modelling data
-data_sanity = data.table::merge.data.table(data_model, window_data_run,
-                                           by = c('participant_id', 'group'))
-```
-
-#### All participants (including those with other models fitting best)
-
-```{r}
-p = ggplot(data = Prepare_data_for_plot(data_sanity),
-       aes(x = alpha1,
-           y = preminuspost,
-           color = group)) +
-  geom_point() +
-  geom_smooth(formula = y ~ x, method = 'lm') +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-```{r}
-lm_a1_ri = lm(preminuspost ~ alpha1 * group,
-         data = data_sanity)
-summary(lm_a1_ri)
-```
-
-#### Only participants fit best by pedlr_step
-
-```{r}
-data_plot = Prepare_data_for_plot(data_sanity[best_fitting_model == 'Pedlr_step'])
-
-p = ggplot(data = data_plot,
-       aes(x = alpha1,
-           y = preminuspost,
-           color = group)) +
-  geom_point() +
-  geom_smooth(formula = y ~ x, method = 'lm') +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-```{r}
-lm_a1_ri = lm(preminuspost ~ alpha1 * group,
-         data = data_sanity[best_fitting_model == 'Pedlr_step'])
-summary(lm_a1_ri)
-```
-
-### Correlation alpha1 & bandit 2 estimates {.tabset}
-
-```{r}
-# State melt columns (to align data types to avoid warnings)
-measure_cols = c('est_1_reward',
-                 'est_1_range',
-                 'avg_1_running',
-                 'est_2_reward',
-                 'est_2_range',
-                 'avg_2_running',
-                 'est_3_reward',
-                 'est_3_range',
-                 'avg_3_running')
-
-# Get estimation data
-check_est = Load_data() %>%
-  Add_comp(.) %>%
-  # Exclude: estimation specific
-  Apply_exclusion_criteria(., choice_based_exclusion = FALSE) %>%
-  # Get running average of chosen rewards
-  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 1),
-           avg_2_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 2),
-           avg_3_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 3)),
-    by = c('participant_id', 'run')] %>%
-  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
-  .[!is.na(est_1_reward),] %>%
-  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
-  # Unify data types of measure columns
-  .[, (measure_cols) := lapply(.SD, as.double), .SDcols = measure_cols] %>%
-  data.table::melt(.,
-                   id.vars = c('participant_id',
-                               'group',
-                               'run',
-                               'est_trial',
-                               'forced_rare'),
-                   measure.vars = measure_cols) %>%
-  .[, est_stim := substr(variable, 5, 5)] %>%
-  .[, type := substr(variable, 7, 9)] %>%
-  .[type == 'rew', type := 'reward'] %>%
-  .[type == 'ran', type := 'range'] %>%
-  .[type == 'run', type := 'r_avg'] %>%
-  data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
-                    value.var = 'value')
-
-# Merge true means with estimation
-check_est_diff = check_est %>%
-  # Get difference between estimation and true mean
-  .[, diff_from_true := reward - r_avg]
-
-# Get mean estimation accuracy across estimation trials
-check_mean_est_diff = check_est_diff %>%
-  # Apply exclusion criterion for rating trials
-  Apply_exclusion_criteria(choice_based_exclusion = FALSE) %>%
-  .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
-    by = c('participant_id', 'group', 'run', 'est_stim')] %>%
-  .[, .(mean_diff_from_true = mean(diff_from_true, na.rm = TRUE)),
-    by = c('participant_id', 'group', 'run', 'half', 'est_stim')] %>%
-  .[, ':='(participant_id = factor(participant_id),
-           group = factor(group),
-           run = factor(run),
-           half = factor(half),
-           est_stim = factor(est_stim))] %>%
-  # Get estimation of 2nd bandit
-  .[est_stim == '2', ] %>%
-  # Focus only on 2nd half
-  .[half == '2', ] %>%
-  # Rename estimation column
-  .[, mean_diff_from_true_2 := mean_diff_from_true] %>%
-  # average across runs since modelling was done across runs
-  .[, .(mean_diff_from_true_2 = mean(mean_diff_from_true_2)),
-    by = c('participant_id', 'group', 'half', 'est_stim')]
-```
-
-```{r}
-data_sanity_rat = data_sanity
-
-data_sanity_rat = data.table::merge.data.table(data_sanity_rat,
-                                               check_mean_est_diff,
-                                               by = c('participant_id', 'group'))
-```
-
-#### All participants (including those with other models fitting best)
-
-```{r}
-data_plot = Prepare_data_for_plot(data_sanity_rat)
-
-p = ggplot(data = data_plot,
-       aes(x = alpha1,
-           y = mean_diff_from_true_2,
-           color = group)) +
-  geom_point() +
-  geom_smooth(formula = y ~ x, method = 'lm') +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-```{r}
-lm_a1_rat2 = lm(mean_diff_from_true_2 ~ alpha1 * group,
-         data = data_sanity_rat)
-summary(lm_a1_rat2)
-```
-
-#### Only participants fit best by pedlr_step
-
-```{r}
-data_plot = Prepare_data_for_plot(data_sanity_rat[best_fitting_model == 'Pedlr_step'])
-
-p = ggplot(data = data_plot,
-       aes(x = alpha1,
-           y = mean_diff_from_true_2,
-           color = group)) +
-  geom_point() +
-  geom_smooth(formula = y ~ x, method = 'lm') +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-```{r}
-lm_a1_rat2 = lm(mean_diff_from_true_2 ~ alpha1 * group,
-         data = data_sanity_rat[best_fitting_model == 'Pedlr_step'])
-summary(lm_a1_rat2)
-```
-
----
-
-# Which model captures participants' estimation best?
-
-```{r}
-# Get behavioral data (choices and estimates)
-data_experiment = Load_data()
-```
-
-```{r}
-# Make sure data used excludes participants with dubious ratings
-data_rat = data
-
-# Allocate data table that will hold model values and indivisual estimate
-data_est_values = data.table()
-
-# For each participant
-for(i_id in unique(data_rat$participant_id)){
-  
-  # Select model parameters (not run sensitive, because models were fit across runs)
-  data_fit = data_rat[real_iter == 1 & participant_id == i_id]
-    
-  #  For each run
-  for(i_run in unique(data_experiment[participant_id == i_id]$run)){
-    
-    # Select behavioral data (important for individual estimates)
-    temp = data_experiment[participant_id == i_id & run == i_run]
-    temp = Prepare_data_for_fit(temp)
-    
-    # Fit RW model to choices
-    data_para = data_fit[model == 'Rw']
-    Rw = Fit_Rw(data = temp,
-                params.alpha = data_para[para == 'alpha']$second_solution,
-                params.temperature = data_para[para == 'temperature']$second_solution,
-                params.reward_space_ub = 100,
-                choice_policy = 'softmax',
-                init_values = c(50,50,50))
-    
-    # Fit Pedler simple model to choices
-    data_para = data_fit[model == 'Pedlr_simple']
-    Pedlr_simple = Fit_Pedlr_simple(data = temp,
-                                    params.alpha1 = data_para[para == 'alpha1']$second_solution,
-                                    params.temperature = data_para[para == 'temperature']$second_solution,
-                                    params.reward_space_ub = 100,
-                                    choice_policy = 'softmax',
-                                    init_values = c(50,50,50))
-    
-    # Fit Pedlr_simple_const model to choices
-    data_para = data_fit[model == 'Pedlr_simple_const']
-    Pedlr_simple_const = Fit_Pedlr_simple_const(data = temp,
-                                                params.alpha1 = data_para[para == 'alpha1']$second_solution,
-                                                params.temperature = data_para[para == 'temperature']$second_solution,
-                                                params.reward_space_ub = 100,
-                                                choice_policy = 'softmax',
-                                                init_values = c(50,50,50))
-    
-    # Fit pedlr model to choices
-    data_para = data_fit[model == 'Pedlr']
-    Pedlr = Fit_Pedlr(data = temp,
-                      params.alpha0 = data_para[para == 'alpha0']$second_solution,
-                      params.alpha1 = data_para[para == 'alpha1']$second_solution,
-                      params.temperature = data_para[para == 'temperature']$second_solution,
-                      params.reward_space_ub = 100,
-                      choice_policy = 'softmax',
-                      init_values = c(50,50,50))
-    
-    # Fit Pedlr_step model to choices
-    data_para = data_fit[model == 'Pedlr_step']
-    Pedlr_step = Fit_Pedlr_step(data = temp,
-                                params.alpha0 = data_para[para == 'alpha0']$second_solution,
-                                params.alpha1 = data_para[para == 'alpha1']$second_solution,
-                                params.temperature = data_para[para == 'temperature']$second_solution,
-                                params.reward_space_ub = 100,
-                                choice_policy = 'softmax',
-                                init_values = c(50,50,50),
-                                # Set PE boundary by 95th percentile of absolute RW PEs
-                                pe_boundary_abs = Rw$pe_boundary_abs)
-    
-    # Fit pedlr_fixdep model to choices
-    data_para = data_fit[model == 'Pedlr_fixdep']
-    Pedlr_fixdep = Fit_Pedlr_fixdep(data = temp,
-                                    params.alpha0 = data_para[para == 'alpha0']$second_solution,
-                                    params.alpha1 = data_para[para == 'alpha1']$second_solution,
-                                    params.temperature = data_para[para == 'temperature']$second_solution,
-                                    params.reward_space_ub = 100,
-                                    choice_policy = 'softmax',
-                                    init_values = c(50,50,50))
-    
-    # Fit pedlr_interdep model to choices
-    data_para = data_fit[model == 'Pedlr_interdep']
-    Pedlr_interdep = Fit_Pedlr_interdep(data = temp,
-                                        params.alpha0 = data_para[para == 'alpha0']$second_solution,
-                                        params.alpha1 = data_para[para == 'alpha1']$second_solution,
-                                        params.interdep = data_para[para == 'interdep']$second_solution,
-                                        params.temperature = data_para[para == 'temperature']$second_solution,
-                                        params.reward_space_ub = 100,
-                                        choice_policy = 'softmax',
-                                        init_values = c(50,50,50))
-    
-    # Add model values and PE for each option as column
-    # RW
-    temp$Rw_1_reward = Rw$values$stim_1
-    temp$Rw_2_reward = Rw$values$stim_2
-    temp$Rw_3_reward = Rw$values$stim_3
-    temp$Rw_1_pe = Rw$PE$stim_1
-    temp$Rw_2_pe = Rw$PE$stim_2
-    temp$Rw_3_pe = Rw$PE$stim_3
-    temp$pe_95th_Rw = Rw$pe_boundary_abs
-    temp$Rw_modelchoice = Rw$choices$choice
-    temp$Rw_modelchoiceprob = Rw$choices$choice_prob
-    # Pedlr_simple
-    temp$Pedlrsimple_1_reward = Pedlr_simple$values$stim_1
-    temp$Pedlrsimple_2_reward = Pedlr_simple$values$stim_2
-    temp$Pedlrsimple_3_reward = Pedlr_simple$values$stim_3
-    temp$Pedlrsimple_1_pe = Pedlr_simple$PE$stim_1
-    temp$Pedlrsimple_2_pe = Pedlr_simple$PE$stim_2
-    temp$Pedlrsimple_3_pe = Pedlr_simple$PE$stim_3
-    temp$Pedlrsimple_modelchoice = Pedlr_simple$choices$choice
-    temp$Pedlrsimple_modelchoiceprob = Pedlr_simple$choices$choice_prob
-    # Pedlr_simple_const
-    temp$Pedlrsimpleconst_1_reward = Pedlr_simple_const$values$stim_1
-    temp$Pedlrsimpleconst_2_reward = Pedlr_simple_const$values$stim_2
-    temp$Pedlrsimpleconst_3_reward = Pedlr_simple_const$values$stim_3
-    temp$Pedlrsimpleconst_1_pe = Pedlr_simple_const$PE$stim_1
-    temp$Pedlrsimpleconst_2_pe = Pedlr_simple_const$PE$stim_2
-    temp$Pedlrsimpleconst_3_pe = Pedlr_simple_const$PE$stim_3
-    temp$Pedlrsimpleconst_modelchoice = Pedlr_simple_const$choices$choice
-    temp$Pedlrsimpleconst_modelchoiceprob = Pedlr_simple_const$choices$choice_prob
-    # Pedlr
-    temp$Pedlr_1_reward = Pedlr$values$stim_1
-    temp$Pedlr_2_reward = Pedlr$values$stim_2
-    temp$Pedlr_3_reward = Pedlr$values$stim_3
-    temp$Pedlr_1_pe = Pedlr$PE$stim_1
-    temp$Pedlr_2_pe = Pedlr$PE$stim_2
-    temp$Pedlr_3_pe = Pedlr$PE$stim_3
-    temp$Pedlr_modelchoice = Pedlr$choices$choice
-    temp$Pedlr_modelchoiceprob = Pedlr$choices$choice_prob
-    # Pedlr_step
-    temp$Pedlrstep_1_reward = Pedlr_step$values$stim_1
-    temp$Pedlrstep_2_reward = Pedlr_step$values$stim_2
-    temp$Pedlrstep_3_reward = Pedlr_step$values$stim_3
-    temp$Pedlrstep_1_pe = Pedlr_step$PE$stim_1
-    temp$Pedlrstep_2_pe = Pedlr_step$PE$stim_2
-    temp$Pedlrstep_3_pe = Pedlr_step$PE$stim_3
-    temp$Pedlrstep_modelchoice = Pedlr_step$choices$choice
-    temp$Pedlrstep_modelchoiceprob = Pedlr_step$choices$choice_prob
-    temp$Pedlrstep_idxrare = Pedlr_step$rare_trial
-    # Pedlr_fixdep
-    temp$Pedlrfixdep_1_reward = Pedlr_fixdep$values$stim_1
-    temp$Pedlrfixdep_2_reward = Pedlr_fixdep$values$stim_2
-    temp$Pedlrfixdep_3_reward = Pedlr_fixdep$values$stim_3
-    temp$Pedlrfixdep_1_pe = Pedlr_fixdep$PE$stim_1
-    temp$Pedlrfixdep_2_pe = Pedlr_fixdep$PE$stim_2
-    temp$Pedlrfixdep_3_pe = Pedlr_fixdep$PE$stim_3
-    temp$Pedlrfixdep_modelchoice = Pedlr_fixdep$choices$choice
-    temp$Pedlrfixdep_modelchoiceprob = Pedlr_fixdep$choices$choice_prob
-    # Pedlr_interdep
-    temp$Pedlrinterdep_1_reward = Pedlr_interdep$values$stim_1
-    temp$Pedlrinterdep_2_reward = Pedlr_interdep$values$stim_2
-    temp$Pedlrinterdep_3_reward = Pedlr_interdep$values$stim_3
-    temp$Pedlrinterdep_1_pe = Pedlr_interdep$PE$stim_1
-    temp$Pedlrinterdep_2_pe = Pedlr_interdep$PE$stim_2
-    temp$Pedlrinterdep_3_pe = Pedlr_interdep$PE$stim_3
-    temp$Pedlrinterdep_modelchoice = Pedlr_interdep$choices$choice
-    temp$Pedlrinterdep_modelchoiceprob = Pedlr_interdep$choices$choice_prob
-    
-    # Bind run and participant specific data together
-    data_est_values = rbind(data_est_values, temp)
-  }
-}
-
-```
-
-```{r}
-# Get rating columns
-est_columns = colnames(data_est_values)[grep('*_reward', colnames(data_est_values))]
-
-# Get data structure comparing participant estimate to model values
-data_values_comp = data_est_values[with_rating == TRUE] %>%
-  Apply_exclusion_criteria(choice_based_exclusion = FALSE) %>%
-  # Numerate estimation trials
-  .[, est_trial := seq(.N),
-    by = c('participant_id', 'run')] %>%
-  # Melt estimates
-  .[, (est_columns) := lapply(.SD, as.numeric), .SDcols = est_columns] %>%
-  data.table::melt(measure.vars = est_columns) %>%
-  .[, ':='(model = unlist(strsplit(as.character(variable), '_'))[1],
-           option = unlist(strsplit(as.character(variable), '_'))[2]),
-    by = c('participant_id', 'run', 'est_trial', 'variable')] %>%
-  # Standardize model names
-  .[model == 'Pedlrsimple', model := 'Pedlr_simple'] %>%
-  .[model == 'Pedlrsimpleconst', model := 'Pedlr_simple_const'] %>%
-  .[model == 'Pedlrstep', model := 'Pedlr_step'] %>%
-  .[model == 'Pedlrfixdep', model := 'Pedlr_fixdep'] %>%
-  .[model == 'Pedlrinterdep', model := 'Pedlr_interdep'] %>%
-  # Factorize estimate variable
-  .[, model := factor(model, levels = c('est',
-                                        'Rw',
-                                        'Pedlr_simple',
-                                        'Pedlr_simple_const',
-                                        'Pedlr',
-                                        'Pedlr_step',
-                                        'Pedlr_fixdep',
-                                        'Pedlr_interdep'))] %>%
-  # Sort data table
-  .[order(rank(participant_id), rank(run), rank(est_trial), rank(option), rank(model))] %>%
-  # Create column duplicating individual estimate (for easier difference calculation)
-  .[, estimate := value[model == 'est'],
-    by = c('participant_id', 'run', 'est_trial', 'option')]
-```
-
-```{r, fig.height=n_participants}
-# Plot estimation tracks and model values for each participant
-p = ggplot(data = data_values_comp,
-       aes(x = est_trial,
-           y = value,
-           color = model)) +
-  geom_path(alpha = 0.5) +
-  scale_color_viridis(option = 'D', discrete = TRUE) +
-  facet_grid(participant_id ~ run + option) +
-  theme(legend.position = 'top')
-
-  Neurocodify_plot(p)
-```
-
-## Comparison: Model predictions vs. participant's estimation  (Bandit 2)
-
-```{r}
-data_sse = data_values_comp %>%
-  # Exclude real estimation value from models (was in there for easier plotting)
-  .[model != 'est',] %>%
-  # Get squared error (model prediction vs. participants estimation) for each estimation trial & model
-  .[, error_squared := (value - estimate)^2] %>%
-  # Sum of squared errors across all rating trials (also across runs)
-  .[, .(sse = sum(error_squared),
-        rmse = sqrt(mean(error_squared))),
-    by = c('participant_id', 'group', 'model', 'option')] %>%
-  .[, option := as.factor(option)]
-```
-
-```{r}
-data_plot = Prepare_data_for_plot(data_sse)
-
-dodge_width = 0.5
-
-p = ggplot(data = data_plot,
+p = ggplot(data = data_counts_nn_age,
            aes(x = model,
-               y = rmse,
-               color = group,
-               fill = group)) +
-  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
-                                             jitter.width = dodge_width/2,
-                                             jitter.height = 0,
-                                             seed = 666)) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               position = position_dodge(width = dodge_width),
-               width = dodge_width) +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides) +
-  facet_grid(~option) +
-  theme(axis.text.x = element_text(angle = 90))
-Neurocodify_plot(p)
+               y = n_winning,
+               fill = model)) +
+  geom_col() +
+  facet_wrap(~group)
+p
 ```
 
-```{r}
-# Rw vs. Pedlr_simple
-t.test(data_sse[model == 'Rw' & option == '2', rmse],
-       data_sse[model == 'Pedlr_simple' & option == '2', rmse],
-       paired = TRUE)
-
-# Rw vs. Pedlr_simple_const
-t.test(data_sse[model == 'Rw' & option == '2', rmse],
-       data_sse[model == 'Pedlr_simple_const' & option == '2', rmse],
-       paired = TRUE)
-
-# Rw vs Pedlr
-t.test(data_sse[model == 'Rw' & option == '2', rmse],
-       data_sse[model == 'Pedlr' & option == '2', rmse],
-       paired = TRUE)
-
-# Rw vs Pedlr_step
-t.test(data_sse[model == 'Rw' & option == '2', rmse],
-       data_sse[model == 'Pedlr_step' & option == '2', rmse],
-       paired = TRUE)
-
-# Rw vs. Pedlr_fixdep
-t.test(data_sse[model == 'Rw' & option == '2', rmse],
-       data_sse[model == 'Pedlr_fixdep' & option == '2', rmse],
-       paired = TRUE)
-
-# Rw vs. Pedlr_interdep
-t.test(data_sse[model == 'Rw' & option == '2', rmse],
-       data_sse[model == 'Pedlr_interdep' & option == '2', rmse],
-       paired = TRUE)
-
-lme = lme4::lmer(rmse ~ group * model + (1 | participant_id),
-                 data = data_sse[option == '2'])
-Anova(lme)
-```
-
-```{r}
-emmeans::emmeans(lme,
-                 pairwise ~ model)
-```
-
-## Correlation: Model predictions vs. participant's estimation (Bandit 2)
-
-```{r}
-data_est_val_cor = data_values_comp %>%
-  # Exclude real estimation value from models (was in there for easier plotting)
-  .[model != 'est',] %>%
-  # Get correlation between estimate and model value
-  .[, .(cor = cor(value, estimate)),
-    by = c('participant_id', 'group', 'run', 'model', 'option')] %>%
-  .[, option := as.factor(option)]
-```
-
-```{r}
-dodge_width = 0.5
-
-p = ggplot(data = Prepare_data_for_plot(data_est_val_cor),
-           aes(x = model,
-               y = cor,
-               color = group,
-               fill = group)) +
-  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
-                                             jitter.width = dodge_width/2,
-                                             jitter.height = 0,
-                                             seed = 666)) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               position = position_dodge(width = dodge_width),
-               width = dodge_width) +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides) +
-  facet_grid(~option) +
-  theme(axis.text.x = element_text(angle = 90))
-Neurocodify_plot(p)
-```
-
-```{r}
-# Rw vs. Pedlr_simple
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
-       data_est_val_cor[model == 'Pedlr_simple' & option == '2', cor],
-       paired = TRUE)
-
-# Rw vs. Pedlr_simple_const
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
-       data_est_val_cor[model == 'Pedlr_simple_const' & option == '2', cor],
-       paired = TRUE)
-
-# Rw vs Pedlr
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
-       data_est_val_cor[model == 'Pedlr' & option == '2', cor],
-       paired = TRUE)
-
-# Rw vs Pedlr_step
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
-       data_est_val_cor[model == 'Pedlr_step' & option == '2', cor],
-       paired = TRUE)
-
-# Rw vs. Pedlr_fixdep
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
-       data_est_val_cor[model == 'Pedlr_fixdep' & option == '2', cor],
-       paired = TRUE)
-
-# Rw vs. Pedlr_interdep
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
-       data_est_val_cor[model == 'Pedlr_interdep' & option == '2', cor],
-       paired = TRUE)
-
-lme = lme4::lmer(cor ~ group * model + (1 | participant_id),
-                 data = data_est_val_cor[option == '2'])
-Anova(lme)
-```
-
-```{r}
-emmeans::emmeans(lme,
-                 pairwise ~ model)
-```
-
-
-### Correlation against 0
-
-```{r}
-# Rw
-t.test(data_est_val_cor[model == 'Rw' & option == '2', cor],
-       mu = 0)
-
-# Pedlr_simple
-t.test(data_est_val_cor[model == 'Pedlr_simple' & option == '2', cor],
-       mu = 0)
-
-# Pedlr_simple_const
-t.test(data_est_val_cor[model == 'Pedlr_simple_const' & option == '2', cor],
-       mu = 0)
-
-# Pedlr
-t.test(data_est_val_cor[model == 'Pedlr' & option == '2', cor],
-       mu = 0)
-
-# Pedlr_step
-t.test(data_est_val_cor[model == 'Pedlr_step' & option == '2', cor],
-       mu = 0)
-
-# Pedlr_fixdep
-t.test(data_est_val_cor[model == 'Pedlr_fixdep' & option == '2', cor],
-       mu = 0)
-
-# Pedlr_interdep
-t.test(data_est_val_cor[model == 'Pedlr_interdep' & option == '2', cor],
-       mu = 0)
-```
-
-
----
-
-# Pedlr_step: Difference alpha0 and alpha1
-
-```{r}
-# Get continuous age
-data_age = data_experiment %>%
-  .[, .(age = unique(age)),
-    by = c('participant_id', 'group')]
-
-data_alpha_ratio = data_best_fit %>%
-  # Take pedlr step of each participant, even if not best fit
-  .[model == 'Pedlr_step',] %>%
-  # Get ratio between alpha0 and alpha1
-  .[, ratio_1t0 := alpha1 / alpha0,
-    by = c('participant_id', 'group')] %>%
-  .[, alphaSum := sum(alpha0, alpha1),
-    by = c('participant_id', 'group')] %>%
-  .[, ratio_1tSum := alpha1 / alphaSum,
-    by = c('participant_id', 'group')] %>%
-  # Stratify to overweighters and underweighters
-  .[ratio_1t0 > 1, weight_high_pe := 'overweight'] %>%
-  .[ratio_1t0 < 1, weight_high_pe := 'underweight'] %>%
-  # Also look at difference
-  .[, diff_1m0 := alpha1 - alpha0] %>%
-  # Add continuous age variable
-  data.table::merge.data.table(., data_age,
-                               by = c('participant_id', 'group'))
-  
-```
-
-### alpha0
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-data_plot = Prepare_data_for_plot(data_alpha_ratio)
-data_plot_n = data_plot %>%
-  .[, .(n = .N),
-    by = c('group')]
-
-p = ggplot(data = data_plot,
-       aes(x = group,
-           y = alpha0,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  geom_label(data = data_plot_n,
-             aes(x = group,
-                 y = 0.5,
-                 label = paste('n = ', n, sep = '')),
-             color = 'black') +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-wilcox.test(data_alpha_ratio[group == 'younger']$alpha0,
-       data_alpha_ratio[group == 'older']$alpha0)
-```
-
-
-### alpha1
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-data_plot = Prepare_data_for_plot(data_alpha_ratio)
-data_plot_n = data_plot %>%
-  .[, .(n = .N),
-    by = c('group')]
-
-p = ggplot(data = data_plot,
-       aes(x = group,
-           y = alpha1,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  geom_label(data = data_plot_n,
-             aes(x = group,
-                 y = 0.5,
-                 label = paste('n = ', n, sep = '')),
-             color = 'black') +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-wilcox.test(data_alpha_ratio[group == 'younger']$alpha1,
-       data_alpha_ratio[group == 'older']$alpha1)
-```
-
-
-### Ratio a1/a0
-
-```{r}
-data_plot = Prepare_data_for_plot(data_alpha_ratio)
-
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = data_plot,
-       aes(x = group,
-           y = ratio_1t0,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-  
-```
-
-```{r}
-t.test(data_alpha_ratio[group == 'younger']$ratio_1t0,
-       data_alpha_ratio[group == 'older']$ratio_1t0)
-
-wilcox.test(data_alpha_ratio[group == 'younger']$ratio_1t0,
-            data_alpha_ratio[group == 'older']$ratio_1t0)
-```
-
-### Ratio a1/sum(alpha0, alpha1)
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_alpha_ratio),
-       aes(x = group,
-           y = ratio_1tSum,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0.5,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-  
-```
-
-```{r}
-t.test(data_alpha_ratio[group == 'younger']$ratio_1tSum,
-       data_alpha_ratio[group == 'older']$ratio_1tSum)
-
-wilcox.test(data_alpha_ratio[group == 'younger']$ratio_1tSum,
-       data_alpha_ratio[group == 'older']$ratio_1tSum)
-
-t.test(data_alpha_ratio[group == 'younger' & best_fitting_model == 'Pedlr_step']$ratio_1tSum,
-       data_alpha_ratio[group == 'older' & best_fitting_model == 'Pedlr_step']$ratio_1tSum)
-
-```
-
-
-### Diff alpha1 - alpha0
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_alpha_ratio),
-       aes(x = group,
-           y = diff_1m0,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-t.test(data_alpha_ratio[group == 'younger']$diff_1m0,
-       data_alpha_ratio[group == 'older']$diff_1m0)
-
-t.test(data_alpha_ratio[group == 'younger' & diff_1m0 < 0.2]$diff_1m0,
-       data_alpha_ratio[group == 'older' & diff_1m0 > -0.2]$diff_1m0)
-
-wilcox.test(data_alpha_ratio[group == 'younger']$diff_1m0,
-            data_alpha_ratio[group == 'older']$diff_1m0)
-```
-
-#### Robust regression
-
-```{r}
-# Standard OLS
-ols = lm(diff_1m0 ~ group,
-         data = data_alpha_ratio)
-summary(ols)
-```
-
-```{r}
-# Plot residuals, QQ, weighting, and leverage
-opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
-plot(ols, las = 1)
-```
-
-```{r}
-# Display values with large cook's distance
-cooks_d <- cooks.distance(ols)
-r <- stdres(ols)
-a <- cbind(data_alpha_ratio, cooks_d, r)
-# Conventional cut-off (https://stats.oarc.ucla.edu/r/dae/robust-regression/)
-cutoff = 4/nrow(data_alpha_ratio)
-# Only absolute residuals matter
-a = a %>%
-  .[, ':='(abs_r = abs(r),
-           cutoff = cooks_d > cutoff)] %>%
-  .[order(rank(-abs_r))]
-a
-```
-
-```{r}
-# Robust Regression model (huber weights)
-rr.huber = MASS::rlm(diff_1m0 ~ group,
-                     data = data_alpha_ratio)
-bla = summary(rr.huber)
-bla
-
-# Look at weights created by RR (low weights = "outlier-y behavior")
-hweights = data_alpha_ratio %>%
-  .[, ':='(resid = rr.huber$resid,
-           weight = rr.huber$w)] %>%
-  # Sort by weight
-  .[order(rank(weight)),]
-hweights
-```
-
-
-```{r}
-out = data.table(bla$coefficients)
-
-plot_t = data.table(x = seq(-5,5, by = 0.01),
-                    y = dt(seq(-5,5, by = 0.01), df=bla$df[2]))
- p = ggplot(data = plot_t,
-       aes(x = x,
-           y = y)) +
-  geom_path() +
-   # Mark cut-offs
-  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
-             linetype = 'dashed') +
-   # Mark t-value of group statistic
-  geom_vline(xintercept = out$`t value`[2],
-             color = 'red') +
-   labs(x = 't-Value',
-        y = 'Density',
-        main = 't-Distribution for group effect') +
-   scale_y_continuous(expand = c(0,0))
- Neurocodify_plot(p) +
-   theme(panel.grid = element_blank())
- 
- p_value = plot_t[x == round(out$`t value`[2], 2)]$y
-p_value
-```
-
-```{r}
-# Robust regression (bisquare weights)
-rr.bisquare = MASS::rlm(diff_1m0 ~ group,
-                     data = data_alpha_ratio,
-                     psi = psi.bisquare)
-bla = summary(rr.bisquare)
-bla
-
-# Look at weights created by RR (low weights = "outlier-y behavior")
-bweights = data_alpha_ratio %>%
-  .[, ':='(resid = rr.bisquare$resid,
-           weight = rr.bisquare$w)] %>%
-  # Sort by weight
-  .[order(rank(weight)),]
-bweights
-```
-
-```{r}
-out = data.table(bla$coefficients)
-
-plot_t = data.table(x = seq(-5,5, by = 0.001),
-                    y = dt(seq(-5,5, by = 0.001), df=bla$df[2]))
-p = ggplot(data = plot_t,
-           aes(x = x,
-               y = y)) +
-  geom_path() +
-  # Mark cut-offs
-  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
-             linetype = 'dashed') +
-  # Mark t-value of group statistic
-  geom_vline(xintercept = out$`t value`[2],
-             color = 'red') +
-  labs(x = 't-Value',
-       y = 'Density',
-       main = 't-Distribution for group effect') +
-  scale_y_continuous(expand = c(0,0))
-Neurocodify_plot(p) +
-  theme(panel.grid = element_blank())
-
-p_value = plot_t[x == round(out$`t value`[2], 2)]$y
-p_value
-```
-
-#### LR difference in RW fitters
-
-```{r}
-dodge_width = 0.3
-jitter_width = dodge_width/4
-
-data_plot = Prepare_data_for_plot(data_alpha_ratio)
-p = ggplot(data = data_plot,
-       aes(x = best_fitting_model,
-           y = diff_1m0,
-           color = best_fitting_model,
-           fill = best_fitting_model)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5)
-Neurocodify_plot(p)
-```
-
-
-### Temperature
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_alpha_ratio),
-       aes(x = group,
-           y = temperature,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-t.test(data_alpha_ratio[group == 'younger']$temperature,
-       data_alpha_ratio[group == 'older']$temperature)
-
-wilcox.test(data_alpha_ratio[group == 'younger']$temperature,
-            data_alpha_ratio[group == 'older']$temperature)
-```
-
-```{r}
-Softmax_choice <- function(value_1, value_2, temperature){
-  
-  # Probabilistic model choice with choice probabilities controlled by soft-max function
-  # Softmax function depends on temperature parameter (sigmoid steepness)
-  choice_prob_1 = (
-    exp(value_1/temperature) / (exp(value_1/temperature) + exp(value_2/temperature))
-  )
-  
- return(choice_prob_1)
-}
-
-
-data_temperature_sim = data.table()
-template = data.table(val_1 = seq(-50, 50),
-                  val_2 = 0)
-for(temp in seq(1,20)){
-  bla = template
-  bla$temperature = temp
-  data_temperature_sim = rbind(data_temperature_sim, bla)
-}
-
-data_temperature_sim = data_temperature_sim %>%
-  .[, prob_1 := Softmax_choice(val_1,
-                               val_2,
-                               temperature),
-    by = c('temperature')] %>%
-  .[, temperature := as.factor(temperature)]
-
-ggplot(data_temperature_sim,
-       aes(x = val_1 - val_2,
-           y = prob_1,
-           color = temperature,
-           group = temperature)) +
-  geom_line()
-
-```
-
-
----
-
-# Over- vs. underweight
-
-```{r}
-data_sanity_split = data_sanity %>%
-  data.table::merge.data.table(., data_alpha_ratio,
-                               by = c('participant_id', 'group', 'real_iter', 'model',
-                                      'AIC', 'second_ll', 'alpha1', 'temperature', 'best_fitting_model')) %>%
-  .[,weight_high_pe := factor(weight_high_pe)]
-```
-
-## Distribution over- vs. underweight {.tabset}
-
-### All participants (also participantants where other models fitted better)
-
-```{r}
-data_plot = Prepare_data_for_plot(data_sanity_split)
-
-# Export data for plotting
-file = file.path(base_path, 'derivatives', 'figures', 'f_mw.tsv',
-                 fsep = .Platform$file.sep)
-data.table::fwrite(data_plot, file, sep = '\t', na = 'n/a', row.names = FALSE)
-
-p = ggplot(data = data_plot,
-       aes(x = weight_high_pe,
-           color = group,
-           fill = group)) +
-  geom_bar() +
-  facet_wrap(~group) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-#### Permutation test
-
-```{r}
-# Function to get within age group difference (n overweight - n underweight)
-# and then across age group difference (diff young - diff_old)
-GetWeight_OvermUnder_YoungmOld = function(data){
-  temp = data %>%
-    .[, c('group', 'weight_high_pe')] %>%
-    .[, .(n = .N),
-    by = c('group', 'weight_high_pe')] %>%
-    data.table::dcast(group ~ weight_high_pe, value.var = 'n') %>%
-    .[, diff := overweight - underweight]
-  weight_age_diff = temp[group == 'younger']$diff - temp[group == 'older']$diff
-  return(weight_age_diff)
-}
-
-# Get difference for real data
-real_weight_age_diff = GetWeight_OvermUnder_YoungmOld(data_sanity_split)
-
-# Create permuted data
-n_perm = 10000
-# Copy original data for each permutation
-data_perm = do.call("rbind", replicate(n_perm, data_sanity_split, simplify = FALSE)) %>%
-  # Add permutation iteration identifier
-  .[, perm_iter := rep(seq(n_perm), each = nrow(data_sanity_split))] %>%
-  # # Draw weighter variable randomly (coin flip what kind if weighter you are)
-  # .[, weight_high_pe := sample(unique(weight_high_pe),
-  #                              nrow(data_sanity_split),
-  #                              replace = TRUE),
-  #   by = 'perm_iter'] %>%
-  # Sample weighter variable, keeping frequency of each weight as in original sample
-  .[, group := sample(group),
-    by = 'perm_iter'] %>%
-  # Get difference for each permutation
-  .[, .(weight_age_diff = GetWeight_OvermUnder_YoungmOld(.SD)),
-    by = 'perm_iter']
-```
-
-
-```{r}
-data_plot = data_perm
-
-ggplot(data = data_perm,
-       aes(x = abs(weight_age_diff))) +
-  geom_histogram(binwidth = 2) +
-  geom_vline(xintercept = abs(real_weight_age_diff),
-             color = 'red')
-
-# Get percentage of samples lower than real value
-mean(abs(data_perm$weight_age_diff) >= abs(real_weight_age_diff))
-```
-
-#### Chi square test
-
-```{r}
-data_chi = data_sanity_split %>%
-  .[, c('group', 'weight_high_pe')] %>%
-  data.table::dcast(group ~ weight_high_pe, fun.aggregate = length)
-groups = data_chi$group
-data_chi = data_chi[,c('overweight', 'underweight')]
-rownames(data_chi) = groups
+## Exceedance probs
 
-
-bla = chisq.test(data_chi)
-bla
-bla$expected
-
-bla = fisher.test(x = data_chi)
-bla
-bla$estimate
-bla$null.value
-
-bla = exact2x2::boschloo(x1 = nrow(data_sanity_split[group == 'younger' & weight_high_pe == 'overweight']),
-                         n1 = nrow(data_sanity_split[group == 'younger']),
-                         x2 = nrow(data_sanity_split[group == 'older' & weight_high_pe == 'overweight']),
-                         n2 = nrow(data_sanity_split[group == 'older']))
-bla
-
-bla = Barnard::barnard.test(n1 = nrow(data_sanity_split[group == 'younger' & weight_high_pe == 'overweight']),
-                            n2 = nrow(data_sanity_split[group == 'younger' & weight_high_pe == 'underweight']),
-                            n3 = nrow(data_sanity_split[group == 'older' & weight_high_pe == 'overweight']),
-                            n4 = nrow(data_sanity_split[group == 'older' & weight_high_pe == 'underweight']),
-                            pooled = TRUE)
-bla$statistic
-bla$alternative
-bla$p.value
-```
-
-Does a one-sided test make any sense here? I am wondering what a one-sided test means in this case? What would Odd's ratio > 1 mean here? More overweighters in YA?
-
-### Only Pedlr_step
-
-```{r}
-p = ggplot(data = Prepare_data_for_plot(data_sanity_split[best_fitting_model == 'Pedlr_step']),
-       aes(x = weight_high_pe,
-           color = group,
-           fill = group)) +
-  geom_bar() +
-  facet_wrap(~group) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-#### Chi square test
-
-```{r}
-data_chi = data_sanity_split[best_fitting_model == 'Pedlr_step'] %>%
-  .[, c('group', 'weight_high_pe')] %>%
-  data.table::dcast(group ~ weight_high_pe, fun.aggregate = length)
-groups = data_chi$group
-data_chi = data_chi[,c('overweight', 'underweight')]
-rownames(data_chi) = groups
-
-
-bla = chisq.test(data_chi)
-bla
-bla$expected
-
-bla = fisher.test(x = data_chi)
-bla
-
-bla = exact2x2::boschloo(x1 = nrow(data_sanity_split[best_fitting_model == 'Pedlr_step' & group == 'younger' & weight_high_pe == 'overweight']),
-                         n1 = nrow(data_sanity_split[best_fitting_model == 'Pedlr_step' & group == 'younger']),
-                         x2 = nrow(data_sanity_split[best_fitting_model == 'Pedlr_step' & group == 'older' & weight_high_pe == 'overweight']),
-                         n2 = nrow(data_sanity_split[best_fitting_model == 'Pedlr_step' & group == 'older']))
-bla
-
-bla = Barnard::barnard.test(n1 = nrow(data_sanity_split[best_fitting_model == 'Pedlr_step' & group == 'younger' & weight_high_pe == 'overweight']),
-                            n2 = nrow(data_sanity_split[best_fitting_model == 'Pedlr_step' & group == 'younger' & weight_high_pe == 'underweight']),
-                            n3 = nrow(data_sanity_split[best_fitting_model == 'Pedlr_step' & group == 'older' & weight_high_pe == 'overweight']),
-                            n4 = nrow(data_sanity_split[best_fitting_model == 'Pedlr_step' & group == 'older' & weight_high_pe == 'underweight']),
-                            pooled = TRUE)
-bla$statistic
-bla$alternative
-bla$p.value
-```
-
-## Connection between relationship of a_0 and a_1 and behavioral measures in our task?
-
-### Influence of rare events
-
-```{r}
-# Add z-scored variables
-data_sanity_split$diff_1m0_z = scale(data_sanity_split$diff_1m0)
-data_sanity_split$preminuspost_z = scale(data_sanity_split$preminuspost)
-
-data_plot = Prepare_data_for_plot(data_sanity_split)
-
-# Export data for plotting
-file = file.path(base_path, 'derivatives', 'figures', 'f_mv_ri.tsv',
-                 fsep = .Platform$file.sep)
-data.table::fwrite(data_plot, file, sep = '\t', na = 'n/a', row.names = FALSE)
-
-p = ggplot(data = data_plot,
-       aes(x = diff_1m0,
-           y = preminuspost,
-           color = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point() +
-  geom_smooth(method = 'lm',
-              formula = y ~ x,
-              color = 'black') +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-
-```{r}
-lm = lm(data = data_sanity_split,
-        preminuspost ~ diff_1m0)
-summary(lm)
-```
-
-```{r}
-lm = lm(data = data_sanity_split[best_fitting_model == 'Pedlr_step'],
-        preminuspost ~ diff_1m0)
-summary(lm)
-```
-
-### Distortion in perceived bandit distance?
-
-```{r}
-# Get behavioral effect of distance distortion
-check_est_dist = data_experiment %>%
-  Add_comp(.) %>%
-  # Exclude rating based
-  Apply_exclusion_criteria(., choice_based_exclusion = FALSE) %>%
-  # Get running average of chosen rewards
-  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 1),
-           avg_2_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 2),
-           avg_3_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 3)),
-    by = c('participant_id', 'run')] %>%
-  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
-  .[!is.na(est_1_reward),] %>%
-  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
-  # Unify data types of measure columns
-  .[, (measure_cols) := lapply(.SD, as.double), .SDcols = measure_cols] %>%
-  # Melt to change variable names of estimation variables
-  data.table::melt(id.vars = c('participant_id',
-                               'group',
-                               'run',
-                               'est_trial',
-                               'forced_rare'),
-                   measure.vars = measure_cols) %>%
-  .[, est_stim := substr(variable, 5, 5)] %>%
-  .[, type := substr(variable, 7, 9)] %>%
-  .[type == 'rew', type := 'reward'] %>%
-  .[type == 'ran', type := 'range'] %>%
-  # Put back into long format to calculate distance between estimates
-  data.table::dcast(., participant_id + group + run + est_trial + forced_rare ~ paste0(type, '_', est_stim),
-                    value.var = 'value') %>%
-  # Get distance between critical estimates
-  .[, ':='(dist_est_2m1 = reward_2 - reward_1,
-           dist_est_3m2 = reward_3 - reward_2)] %>%
-  # Get difference of running averages of critical comparisons
-  .[, ':='(dist_ravg_2m1 = run_2 - run_1,
-           dist_ravg_3m2 = run_3 - run_2)] %>%
-  # Add first and second half of run variable
-  .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
-    by = c('participant_id', 'group', 'run')] %>%
-  .[, half := as.factor(half)] %>%
-  # Get difference between real distance and estimated distance (Estimate - Real, EmR)
-  .[, ':='(diff_EmR_2m1 = dist_est_2m1 - dist_ravg_2m1,
-           diff_EmR_3m2 = dist_est_3m2 - dist_ravg_3m2)] %>%
-  # Long format
-  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'half', 'est_trial'),
-                   measure.vars = c('diff_EmR_2m1',
-                                    'diff_EmR_3m2')) %>%
-  # Average values (also across runs)
-  .[, .(mean_value = mean(value, na.rm = TRUE)),
-    by = c('participant_id', 'group', 'half', 'variable')] %>%
-  # Select only values for the second half of a run
-  .[half == '2',] %>%
-  # Pose to wide format
-  data.table::dcast(participant_id + group + half ~ variable, value.var = 'mean_value') %>%
-  # Fuse with model fitting data (this step also gets rid of all participants which dont have estimate data)
-  data.table::merge.data.table(data_sanity_split, .,
-                               by = c('participant_id', 'group')) %>%
-  # Add contrast used in behavioral analysis (2m1 - 3m2)
-  .[, behav_contrast := diff_EmR_2m1 - diff_EmR_3m2] %>%
-  # Add z-scored variable
-  .[, behav_contrast_z := scale(behav_contrast)]
-```
-
-```{r}
-data_plot = Prepare_data_for_plot(check_est_dist)
-
-# Export data for plotting
-file = file.path(base_path, 'derivatives', 'figures', 'f_mv_ed.tsv',
-                 fsep = .Platform$file.sep)
-data.table::fwrite(data_plot, file, sep = '\t', na = 'n/a', row.names = FALSE)
-
-p = ggplot(data = data_plot,
-       aes(x = diff_1m0,
-           y = diff_EmR_2m1,
-           color = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point() +
-  geom_smooth(method = 'lm',
-              formula = y ~ x,
-              color = 'black') +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-```{r}
-lm = lm(data = check_est_dist,
-        diff_EmR_2m1 ~ diff_1m0)
-summary(lm)
-```
-
-```{r}
-lm = lm(data = check_est_dist[best_fitting_model == 'Pedlr_step'],
-        diff_EmR_2m1 ~ diff_1m0)
-summary(lm)
-```
-
-## "Cognitive load" vs. weighting
-
-```{r}
-# Get RT
-check_rt = Load_data() %>%
-  Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
-  Add_comp(.) %>%
-  .[, run := as.factor(run)] %>%
-  .[, trial := seq(.N),
-    by = c('participant_id', 'run')] %>%
-  .[timeout == FALSE, ] %>%
-  .[, log_rt := log(rt)] %>%
-  data.table::melt(.,
-                   id.vars = c('participant_id',
-                               'group',
-                               'run',
-                               'trial',
-                               'trial_type',
-                               'comp'),
-                   measure.vars = c('log_rt')) %>%
-  # Only use choice trials in 1v2 trials
-  .[trial_type == 'choice' & comp %in% c('1v2', '2v3'),] %>%
-  # Calculate mean log(RT), across run and trial
-  .[, .(value = mean(value)),
-    by = c('participant_id', 'group', 'trial_type', 'comp', 'variable')] %>%
-  # Cast to wide format
-  data.table::dcast(participant_id + group + comp ~ paste('mean_', variable, '_choice', sep = ''), value.var = 'value') %>%
-  data.table::dcast(participant_id + group ~ paste('mean_log_rt_choice_', comp, sep = ''), value.var = 'mean_log_rt_choice') %>%
-  # Create RT difference
-  .[, diff_log_rt_choice_1v2m2v3 := mean_log_rt_choice_1v2 - mean_log_rt_choice_2v3] %>%
-  # Fuse with modelling results
-  data.table::merge.data.table(., check_est_dist,
-                               by = c('participant_id', 'group'))
-```
-
-### Linear
-
-```{r}
-# Compare over/underweight based on mean log(RT) in 1v2 trials (cognitive load)
-lm = lm(data = check_rt,
-        diff_log_rt_choice_1v2m2v3 ~ group * diff_1m0)
-summary(lm)
-```
-
-```{r}
-data_plot = Prepare_data_for_plot(check_rt)
-p = ggplot(data = data_plot,
-       aes(x = diff_1m0,
-           y = diff_log_rt_choice_1v2m2v3,
-           color = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point() +
-  geom_smooth(method = 'lm',
-              formula = y ~ x) +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-
-### Categorical
-
-```{r}
-# Compare over/underweight based on mean log(RT) in 1v2 trials (cognitive load)
-lm = lm(data = check_rt,
-        diff_log_rt_choice_1v2m2v3 ~ group * weight_high_pe)
-Anova(lm)
-```
-
-```{r}
-data_plot = Prepare_data_for_plot(check_rt)
-ggplot(data = data_plot,
-       aes(x = weight_high_pe,
-           y = diff_log_rt_choice_1v2m2v3)) +
-  geom_boxplot(outlier.shape = NA) +
-    stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5)
-  
-```
-
-
-## Age vs. weighting
-
-```{r}
-data_plot = Prepare_data_for_plot(data_alpha_ratio)
-
-p = ggplot(data = data_plot,
-           aes(x = diff_1m0,
-               y = age,
-               color = group)) +
-  geom_point() +
-  geom_smooth(method='lm',
-              formula = y ~ x)
-Neurocodify_plot(p)
-```
-
-```{r}
-lm = lm(data = data_alpha_ratio,
-        diff_1m0 ~ age * group)
-Anova(lm)
-```
-
-
-## Overweighters = higher influence of rare events? {.tabset}
-
-### All participants (also participantants where other models fitted better)
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_sanity_split),
-       aes(x = weight_high_pe,
-           y = preminuspost,
-           color = weight_high_pe,
-           fill = weight_high_pe)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-t.test(data_sanity_split[weight_high_pe == 'overweight']$preminuspost,
-       data_sanity_split[weight_high_pe == 'underweight']$preminuspost)
-```
-
-```{r}
-lm = lm(preminuspost ~ group * weight_high_pe,
-                 data = data_sanity_split)
-Anova(lm)
-```
-
-### Only Pedlr_step
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_sanity_split[best_fitting_model == 'Pedlr_step']),
-       aes(x = weight_high_pe,
-           y = preminuspost,
-           color = weight_high_pe,
-           fill = weight_high_pe)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-t.test(data_sanity_split[weight_high_pe == 'overweight' & best_fitting_model == 'Pedlr_step']$preminuspost,
-       data_sanity_split[weight_high_pe == 'underweight' & best_fitting_model == 'Pedlr_step']$preminuspost)
-```
-
-```{r}
-lm = lm(preminuspost ~ group * weight_high_pe,
-                 data = data_sanity_split[best_fitting_model == 'Pedlr_step'])
-Anova(lm)
-```
-
-
-## Overweighters = stronger underestimation of 2nd bandit? {.tabset}
-
-```{r}
-data_sanity_rat_split = data_sanity_rat %>%
-  data.table::merge.data.table(., data_alpha_ratio,
-                               by = c('participant_id', 'group', 'real_iter', 'model',
-                                      'AIC', 'second_ll', 'alpha1', 'temperature', 'best_fitting_model')) %>%
-  .[ratio_1t0 > 1, weight_high_pe := 'overweight'] %>%
-  .[ratio_1t0 < 0, weight_high_pe := 'underweight'] %>%
-  .[,weight_high_pe := factor(weight_high_pe)]
-```
-
-### All participants (also participantants where other models fitted better)
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_sanity_rat_split),
-       aes(x = weight_high_pe,
-           y = mean_diff_from_true_2,
-           color = weight_high_pe,
-           fill = weight_high_pe)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-lm = lm(mean_diff_from_true_2 ~ group * weight_high_pe,
-        data = data_sanity_rat_split)
-Anova(lm)
-```
-
-### Only Pedlr_step
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_sanity_rat_split[best_fitting_model == 'Pedlr_step']),
-       aes(x = weight_high_pe,
-           y = mean_diff_from_true_2,
-           color = weight_high_pe,
-           fill = weight_high_pe)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-```{r}
-lm = lm(mean_diff_from_true_2 ~ group * weight_high_pe,
-        data = data_sanity_rat_split[best_fitting_model == 'Pedlr_step'])
-Anova(lm)
-```
-
-## Predicting difference of alpha 1 and alpha 0 by age
-
-```{r}
-lm = lm(data = data_sanity_split,
-        diff_1m0 ~ group)
-summary(lm)
-```
-
-
-## Correlation between diff_1m0 and influence of rare events
-
-```{r}
-# data_sanity_split[ratio_1t0 < 50]
-data_plot = Prepare_data_for_plot(data_sanity_split)
-
-p = ggplot(data = data_plot,
-       aes(x = diff_1m0,
-           y = preminuspost,
-           color = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point() +
-  geom_smooth(method = 'lm',
-              formula = y ~ x) +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p)
-```
-
-```{r}
-lm = lm(data = data_sanity_split,
-        preminuspost ~ diff_1m0 * group)
-summary(lm)
-```
-
-## Correlation fit and influence of rare events
-
-```{r}
-data_plot = Prepare_data_for_plot(data_sanity_split)
-
-p = ggplot(data = data_plot,
-       aes(x = AIC,
-           y = preminuspost,
-           color = group)) +
-  geom_point() +
-  geom_smooth(formula = y ~ x, method = 'lm') +
-  scale_color_manual(values = custom_guides) +
-  facet_wrap(~weight_high_pe)
-Neurocodify_plot(p)
-```
-
-```{r}
-lm1 = lm(preminuspost ~ AIC * weight_high_pe,
-   data = data_sanity_split)
-Anova(lm1)
-
-lm2 = lm(preminuspost ~ AIC * weight_high_pe * group,
-   data = data_sanity_split)
-Anova(lm2)
-
-anova(lm1, lm2)
-```
-
-
----
-
-# Distribution RW LRs
-
-## All participants
-
-```{r}
-data_plot = Prepare_data_for_plot(data[real_iter == 1 & model == 'Rw' & para == 'alpha'])
-
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = data_plot,
-       aes(x = group,
-           y = second_solution,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-## Best fit RW
-
-```{r}
-data_rw_lr = data_best_fit %>%
-  # Only look at data from participants best fitted by RW
-  .[best_fitting_model == 'Rw' &
-      model == 'Rw',]
-
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_rw_lr),
-       aes(x = group,
-           y = alpha,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-
-```
-
-```{r}
-data_rw_lr[order(rank(alpha))]
-```
-
-
----
-
-# RW: distribution of PE
-
 ```{r}
-est_columns = colnames(data_est_values)[grep('*_pe', colnames(data_est_values))]
+# Younger
+bmsR::VB_bms(cbind(data_ep[group == 'younger']$rw,
+                   data_ep[group == 'younger']$uncertainty,
+                   data_ep[group == 'younger']$surprise,
+                   data_ep[group == 'younger']$uncertainty_surprise),
+             n_samples = 1000)$pxp
 
-# Get data structure comparing participant estimate to model values
-data_pe_comp = data_est_values %>%
-  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
-  # Numerate estimation trials
-  .[, trial := seq(.N),
-    by = c('participant_id', 'run')] %>%
-  # Get value of next trial for each option (Pedlr_step model)
-  .[, nextTrial_Pedlrstep_1_value := binhf::shift(Pedlrstep_1_reward, -1),
-    by = c('participant_id', 'run')] %>%
-  .[, nextTrial_Pedlrstep_2_value := binhf::shift(Pedlrstep_2_reward, -1),
-    by = c('participant_id', 'run')] %>%
-  .[, nextTrial_Pedlrstep_3_value := binhf::shift(Pedlrstep_3_reward, -1),
-    by = c('participant_id', 'run')] %>%
-  # Get distance between bandit 1 and 2 after update
-  .[, nextTrial_Pedlrstep_2m1_value := nextTrial_Pedlrstep_2_value - nextTrial_Pedlrstep_1_value] %>%
-  # Delete last entry of next trial columns, because there is no update in the last trial
-  .[trial == max(trial), ':='(nextTrial_Pedlrstep_1_value = NA,
-                              nextTrial_Pedlrstep_2_value = NA,
-                              nextTrial_Pedlrstep_3_value = NA,
-                              nextTrial_Pedlrstep_2m1_value = NA)] %>%
-  # Melt estimates
-  .[, (est_columns) := lapply(.SD, as.numeric), .SDcols = est_columns] %>%
-  data.table::melt(measure.vars = est_columns) %>%
-  .[, ':='(model = unlist(strsplit(as.character(variable), '_'))[1],
-           option = unlist(strsplit(as.character(variable), '_'))[2]),
-    by = c('participant_id', 'run', 'trial', 'variable')] %>%
-  # Standardize model names
-  .[model == 'Pedlrsimple', model := 'Pedlr_simple'] %>%
-  .[model == 'Pedlrsimpleconst', model := 'Pedlr_simple_const'] %>%
-  .[model == 'Pedlrstep', model := 'Pedlr_step'] %>%
-  .[model == 'Pedlrfixdep', model := 'Pedlr_fixdep'] %>%
-  .[model == 'Pedlrinterdep', model := 'Pedlr_interdep'] %>%
-  # Factorize estimate variable
-  .[, model := factor(model, levels = c('Rw',
-                                        'Pedlr_simple',
-                                        'Pedlr_simple_const',
-                                        'Pedlr',
-                                        'Pedlr_step',
-                                        'Pedlr_fixdep',
-                                        'Pedlr_interdep'))] %>%
-  # Factorize other important variables
-  .[, ':='(participant_id = factor(participant_id),
-           group = factor(group),
-           run = factor(run))] %>%
-  # Sort data table
-  .[order(rank(participant_id), rank(run), rank(trial), rank(option), rank(model))]
-```
-
-
-```{r}
-data_rw_pe = data_pe_comp %>%
-  .[model == 'Rw',] %>%
-  .[, .(perc_95 = quantile(abs(value), 0.95, na.rm = TRUE)),
-    by = c('participant_id', 'group', 'run')]
-
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_rw_pe),
-       aes(x = group,
-           y = perc_95,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
 
-```{r, fig.height=15}
-data_pe_dist = data_pe_comp %>%
-  .[model == 'Rw',] %>%
-  .[!is.na(value), ] %>%
-  .[, pe_abs := abs(value)]
-
-p = ggplot(data = Prepare_data_for_plot(data_pe_dist),
-           aes(x = pe_abs,
-               y = participant_id)) +
-  ggridges::geom_density_ridges(stat = 'binline',
-                                binwidth = 1,
-                                color = 'black',
-                                size = 0.3) +
-  geom_point(data = Prepare_data_for_plot(data_rw_pe),
-             aes(x = perc_95)) +
-  facet_wrap(~run)
-Neurocodify_plot(p)
+# Older
+bmsR::VB_bms(cbind(data_ep[group == 'older']$rw,
+                   data_ep[group == 'older']$uncertainty,
+                   data_ep[group == 'older']$surprise,
+                   data_ep[group == 'older']$uncertainty_surprise),
+             n_samples = 1000)$pxp
 ```
 
-# Average update given rare events
+# Parameters of surprise model
 
 ```{r}
-data_update = data_pe_comp %>%
-  # Cut down to trials in which Pedlr_step PE higher than "rare" boundary given by RW
-  .[model == 'Pedlr_step' & option == 2,] %>%
-  .[!is.na(value),] %>%
-  .[, rare_pe := (abs(value) > pe_95th_Rw)] %>%
-  # Rare given by individual RW PE
-   .[rare_pe == TRUE, ] %>%
-  # Rare given by design
-  #.[is_rare == TRUE, ] %>%
-  # Merge with table giving LRs
-  data.table::merge.data.table(., data_best_fit[model == 'Pedlr_step'],
-                               by = c('participant_id', 'group', 'model')) %>%
-    # get over vs underweighter
-  .[alpha1 > alpha0, weight_rare_pe := 'overweight'] %>%
-  .[alpha1 < alpha0, weight_rare_pe := 'underweight'] %>%
-  .[, weight_rare_pe := factor(weight_rare_pe)] %>%
-  # Get trialwise absolute update, expressed as fraction of current value
-  .[, abs_relative_update := (abs(value) * alpha1) / Pedlrstep_2_reward,
-    by = c('participant_id', 'group', 'run', 'trial')]
-
-data_avg_update = data_update %>%
-  # Mean asolute update in case of rare PE
-  .[, .(mean_abs_relative_update = mean(abs_relative_update),
-        sd_abs_relative_update = sd(abs_relative_update),
-        mean_nextTrial_Pedlrstep_2m1_value = mean(nextTrial_Pedlrstep_2m1_value)),
-    by = c('participant_id', 'group', 'run', 'model', 'best_fitting_model', 'weight_rare_pe')]
-```
+# Get data of surprise model
+data_surprise = data[starting_values == 'random' & model == 'surprise' & iter == 1] %>%
+  # Select learning coefficients
+  .[variable == 'coefs' & x %in% c('l','u','s')] %>%
+  .[, ':='(variable = as.factor(variable),
+           x = as.factor(x))] %>%
+  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
+  .[, uml := u-l] %>%
+  data.table::melt(id.vars = c('participant_id', 'group'))
 
-### Modeled distance between 2 and 1 in next trial after rare outcome
-
-```{r}
-p = ggplot(data = Prepare_data_for_plot(data_avg_update),
+p = ggplot(data = data_surprise,
            aes(x = group,
-               y = mean_nextTrial_Pedlrstep_2m1_value,
-               fill = group,
+               y = value,
                color = group)) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-  #facet_grid(~weight_rare_pe)
-Neurocodify_plot(p)
-```
-
-### Average update following rare outcomes
-
-```{r}
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = Prepare_data_for_plot(data_avg_update),
-       aes(x = group,
-           y = mean_abs_relative_update,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-
-
-
----
-
-# Wagners vs. Steppers
-
-```{r}
-data_wagners_steppers = data_best_fit %>%
-  # Get pedlr_step model parameters
-  .[model == 'Pedlr_step',]
-```
-
-## Parameters
-
-### alpha 0
-
-```{r}
-data_plot = Prepare_data_for_plot(data_wagners_steppers)
-data_plot_n = data_plot %>%
-  .[, .(n = .N),
-    by = c('best_fitting_model')]
-
-dodge_width = 0.2
-
-p = ggplot(data = data_plot,
-       aes(x = best_fitting_model,
-           y = alpha0,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
-                                             jitter.width = dodge_width,
-                                             jitter.height = 0,
-                                             seed = 666)) +
-  geom_boxplot(width = dodge_width/2,
-               outlier.shape = NA,
-               color = 'black',
-               position = position_dodge(width = dodge_width)) +
-  gghalves::geom_half_violin(position = position_nudge(-dodge_width),
-                             alpha = 0.5,
-                             color = NA) +
-  geom_label(data = data_plot_n,
-             aes(x = best_fitting_model,
-                 y = 0.5,
-                 label = paste('n = ', n, sep = '')),
-             color = 'black',
-             fill = 'transparent') +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides)
-
-Neurocodify_plot(p)
-```
-
-
-### alpha 1
-
-```{r}
-data_plot = Prepare_data_for_plot(data_wagners_steppers)
-data_plot_n = data_plot %>%
-  .[, .(n = .N),
-    by = c('best_fitting_model')]
-
-dodge_width = 0.2
-
-p = ggplot(data = data_plot,
-       aes(x = best_fitting_model,
-           y = alpha1,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
-                                             jitter.width = dodge_width,
-                                             jitter.height = 0,
-                                             seed = 666)) +
-  geom_boxplot(width = dodge_width/2,
-               outlier.shape = NA,
-               color = 'black',
-               position = position_dodge(width = dodge_width)) +
-  gghalves::geom_half_violin(position = position_nudge(-dodge_width),
-                             alpha = 0.5,
-                             color = NA) +
-  geom_label(data = data_plot_n,
-             aes(x = best_fitting_model,
-                 y = 0.5,
-                 label = paste('n = ', n, sep = '')),
-             color = 'black',
-             fill = 'transparent') +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides)
-
-Neurocodify_plot(p)
-```
-
-### Difference alpha0 and alpha1
-
-```{r}
-data_plot = Prepare_data_for_plot(data_alpha_ratio)
-data_plot_n = data_plot %>%
-  .[, .(n = .N),
-    by = c('best_fitting_model')]
-
-dodge_width = 0.2
-
-p = ggplot(data = data_plot,
-       aes(x = best_fitting_model,
-           y = diff_1m0,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
-                                             jitter.width = dodge_width,
-                                             jitter.height = 0,
-                                             seed = 666)) +
-  geom_boxplot(width = dodge_width/2,
-               outlier.shape = NA,
-               color = 'black',
-               position = position_dodge(width = dodge_width)) +
-  gghalves::geom_half_violin(position = position_nudge(-dodge_width),
-                             alpha = 0.5,
-                             color = NA) +
-  geom_label(data = data_plot_n,
-             aes(x = best_fitting_model,
-                 y = 0.5,
-                 label = paste('n = ', n, sep = '')),
-             color = 'black',
-             fill = 'transparent') +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides)
-
-Neurocodify_plot(p)
+  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.2) +
+  facet_wrap(~variable,
+             scale = 'free_y')
+p
 ```
 
 ```{r}
-t.test(data_alpha_ratio[best_fitting_model == 'Pedlr_step' & group == 'younger']$diff_1m0,
-       data_alpha_ratio[best_fitting_model == 'Pedlr_step' & group == 'older']$diff_1m0)
+# Get data of surprise model
+data_surprise_v = data[starting_values == 'random' & model == 'surprise' & iter == 1] %>%
+  # Select learning coefficients
+  .[variable == 'coefs'] %>%
+  .[, ':='(variable = as.factor(variable),
+           x = as.factor(x))] %>%
+  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
+  .[, uml := u-l]
+
+p = ggplot(data = data_surprise_v,
+           aes(x = V1,
+               y = l,
+               color = group)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.2) +
+  geom_smooth(method='lm',
+              formula = y~x)
+p
+#p
+
+
+p = ggplot(data = data_surprise_v,
+           aes(x = V1,
+               y = s,
+               color = group)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.2) +
+  geom_smooth(method='lm',
+              formula = y~x)
+p
+#p
+
+
+p = ggplot(data = data_surprise_v,
+           aes(x = V1,
+               y = uml,
+               color = group)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.7) +
+  geom_smooth(method='lm',
+              formula = y~x)
+p
+#p
+cor.test(data_surprise_v$V1, data_surprise_v$uml, method = 'spearman')
+cor.test(data_surprise_v[group == 'younger']$V1, data_surprise_v[group == 'younger']$uml)
+cor.test(data_surprise_v[group == 'older']$V1, data_surprise_v[group == 'older']$uml)
+
+
+
+p = ggplot(data = data_surprise_v,
+           aes(x = V2,
+               y = uml,
+               color = group)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.7) +
+  geom_smooth(method='lm',
+              formula = y~x)
+p
 ```
 
-Robust regression
+
+### Get LR functions
 
 ```{r}
-# Standard OLS
-ols = lm(diff_1m0 ~ group,
-         data = data_alpha_ratio)
-summary(ols)
+data_lr_func = data_surprise %>%
+  .[, .(alpha_star = LRfunction(low = value[variable == 'l'],
+                                up = value[variable == 'u'],
+                                slope = value[variable == 's'],
+                                PE = seq(60))[[1]],
+        PEscaled = LRfunction(low = value[variable == 'l'],
+                              up = value[variable == 'u'],
+                              slope = value[variable == 's'],
+                              PE = seq(60))[[2]],
+        l = value[variable == 'l'],
+        s = value[variable == 's'],
+        u = value[variable == 'u'],
+        uml = value[variable == 'uml']),
+    by = c('participant_id', 'group')] %>%
+  .[, ':='(slope_pos = s > 0,
+           uml_pos = uml > 0)]
+
+p = ggplot(data = data_lr_func,
+           aes(x = PEscaled,
+               y = alpha_star,
+               group = participant_id,
+               color = group)) +
+  geom_line(alpha = 0.5) +
+  facet_wrap(uml_pos ~ group)
+p
 ```
 
 ```{r}
-# Plot residuals, QQ, weighting, and leverage
-opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
-plot(ols, las = 1)
-```
-
-```{r}
-# Display values with large cook's distance
-cooks_d <- cooks.distance(ols)
-r <- stdres(ols)
-a <- cbind(data_alpha_ratio, cooks_d, r)
-# Conventional cut-off (https://stats.oarc.ucla.edu/r/dae/robust-regression/)
-cutoff = 4/nrow(data_alpha_ratio)
-# Only absolute residuals matter
-a = a %>%
-  .[, ':='(abs_r = abs(r),
-           cutoff = cooks_d > cutoff)] %>%
-  .[order(rank(-abs_r))]
-a
-```
-
-```{r}
-# Robust Regression model (huber weights)
-rr.huber = MASS::rlm(diff_1m0 ~ group,
-                     data = data_alpha_ratio)
-bla = summary(rr.huber)
-bla
-
-# Look at weights created by RR (low weights = "outlier-y behavior")
-hweights = data_alpha_ratio %>%
-  .[, ':='(resid = rr.huber$resid,
-           weight = rr.huber$w)] %>%
-  # Sort by weight
-  .[order(rank(weight)),]
-hweights
+count_uml = data_lr_func %>%
+  .[, .(uml_pos = unique(uml_pos)),
+    by = c('participant_id', 'group')] %>%
+  .[, .(count_uml_pos = sum(uml_pos),
+        n = .N),
+    by = c('group')]
+count_uml
 ```
 
 
 ```{r}
-out = data.table(bla$coefficients)
+# Get uml parameter for rising and falling graphs
+data_uml = data_surprise[variable == 'uml'] %>%
+  .[, uml := value] %>%
+  .[, uml_pos := uml >= 0] %>%
+  .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')]
 
-plot_t = data.table(x = seq(-5,5, by = 0.01),
-                    y = dt(seq(-5,5, by = 0.01), df=bla$df[2]))
- p = ggplot(data = plot_t,
-       aes(x = x,
-           y = y)) +
-  geom_path() +
-   # Mark cut-offs
-  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
-             linetype = 'dashed') +
-   # Mark t-value of group statistic
-  geom_vline(xintercept = out$`t value`[2],
-             color = 'red') +
-   labs(x = 't-Value',
-        y = 'Density',
-        main = 't-Distribution for group effect') +
-   scale_y_continuous(expand = c(0,0))
- Neurocodify_plot(p) +
-   theme(panel.grid = element_blank())
- 
- p_value = plot_t[x == round(out$`t value`[2], 2)]$y
-p_value
+data_lrs = data_random[model == 'surprise' & variable == 'LRs' & !is.na(value)] %>%
+  # Fuse encountered LRs with uml
+  data.table::merge.data.table(., data_uml,
+                               by = c('participant_id', 'group')) %>%
+  .[, uml_pos := as.factor(uml_pos)]
+
+data_extremes = data_lrs %>%
+  .[, x := as.numeric(x)] %>%
+  # Get alpha* at lowest and highest |PE|
+  .[, .(a_at_min_pe = value[x == min(x)],
+        a_at_max_pe = value[x == max(x)]),
+    by = c('participant_id', 'group')] %>%
+  # Get difference between both to get rising or falling slope
+  .[, rising := a_at_max_pe - a_at_min_pe] %>%
+  .[, rising := rising > 0]
+
+data_lrs = data_lrs %>%
+  data.table::merge.data.table(., data_extremes,
+                               by = c('participant_id', 'group'))
+
+p = ggplot(data = data_lrs,
+           aes(x = as.numeric(x),
+               y = value,
+               group = participant_id,
+               color = group)) +
+  geom_line(alpha = 0.2) +
+  labs(x = '|PE|',
+        y = 'alpha*') +
+  facet_wrap(rising~group)
+p
 ```
 
 ```{r}
-# Robust regression (bisquare weights)
-rr.bisquare = MASS::rlm(diff_1m0 ~ group,
-                     data = data_alpha_ratio,
-                     psi = psi.bisquare)
-bla = summary(rr.bisquare)
-bla
-
-# Look at weights created by RR (low weights = "outlier-y behavior")
-bweights = data_alpha_ratio %>%
-  .[, ':='(resid = rr.bisquare$resid,
-           weight = rr.bisquare$w)] %>%
-  # Sort by weight
-  .[order(rank(weight)),]
-bweights
-```
-
-```{r}
-out = data.table(bla$coefficients)
-
-plot_t = data.table(x = seq(-5,5, by = 0.001),
-                    y = dt(seq(-5,5, by = 0.001), df=bla$df[2]))
-p = ggplot(data = plot_t,
-           aes(x = x,
-               y = y)) +
-  geom_path() +
-  # Mark cut-offs
-  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
-             linetype = 'dashed') +
-  # Mark t-value of group statistic
-  geom_vline(xintercept = out$`t value`[2],
-             color = 'red') +
-  labs(x = 't-Value',
-       y = 'Density',
-       main = 't-Distribution for group effect') +
-  scale_y_continuous(expand = c(0,0))
-Neurocodify_plot(p) +
-  theme(panel.grid = element_blank())
-
-p_value = plot_t[x == round(out$`t value`[2], 2)]$y
-p_value
-```
-
-## Over-Underweighters {.tabset}
-
-```{r}
-data_wagners_steppers_weight = data_wagners_steppers %>%
-  .[alpha0 < alpha1, rare_pe_weight := 'overweight'] %>%
-  .[alpha1 < alpha0, rare_pe_weight := 'underweight']
-```
-
-### Split by best fitting model
-
-```{r}
-data_plot = Prepare_data_for_plot(data_wagners_steppers_weight)
-
-p = ggplot(data = data_plot,
-           aes(x = rare_pe_weight,
-               color = group,
-               fill = group)) +
-  geom_bar() +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  facet_grid(~best_fitting_model + group)
-Neurocodify_plot(p)
-```
-
-### All pedlr_step
-
-```{r}
-data_plot = Prepare_data_for_plot(data_wagners_steppers_weight)
-
-p = ggplot(data = data_plot,
-           aes(x = rare_pe_weight,
-               color = group,
-               fill = group)) +
-  geom_bar() +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  facet_grid(~group)
-Neurocodify_plot(p)
+data_rising = data_lrs %>%
+  .[, .(rising = unique(rising)),
+    by = c('participant_id', 'group')] %>%
+  .[, .(count_rising = sum(rising)),
+    by = c('group')]
 ```
 
 
-## Behavior
-
-### Influence of rare events
+# Only surprise best fitters
 
 ```{r}
-data_plot = Prepare_data_for_plot(data_sanity)
-data_plot_n = data_plot %>%
-  .[, .(n = .N),
-    by = c('best_fitting_model')]
+data_winning_model = data_aic %>%
+  .[, .(winning_model = unique(winning_model)),
+    by = c('participant_id', 'group')] %>%
+  .[, .SD, .SDcols = c('participant_id', 'group', 'winning_model')]
 
-dodge_width = 0.2
+data_lrs_winning = data.table::merge.data.table(data_lrs, data_winning_model,
+                                                by = c('participant_id',
+                                                       'group'))
+data_lrs_surprise = data_lrs_winning[winning_model == 'surprise']
 
-p = ggplot(data = data_plot,
-       aes(x = best_fitting_model,
-           y = preminuspost,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
-                                             jitter.width = dodge_width,
-                                             jitter.height = 0,
-                                             seed = 666)) +
-  geom_boxplot(width = dodge_width/2,
-               outlier.shape = NA,
-               color = 'black',
-               position = position_dodge(width = dodge_width)) +
-  gghalves::geom_half_violin(position = position_nudge(-dodge_width),
-                             alpha = 0.5,
-                             color = NA) +
-  geom_label(data = data_plot_n,
-             aes(x = best_fitting_model,
-                 y = 0.5,
-                 label = paste('n = ', n, sep = '')),
-             color = 'black',
-             fill = 'transparent') +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides)
-
-Neurocodify_plot(p)
-```
-
-### Underestimation 2nd bandit
-
-```{r}
-data_plot = Prepare_data_for_plot(data_sanity_rat)
-data_plot_n = data_plot %>%
-  .[, .(n = .N),
-    by = c('best_fitting_model')]
-
-dodge_width = 0.2
-
-p = ggplot(data = data_plot,
-       aes(x = best_fitting_model,
-           y = mean_diff_from_true_2,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
-                                             jitter.width = dodge_width,
-                                             jitter.height = 0,
-                                             seed = 666)) +
-  geom_boxplot(width = dodge_width/2,
-               outlier.shape = NA,
-               color = 'black',
-               position = position_dodge(width = dodge_width)) +
-  gghalves::geom_half_violin(position = position_nudge(-dodge_width),
-                             alpha = 0.5,
-                             color = NA) +
-  geom_label(data = data_plot_n,
-             aes(x = best_fitting_model,
-                 y = 25,
-                 label = paste('n = ', n, sep = '')),
-             color = 'black',
-             fill = 'transparent') +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides)
-
-Neurocodify_plot(p)
-```
-
----
-
-### Comparison model vs. participants: Influence of rare events
-
-```{r}
-# Get model choice columns
-est_columns = colnames(data_est_values)[grep('*_modelchoice', colnames(data_est_values))]
-
-# Get data structure comparing participant estimate to model values
-data_rare_inf_model = data_est_values %>%
-  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
-  # Add comparison type (e.b. 1v2)
-  Add_comp(.) %>%
-  # Numerate estimation trials
-  .[, trial := seq(.N),
-    by = c('participant_id', 'run')] %>%
-  # Get correct answers
-   .[trial_type == 'choice', correct := if(option_left > option_right) 'left' else 'right',
-    by = c('participant_id', 'run', 'trial')] %>%
-  .[trial_type == 'forced', correct := forced,
-    by = c('participant_id', 'run', 'trial')] %>%
-  # Exclude time-out trials
-  .[!is.na(outcome), correct_choice := choice == correct,
-    by = c('participant_id', 'run', 'trial')] %>%
-  .[comp != '1v2' | trial_type != 'choice', correct_choice := NA,
-    by = c('participant_id', 'run')] %>%
-  # Melt estimates
-  .[, (est_columns) := lapply(.SD, as.numeric), .SDcols = est_columns] %>%
-  data.table::melt(measure.vars = est_columns) %>%
-  .[, ':='(model = unlist(strsplit(as.character(variable), '_'))[1],
-           measure = unlist(strsplit(as.character(variable), '_'))[2]),
-    by = c('participant_id', 'run', 'trial', 'variable')] %>%
-  # Standardize model names
-  .[model == 'Pedlrsimple', model := 'Pedlr_simple'] %>%
-  .[model == 'Pedlrsimpleconst', model := 'Pedlr_simple_const'] %>%
-  .[model == 'Pedlrstep', model := 'Pedlr_step'] %>%
-  .[model == 'Pedlrfixdep', model := 'Pedlr_fixdep'] %>%
-  .[model == 'Pedlrinterdep', model := 'Pedlr_interdep'] %>%
-  # Standardize measure names
-  .[measure == 'modelchoice', measure := 'model_choice'] %>%
-  .[measure == 'modelchoiceprob', measure := 'model_choice_prob'] %>%
-  # Factorize estimate variable
-  .[, model := factor(model, levels = c('Rw',
-                                        'Pedlr_simple',
-                                        'Pedlr_simple_const',
-                                        'Pedlr',
-                                        'Pedlr_step',
-                                        'Pedlr_fixdep',
-                                        'Pedlr_interdep'))] %>%
-  # Cast measure columns
-  data.table::dcast(participant_id + group + run + trial + trial_type + comp + comp_number + is_rare + option_choice + correct_choice + model ~ measure,
-                    value.var = 'value') %>%
-  # Sort data table
-  .[order(rank(participant_id), rank(run), rank(trial), rank(model))]
+p = ggplot(data = data_lrs_surprise,
+           aes(x = as.numeric(x),
+               y = value,
+               group = participant_id,
+               color = group)) +
+  geom_line(alpha = 0.2) +
+  facet_wrap(~group)
+p
 ```
 
 ```{r}
-# WIndowrize analysis with model choice probs
-# Allocate data holding +-5 trials from rare outcome of bandit 2
-window_data_model = data.table()
+data_surprise_winning_only = data.table::merge.data.table(data_surprise,
+                                                          data_winning_model,
+                                                          by = c('participant_id',
+                                                                 'group')) %>%
+  .[winning_model == 'surprise']
 
-# i_id = '09RI1ZH'
-# i_run = '1'
-# i_model = 'Rw'
+p = ggplot(data = data_surprise_winning_only,
+           aes(x = group,
+               y = value,
+               color = group)) +
+  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.2) +
+  facet_wrap(~variable,
+             scale = 'free_y')
+p
+```
+
+# Parameters of uncertainty_surprise model
+
+```{r}
+# Get data of surprise model
+data_u_surprise = data[starting_values == 'random' & model == 'uncertainty_surprise' & iter == 1] %>%
+  # Select learning coefficients
+  .[variable == 'coefs' & x %in% c('l','u','s')] %>%
+  .[, ':='(variable = as.factor(variable),
+           x = as.factor(x))] %>%
+  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
+  .[, uml := u-l] %>%
+  data.table::melt(id.vars = c('participant_id', 'group'))
+
+p = ggplot(data = data_u_surprise,
+           aes(x = group,
+               y = value,
+               color = group)) +
+  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.2) +
+  facet_wrap(~variable,
+             scale = 'free_y')
+p
+```
+
+```{r}
+# Get uml parameter for rising and falling graphs
+data_uml = data_u_surprise[variable == 'uml'] %>%
+  .[, uml := value] %>%
+  .[, uml_pos := uml >= 0] %>%
+  .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')]
+
+data_lrs = data_random[model == 'uncertainty_surprise' & variable == 'LRs' & !is.na(value)] %>%
+  # Fuse encountered LRs with uml
+  data.table::merge.data.table(., data_uml,
+                               by = c('participant_id', 'group')) %>%
+  .[, uml_pos := as.factor(uml_pos)]
+
+p = ggplot(data = data_lrs,
+           aes(x = as.numeric(x),
+               y = value,
+               group = participant_id,
+               color = group)) +
+  geom_line(alpha = 0.2) +
+  facet_wrap(uml_pos~group)
+p
+```
 
 
-# For each participant & run
-for(i_id in unique(data_rare_inf_model$participant_id)){
-  for(i_run in unique(data_rare_inf_model$run)){
-    for(i_model in unique(data_rare_inf_model$model)){
-      
-      # Select data
-      temp_data = data_rare_inf_model[participant_id == i_id &
-                                        run == i_run &
-                                        model == i_model]
-      
-      # Get all trials where rare outcomes were obtained
-      idx_chosen_rare_outcome = which(temp_data$is_rare == 1 &
-                                        temp_data$trial_type %in% c('choice', 'forced') &
-                                        temp_data$option_choice == 2)
-      # For each of the rare-outcome trials
-      for(rare_count in seq(1,length(idx_chosen_rare_outcome))){
-        # Get data slice
-        temp = Windowrize(data = temp_data,
-                          index_rare = idx_chosen_rare_outcome[rare_count],
-                          window_size = 3) %>%
-          .[, window_relative := factor(window_relative, levels = unique(sort(window_relative)))]
-        # Add count of the rare outcome
-        temp$i_rare = rare_count
-        # Add model
-        temp$model = i_model
-        # Fuse data for each participant & run
-        window_data_model = rbind(window_data_model, temp)
-      }
-    
-    }
-  }
-}
+# Nico's fitting with 5000 maxeval
 
-# Summarize data
-window_data_model_run = window_data_model %>%
-  # Eliminate windows which extended across trial boundaries (<1 or >240)
-  .[, relative_trial := as.numeric(as.character(window_center)) + as.numeric(as.character(window_relative))] %>%
-  .[!(relative_trial < 1 | relative_trial > 240),] %>%
-  # Sort by relative window
-  .[order(rank(group), rank(participant_id), rank(run), rank(window_relative), rank(model)),] %>%
-  # Exclude model choice prob in wrong comparisons (!1v2) from mean calc
-  .[is.na(correct_choice), model_choice_prob := NA] %>%
-  # Get mean accuracy across all relative window positions (-2 to +3)
-  .[, .(mean_model_choice_prob = mean(model_choice_prob, na.rm = TRUE),
-        n_data = sum(!is.na(model_choice_prob))),
-    by = c('participant_id', 'group', 'run', 'model', 'window_relative')] %>%
-  # Get difference pre/post rare outcome
-  .[window_relative %in% c(-1,1),] %>%
-  .[window_relative == '-1', window_relative := 'pre'] %>%
-  .[window_relative == '1', window_relative := 'post'] %>%
-  data.table::dcast(participant_id + group + run + model ~ paste0('prob_', window_relative),
-                    value.var = 'mean_model_choice_prob') %>%
-  .[, preminuspost := prob_pre - prob_post] %>%
-  .[, run := as.factor(run)] %>%
-  # Average across run (because modeling was done across runs)
-  .[, .(preminuspost_model = mean(preminuspost)),
+```{r}
+file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico_5000.tsv',
+                 fsep = .Platform$file.sep)
+data_nico_5000 = data.table::fread(file, sep = '\t', na.strings = 'n/a')
+
+data_group = data %>%
+  .[, .(group = unique(group)),
+    by = 'participant_id']
+```
+
+# AIC average over participants
+
+## Across both age groups
+
+```{r}
+data_aic = data_nico_5000 %>%
+  data.table::merge.data.table(., data_group,
+                               by = 'participant_id') %>%
+  .[, .(AIC = mean(AIC),
+        sd_AIC = sd(AIC)),
     by = c('participant_id', 'group', 'model')]
 
-# Get model information for each participant
-model_info = data_aic %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'real_iter', 'second_ll', 'model', 'best_fitting_model', 'AIC'),
-                   measure.vars = c('alpha', 'alpha1', 'temperature', 'interdep'),
-                   variable.name = 'para') %>%
-  data.table::dcast(participant_id + group + real_iter + second_ll + model + best_fitting_model + AIC ~ para, value.var = 'value')
+data_aic_all = data_aic %>%
+  .[, .(AIC = mean(AIC)),
+    by = 'model'] %>%
+  # Sort by lowest AIC
+  .[order(rank(AIC))]
+data_aic_all
+```
 
-# Fuse model information with participants rare_influence
-data_comp_prepost_model = data.table::merge.data.table(model_info, window_data_run,
-                                           by = c('participant_id', 'group')) %>%
-  data.table::merge.data.table(., window_data_model_run,
-                                           by = c('participant_id', 'group', 'model')) %>%
-  # Focus on same fitting itration (since fitting results are consistent)
-  .[real_iter == 1, ] %>%
-  # Add model vs. participant deviation measure (rmse)
-  .[, .(rmse = sqrt(mean((preminuspost - preminuspost_model)^2,
-                         na.rm = TRUE))),
+## Age split
+
+```{r}
+data_aic_age = data_aic %>%
+  .[, .(AIC = mean(AIC)),
+    by = c('group', 'model')] %>%
+  # Sort by age and lowest AIC
+  .[order(group, AIC)]
+data_aic_age
+```
+
+```{r}
+# Get winning model within each participant
+data_counts = data_aic %>%
+  .[, ':='(lowest_AIC = min(AIC),
+           loc_winning = AIC == min(AIC),
+           # Name of winning model
+           winning_model = model[AIC == min(AIC)]),
+    by = 'participant_id'] %>%
+  # Only keep winning model
+  .[loc_winning == TRUE]
+
+# Count winning models across participants
+data_counts_all = data_counts %>%
+  .[, .(n_winning = .N),
     by = c('model')]
-```
 
----
+# Count winning models within age-groups
+data_counts_age = data_counts %>%
+  .[, .(n_winning = .N),
+    by = c('group', 'model')] %>%
+  .[order(group, -rank(model))]
+  
+data_counts_all
+data_counts_age
 
-# Uncertainty ratings
+chisq.test(cbind(data_counts_age[group == 'older']$n_winning,
+                 data_counts_age[group == 'younger']$n_winning))
 
-```{r}
-data_uncer = data_est_values[with_rating == 1] %>%
-  Apply_exclusion_criteria(choice_based_exclusion = FALSE) %>%
-  .[, est_trial := seq(.N),
-    by = c('participant_id', 'group', 'run')] %>%
-  # Within subject difference between options
-  .[, ':='(diff_2m1 = est_2_range - est_1_range,
-           diff_2m3 = est_2_range - est_3_range)] %>%
-   .[, .(mean_diff_2m1 = mean(diff_2m1, na.rm= TRUE),
-         mean_diff_2m3 = mean(diff_2m3, na.rm= TRUE)),
-    by = c('participant_id', 'group')] %>%
-  data.table::melt.data.table(id.vars = c('participant_id', 'group'),
-                              measure.vars = c('mean_diff_2m1', 'mean_diff_2m3'))
-```
-
-```{r}
-dodge_width = 0.3
-
-ggplot(data = Prepare_data_for_plot(data_uncer),
-       aes(x = variable,
-           y = value,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitterdodge(jitter.width = dodge_width/2,
-                                             jitter.height = 0,
-                                             dodge.width = dodge_width,
-                                             seed = 666)) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width,
-               position = position_dodge(width = dodge_width)) +
-    stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5,
-               position = position_dodge(width = dodge_width)) +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides)
+p = ggplot(data = data_counts_age,
+           aes(x = model,
+               y = n_winning,
+               fill = model)) +
+  geom_col() +
+  facet_wrap(~group)
+p
 ```
 
 ```{r}
-t.test(data_uncer[variable == 'mean_diff_2m3' & group == 'older']$value, mu = 0)
+# Get winning model within each participant
+data_counts_nn = data_aic %>%
+  .[model != 'uncertainty_surprise'] %>%
+  .[, ':='(lowest_AIC = min(AIC),
+           loc_winning = AIC == min(AIC),
+           # Name of winning model
+           winning_model = model[AIC == min(AIC)]),
+    by = 'participant_id'] %>%
+  # Only keep winning model
+  .[loc_winning == TRUE]
+
+# Count winning models across participants
+data_counts_nn_all = data_counts_nn %>%
+  .[, .(n_winning = .N),
+    by = c('model')]
+
+# Count winning models within age-groups
+data_counts_nn_age = data_counts_nn %>%
+  .[, .(n_winning = .N),
+    by = c('group', 'model')] %>%
+  .[order(group, -rank(model))]
+  
+data_counts_nn_all
+data_counts_nn_age
+
+chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning,
+                 data_counts_nn_age[group == 'younger']$n_winning))
+
+p = ggplot(data = data_counts_nn_age,
+           aes(x = model,
+               y = n_winning,
+               fill = model)) +
+  geom_col() +
+  facet_wrap(~group)
+p
+```
+
+# Parameters of surprise model
+
+```{r}
+# Get data of surprise model
+data_surprise = data_nico_5000[model == 'surprise'] %>%
+  data.table::merge.data.table(., data_group,
+                               by = 'participant_id') %>%
+  # Select learning coefficients
+  .[variable == 'coefs' & x %in% c('l','u','s')] %>%
+  .[, ':='(variable = as.factor(variable),
+           x = as.factor(x))] %>%
+  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
+  .[, uml := u-l] %>%
+  data.table::melt(id.vars = c('participant_id', 'group'))
+
+p = ggplot(data = data_surprise,
+           aes(x = group,
+               y = value,
+               color = group)) +
+  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.2) +
+  facet_wrap(~variable,
+             scale = 'free_y')
+p
+
+summary(data_nico_5000[x == 'l']$value)
+summary(data_nico_5000[x == 'u']$value)
+```
+
+```{r}
+data_lrs = data_random[model == 'surprise' & variable == 'LRs' & !is.na(value)]
+
+p = ggplot(data = data_lrs,
+           aes(x = as.numeric(x),
+               y = value,
+               group = participant_id,
+               color = group)) +
+  geom_line(alpha = 0.2) +
+  facet_wrap(~group)
+p
 ```
 

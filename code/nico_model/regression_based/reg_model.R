@@ -54,14 +54,23 @@ reg_model = function(x,
       alphas[cbandit,ccidx] = cVPE$LR
       updates[cbandit,ccidx] = cVPE$PE
       
-      # - - - - - - - - POTENTIAL BUG 
+      # # - - - - - - - - POTENTIAL BUG 
+      # # (convolution with PEs from future (2 sided convolution); instead of recency weighted PE with lag of 10)
+      # # Get "recency-weighted" PEs to measure uncertainty (how strong was PE over last 10 trials incl leakage?) (atm the filter is applied to both sides instead of only past values)
+      # fupdates[cbandit,ccidx] = stats::filter(cVPE$PE, 
+      #                                         filter = rev(0.40^(1:10)/sum(0.40^(1:10))),
+      #                                         method = 'convolution',
+      #                                         sides = 2) # should be `sides = 1`
+      # # - - - - - - - - POTENTIAL BUG
+      
+      # - - - - - - - - Fixed BUG 
       # (convolution with PEs from future (2 sided convolution); instead of recency weighted PE with lag of 10)
       # Get "recency-weighted" PEs to measure uncertainty (how strong was PE over last 10 trials incl leakage?) (atm the filter is applied to both sides instead of only past values)
       fupdates[cbandit,ccidx] = stats::filter(cVPE$PE, 
                                               filter = rev(0.40^(1:10)/sum(0.40^(1:10))),
                                               method = 'convolution',
-                                              sides = 2) # should be `sides = 1`
-      # - - - - - - - - POTENTIAL BUG
+                                              sides = 1) # should be `sides = 1`
+      # - - - - - - - - Fixed BUG
       
     }
   }
