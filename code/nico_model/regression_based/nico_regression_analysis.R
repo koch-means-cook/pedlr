@@ -21,9 +21,18 @@ nid = length(ids)
 agegroup = tapply(DATA$group, DATA$participant_id, function(x) which(unique(x) == c('younger', 'older')))
 perf = tapply(DATA$correct_choice, DATA$participant_id, mean, na.rm = TRUE)
 
+# Log likelihood function (minimized by model fitting)
 LL_reg = function(x, cdf, model) {
   cres = reg_model(x, cdf, model)
-  return(-logLik(cres[[1]])[1])
+  # Get predicted choice probabilities from regression model
+  preds = predict(cres[[1]], type="response")
+  probs = dbinom(cres[[2]]$choice=='right', prob=preds, size=1, log=TRUE)
+  # Get likelihood only for critical choices (comparisons bandit 1 and 2)
+  # Bug? Does not restrict to choice == 1 cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
+  cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21') & cres[[2]]$chosen_bandit == 1)
+  # Negative LL of choices in comparisons of bandit 1&2
+  b2_logLik = -sum(probs[cidx])
+  return(b2_logLik)
 }
 
 # copts = list('algorithm'='NLOPT_GN_DIRECT_L',
@@ -31,7 +40,7 @@ LL_reg = function(x, cdf, model) {
 #              'maxeval'= 100)
 copts = list('algorithm'='NLOPT_GN_DIRECT_L',
              'xtol_rel'=1.0e-5,
-             'maxeval'= 5000)
+             'maxeval'= 1000)
 
 
 nmodels = 4
@@ -65,8 +74,16 @@ for (cid in 1:nid) {
   message(paste('Starting ID', cid, '...'), appendLF = FALSE)
   cDATA = subset(DATA, DATA$participant_id == ids[cid])
   for (cmodel in 1:nmodels) {
-    cmod = nloptr(x0=x0[[cmodel]],eval_f=LL_reg, lb=lb[[cmodel]], ub=ub[[cmodel]], opts=copts, cdf=cDATA, model = cmodel)
-    cres = reg_model(cmod$solution, cDATA, model = cmodel)
+    cmod = nloptr(x0=x0[[cmodel]],
+                  eval_f=LL_reg,
+                  lb=lb[[cmodel]],
+                  ub=ub[[cmodel]],
+                  opts=copts,
+                  cdf=cDATA,
+                  model = cmodel)
+    cres = reg_model(cmod$solution,
+                     cDATA,
+                     model = cmodel)
     cglm = cres[[1]]
     cres[[2]]
     lr = cres[[4]][2,] #colSums(cres[[4]], na.rm = TRUE)
@@ -79,7 +96,13 @@ for (cid in 1:nid) {
     #plot(LRfunction(cmod$solution[1], cmod$solution[2], -cmod$solution[3]/3, 1:50)[[1]], ylim = c(0, 1))
     cres[[2]]$model_p = predict(cglm, type = 'response')
     coefs[6:(5+length(x0[[cmodel]])), cid, cmodel] = cmod$solution
-    AICs[cid, cmodel] = AIC(cglm) + 2*length(x0[[cmodel]])
+    
+    probs = dbinom(cres[[2]]$choice=='right', prob=cres[[2]]$model_p, size=1, log=TRUE)
+    # Bug? does not restrict to choice == 1 cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
+    cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21') & cres[[2]]$chosen_bandit == 1)
+    bla = cres[[2]][cidx]
+    b2_logLik = sum(probs[cidx])
+    AICs[cid, cmodel] = 2*(length(coef(cglm)) + length(x0[[cmodel]])) - 2*b2_logLik
   }
   message(paste('done!'), appendLF = FALSE)
   cAICs = round(AICs[cid,], 1)
@@ -146,7 +169,7 @@ data_nico = rbind(data_nico, data_x0)
 setcolorder(data_nico, c('participant_id', 'model', 'AIC', 'variable', 'x', 'value'))
 
 # Save nicos output in long format
-save_path = file.path(here::here(), 'derivatives', 'model_fitting', 'fitting_nico_5000.tsv',
+save_path = file.path(here::here(), 'derivatives', 'model_fitting', 'fitting_nico_1000.tsv',
                       fsep = .Platform$file.sep)
 data.table::fwrite(data_nico, file = save_path, sep = '\t', na = 'n/a')
 

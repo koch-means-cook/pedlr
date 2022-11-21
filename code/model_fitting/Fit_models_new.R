@@ -128,8 +128,19 @@ Fit_models_new = function(data,
     coefs$variable = 'coefs'
     # Add model prediction
     cres[[2]]$model_p = predict(cglm, type = 'response')
+    model_p_my = cres[[2]]$model_p
     # AICs
-    AICs = AIC(cglm) + 2*length(x0[[model_count]])
+    probs = dbinom(cres[[2]]$choice=='right', prob=cres[[2]]$model_p, size=1, log=TRUE)
+    probs_my = probs
+    # Potential bug: also includes chosen bandit = 2; cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
+    cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21'))
+    cidx_my = cidx
+    b2_logLik = sum(probs[cidx])
+    b2_logLik_my = b2_logLik
+    #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0[[model_count]])) + 2*b2_logLik
+    AICs = 2*(length(coef(cglm)) + length(x0[[model_count]])) - 2*b2_logLik
+    AICs_my = AICs
+    #AICs = AIC(cglm) + 2*length(x0[[model_count]])
     # x0
     x0_vals = as.data.table(cbind(para_names, x0[[model_count]]))
     colnames(x0_vals) = c('x', 'value')
