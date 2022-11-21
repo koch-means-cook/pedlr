@@ -130,6 +130,8 @@ data_fit_comp = data_fit_comp %>%
            algorithm = unique(data_fixed$algorithm),
            xtol_rel = unique(data_fixed$xtol_rel),
            maxeval = unique(data_fixed$maxeval))]
+
+unique(data_random$x)
 ```
 
 
@@ -347,7 +349,7 @@ mean(data_corr$alpha)
 
 ```{r}
 data_aic = data %>%
-  .[iter == 1 & starting_values == 'fixed'] %>%
+  .[iter == 1 & starting_values == 'random'] %>%
   .[, .(AIC = mean(AIC),
         sd_AIC = sd(AIC)),
     by = c('participant_id', 'group', 'model')]
@@ -767,6 +769,33 @@ p
 ```
 
 
+# Uncertainty-surprise parameters
+
+```{r}
+# Get data of surprise model
+data_u_surprise = data[starting_values == 'random' & model == 'uncertainty_surprise' & iter == 1] %>%
+  # Select learning coefficients
+  .[variable == 'coefs' & x %in% c('l','u','s', 'pi')] %>%
+  .[, ':='(variable = as.factor(variable),
+           x = as.factor(x))] %>%
+  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
+  .[, uml := u-l] %>%
+  data.table::melt(id.vars = c('participant_id', 'group'))
+
+p = ggplot(data = data_u_surprise,
+           aes(x = group,
+               y = value,
+               color = group)) +
+  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
+  geom_point(position = position_jitter(height = 0,
+                                        width = 0.1,
+                                        seed = 666),
+             alpha = 0.2) +
+  facet_wrap(~variable,
+             scale = 'free_y')
+p
+```
+
 # Nico's fitting with 5000 maxeval
 
 ```{r}
@@ -778,6 +807,8 @@ data_group = data %>%
   .[, .(group = unique(group)),
     by = 'participant_id']
 ```
+
+
 
 # AIC average over participants
 
