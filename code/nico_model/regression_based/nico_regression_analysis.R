@@ -19,12 +19,17 @@ perf = tapply(DATA$correct_choice, DATA$participant_id, mean, na.rm = TRUE)
 
 LL_reg = function(x, cdf, model) {
   cres = reg_model(x, cdf, model)
-  return(-logLik(cres[[1]])[1])
+  preds = predict(cres[[1]], type="response")
+  probs = dbinom(cres[[2]]$choice=='right', prob=preds, size=1, log=TRUE)
+  cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
+  b2_logLik = -sum(probs[cidx])
+  return(b2_logLik)
+  #return(-logLik(cres[[1]])[1])
 }
 
 copts = list('algorithm'='NLOPT_GN_DIRECT_L',
-             'xtol_rel'=1.0e-5,
-             'maxeval'= 100)
+             'xtol_rel'=1.0e-6,
+             'maxeval'= 500)
 
 
 nmodels = 4
@@ -61,7 +66,6 @@ for (cid in 1:nid) {
     cmod = nloptr(x0=x0[[cmodel]],eval_f=LL_reg, lb=lb[[cmodel]], ub=ub[[cmodel]], opts=copts, cdf=cDATA, model = cmodel)
     cres = reg_model(cmod$solution, cDATA, model = cmodel)
     cglm = cres[[1]]
-    cres[[2]]
     lr = cres[[4]][2,] #colSums(cres[[4]], na.rm = TRUE)
     lr = lr[-which(is.na(lr))]
     pe = cres[[3]][2,which(!is.na(cres[[4]][2,]))]
@@ -72,7 +76,13 @@ for (cid in 1:nid) {
     #plot(LRfunction(cmod$solution[1], cmod$solution[2], -cmod$solution[3]/3, 1:50)[[1]], ylim = c(0, 1))
     cres[[2]]$model_p = predict(cglm, type = 'response')
     coefs[6:(5+length(x0[[cmodel]])), cid, cmodel] = cmod$solution
-    AICs[cid, cmodel] = AIC(cglm) + 2*length(x0[[cmodel]])
+
+    probs = dbinom(cres[[2]]$choice=='right', prob=cres[[2]]$model_p, size=1, log=TRUE)
+    cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
+    b2_logLik = sum(probs[cidx])
+    b123_logLik = sum(probs)
+    AICs[cid, cmodel] = 2*(length(coef(cglm)) + length(x0[[cmodel]])) - 2*b2_logLik
+    #AICs[cid, cmodel] = AIC(cglm) + 2*length(x0[[cmodel]])
   }
   message(paste('done!'), appendLF = FALSE)
   cAICs = round(AICs[cid,], 1)
@@ -94,7 +104,6 @@ imat = matrix(c(k), dim(cmat)[1], dim(cmat)[2], byrow = FALSE)
 beeswarm(cmat~imat, at = c(k), add = TRUE, pch = 21, col = '#555555BB', bg = ccols, cex = 0.5, lwd = 0.3, corral = 'wrap', method = 'hex')
 
 
-
 # older
 cmat = coefs[c(2:3, 6),agegroup==2,1]
 t.test(cmat[1,])
@@ -114,6 +123,8 @@ cor.test(perf, cmat[1,])
 cor.test(perf, cmat[2,])
 cor.test(perf, cmat[3,])
 
+means_young = apply(AICs[agegroup == 1,1:4], 2, mean)
+means_old = apply(AICs[agegroup == 2,1:4], 2, mean)
 
 tab1 = tabulate(apply(AICs[agegroup == 1,1:3], 1, function(x) which.min(x)))
 tab2 = tabulate(apply(AICs[agegroup == 2,1:3], 1, function(x) which.min(x)))
@@ -124,17 +135,6 @@ res = VB_bms(-AICs, 1000)
 res1 = VB_bms(-AICs[agegroup == 1,1:3], 1000)
 res2 = VB_bms(-AICs[agegroup == 2,1:3], 1000)
 
-x1 = rnorm(1000, mean=60, sd=10)
-x2 = rnorm(1000, mean=0, sd=10)
-x3 = rnorm(1000, mean=30, sd=10)
-
-h1 = hist(x1, breaks = seq(-36, 101, by = 5), plot = FALSE)
-h2 = hist(x2, breaks = seq(-36, 101, by = 5), plot = FALSE)
-h3 = hist(x3, breaks = seq(-36, 101, by = 5), plot = FALSE)
-
-barplot(h1$counts, border = NA, col = hcl.colors(3, 'Dark3', alpha = 0.6)[1], bty = 'n')
-barplot(h2$counts, border = NA, col = hcl.colors(3, 'Dark3', alpha = 0.6)[2], bty = 'n', add = TRUE)
-barplot(h3$counts, border = NA, col = hcl.colors(3, 'Dark3', alpha = 0.6)[3], bty = 'n', add = TRUE)
 
 opar = par(lwd = 2)
 k = barplot(cbind(tab1, tab2), space = c(rep(0.1, 3), 1, rep(0.1, 2)), beside = TRUE, col = hcl.colors(4, 'Earth')[1:3], border = c(c('white', 1, NA), c('white', 'white', 1)), ylim = c(0, 25), cex.axis = 1.2, cex.lab = 1.2, names.arg = c('Younger\n Adults', 'Older\n Adults'))
@@ -144,6 +144,9 @@ axis(2, at = c(0, 0.5, 1), cex.axis = 1.2)
 
 
 # panel 2: AICs
+apply(AICs[agegroup == 1,], 2, mean)
+apply(AICs[agegroup == 2,], 2, mean)
+
 cAICs = AICs - AICs[,rep(1, 4)]
 cmeans = cbind(apply(cAICs[agegroup == 1,2:4], 2, mean, na.rm = TRUE), apply(cAICs[agegroup == 2,2:4], 2, mean, na.rm = TRUE))
 csds = cbind(apply(cAICs[agegroup == 1,2:4], 2, std.error), apply(cAICs[agegroup == 2,2:4], 2, std.error))
@@ -177,19 +180,26 @@ t.test(X2[,1], X2[,2], paired = TRUE)
 t.test(X2[,1], X2[,3], paired = TRUE)
 t.test(X2[,1], X2[,4], paired = TRUE)
 
-t.test(X1[,2], X1[,4], paired = TRUE)
 t.test(X1[,2], X1[,3], paired = TRUE)
+t.test(X1[,2], X1[,4], paired = TRUE)
 
 t.test(X2[,2], X2[,3], paired = TRUE)
 t.test(X2[,2], X2[,4], paired = TRUE)
 
-t.test(X1[,2]/X1[,3], X2[,2]/X2[,3])
-t.test(X1[,2]-X1[,4], X2[,2]-X2[,4])
+t.test(X1[,1]-X1[,3], X2[,1]-X2[,3])
+t.test(X1[,4]-X1[,3], X2[,4]-X2[,3])
 t.test(X1[,2]-X1[,4], X2[,2]-X2[,4])
 
+
+
 # coef comparison
-sapply(c(1:8), function(x) t.test(coefs[x,agegroup == 1,4], coefs[x,agegroup == 2,4])$p.value)
-t.test(coefs[7,agegroup == 1,4], coefs[7,agegroup == 2,4])
+apply(coefs[,agegroup == 1,], c(1,3), mean)
+apply(coefs[,agegroup == 2,], c(1,3), mean)
+
+sapply(c(1:3, 6:8), function(x) t.test(coefs[x,agegroup == 1,3], coefs[x,agegroup == 2,3])$p.value)
+
+
+t.test(coefs[6,agegroup == 1,3], coefs[6,agegroup == 2,3])
 apply(AICs, 2, sum)
 
 # coefs of uncertanty in model 4
@@ -204,16 +214,16 @@ t.test(cmat[2,])
 t.test(colMeans(coefs[c(4:5),agegroup==2,4]), colMeans(coefs[c(4:5),agegroup==1,4]))
 
 # coefs of learning rate function in model 4
-cmat1 = coefs[c(6:8),agegroup==1,4]
+cmat1 = coefs[c(6:8),agegroup==1,3]
 t.test(cmat1[1,]-cmat1[2,])
 t.test(cmat1[3,]-1)
 
-cmat2 = coefs[c(6:8),agegroup==2,4]
+cmat2 = coefs[c(6:8),agegroup==2,3]
 t.test(cmat2[1,]-cmat2[2,])
 t.test(cmat2[3,]-1)
 
 t.test(cmat1[1,], cmat2[1,])
-t.test(cmat1[1,] - cmat1[2,], cmat2[1,] - cmat2[2,])
+t.test(cmat1[1,]-cmat1[2,], cmat2[1,]-cmat2[2,])
 t.test(exp(cmat1[3,]), exp(cmat2[3,]))
 
 
