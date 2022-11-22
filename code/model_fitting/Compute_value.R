@@ -85,7 +85,8 @@ Compute_value = function(V,
     
     # Calculate and enter trailing surprise
     if(!is.na(pi)){
-      S[idx[i]] = S[idx[i-1]]*(1-pi) +  abs(PE[idx[i]])*pi  
+      # The higher pi, the less reliance on history
+      S[idx[i]] = S[idx[i-1]]*(1-pi) + abs(PE[idx[i]])*pi
     } else{
       S[idx[i]] = NA
     }

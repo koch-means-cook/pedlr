@@ -194,4 +194,4 @@ Fit_models_new_wrapper(participant_id = opt$participant_id,
                        maxeval = opt$maxeval,
                        iterations = opt$iterations)
 
-# Rscript Fit_models_new_wrapper --participant_id '1NU6KP5' --starting_values 'fixed' --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.00001 --maxeval 100 --iterations 10
+# Rscript Fit_models_new_wrapper.R --participant_id '1NU6KP5' --starting_values 'random' --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.00001 --maxeval 100 --iterations 1

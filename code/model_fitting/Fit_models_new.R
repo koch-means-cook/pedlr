@@ -138,9 +138,12 @@ Fit_models_new = function(data,
     b2_logLik = sum(probs[cidx])
     b2_logLik_my = b2_logLik
     #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0[[model_count]])) + 2*b2_logLik
-    AICs = 2*(length(coef(cglm)) + length(x0[[model_count]])) - 2*b2_logLik
-    AICs_my = AICs
-    #AICs = AIC(cglm) + 2*length(x0[[model_count]])
+    # number of parameters
+    k = (length(coef(cglm)) + length(x0[[model_count]]))
+    # Number of samples
+    n = length(cidx)
+    AICs = 2*k - 2*b2_logLik
+    AICc = AICs + ((2*(k^2) + 2*k) / (n - k - 1))
     # x0
     x0_vals = as.data.table(cbind(para_names, x0[[model_count]]))
     colnames(x0_vals) = c('x', 'value')
@@ -149,6 +152,8 @@ Fit_models_new = function(data,
     # Fuse measures into one data table
     temp = data.table(rbind(LRs, coefs, x0_vals))
     temp$AIC = AICs
+    temp$AICc = AICc
+    temp$BIC = BICs
     temp$p_V1 = ps['V1']
     temp$p_V2 = ps['V2']
     # Add model
@@ -156,7 +161,7 @@ Fit_models_new = function(data,
     # Add participant_id
     temp$participant_id = participant_id
     # sort colums
-    temp = setcolorder(temp, c('participant_id', 'model', 'AIC', 'p_V1', 'p_V2',
+    temp = setcolorder(temp, c('participant_id', 'model', 'AIC', 'BIC', 'p_V1', 'p_V2',
                                'variable', 'x', 'value'))
     
     out = rbind(out, temp)
