@@ -961,7 +961,7 @@ p = ggplot(data = data_lrs,
 p
 ```
 
-# Only bandit 1v2 == 1
+# Only bandit 1v2
 
 ```{r}
 # Load modelling results
@@ -982,6 +982,10 @@ data_1v2 = data[starting_values == 'fixed']
 
 # get number of participants
 n_participants = length(unique(data$participant_id))
+
+file = file.path('/Users/koch/Desktop/data_pedlr_modelfitting.tsv')
+data.table::fwrite(data_1v2, file, sep = '\t', na = 'n/a')
+
 
 # Load nico's model data
 file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico.tsv')
