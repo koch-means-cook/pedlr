@@ -46,6 +46,7 @@ library(emmeans)
 library(papeR)
 library(ggridges)
 library(bmsR)
+library(fabricatr)
 ```
 
 ```{r, message=FALSE}
@@ -118,7 +119,7 @@ data = data[starting_values == 'random']
 # List to do:
 
 - Model description (methods):
-   - surprise "sensitive", since no assumed linear relatinhip between more PE = more LR
+   - surprise "sensitive", since no assumed linear relationship between more PE = more LR
       - Same for UNC
 
 - Model comparison:
@@ -126,6 +127,7 @@ data = data[starting_values == 'random']
       - Winning models shown in fig X
       - Exceedance probs analyses identified the surprise model as the most likely model (Stephan2009) (Klaas Stephan)
       - "chi square between age groups did not show sig group differences in distribution"
+      - Within age groups only surprise model showed sig difference to RW AICc (after correction)
 
 ```{r}
 data_model_comp = data %>%
@@ -155,6 +157,9 @@ data_model_comp_age = data_model_comp %>%
 
 data_model_comp_age
 ```
+
+
+
 
 ```{r}
 # Get winning model within each participant
@@ -188,16 +193,9 @@ p = ggplot(data = data_counts_age,
                y = n_winning,
                fill = model)) +
   geom_col() +
-  facet_wrap(group~variable, ncol = 3)
-p
+  facet_wrap(group~variable, ncol = 2)
+Neurocodify_plot(p)
 ```
-
-```{r}
-# Chi-Sq of model distribution between age groups
-chisq.test(cbind(data_counts_age[group == 'older' & variable == 'AICc']$n_winning,
-                 data_counts_age[group == 'younger' & variable == 'AICc']$n_winning))
-```
-
 
 ```{r}
 # Exceedance probs
@@ -213,6 +211,78 @@ bmsR::VB_bms(cbind(data_ep$rw,
              n_samples = 100000)
 ```
 
+```{r}
+# PEP within age group
+bmsR::VB_bms(cbind(data_ep[group == 'younger']$rw,
+                   data_ep[group == 'younger']$uncertainty,
+                   data_ep[group == 'younger']$surprise,
+                   data_ep[group == 'younger']$uncertainty_surprise),
+             n_samples = 100000)$pxp
+
+bmsR::VB_bms(cbind(data_ep[group == 'older']$rw,
+                   data_ep[group == 'older']$uncertainty,
+                   data_ep[group == 'older']$surprise,
+                   data_ep[group == 'older']$uncertainty_surprise),
+             n_samples = 100000)$pxp
+```
+
+```{r}
+# Chi-Sq of model distribution between age groups
+chisq.test(cbind(data_counts_age[group == 'older' & variable == 'AICc']$n_winning,
+                 data_counts_age[group == 'younger' & variable == 'AICc']$n_winning))
+```
+
+```{r}
+# Relative AICc to RW model
+data_model_comp_rw = data_model_comp %>%
+  data.table::dcast(participant_id + group ~ paste0('AICc_', model),
+                    value.var = 'AICc') %>%
+  .[, ':='(AICc_SmRW = AICc_surprise - AICc_rw,
+           AICc_UmRW = AICc_uncertainty - AICc_rw,
+           AICc_USmRW = AICc_uncertainty_surprise - AICc_rw),
+    by = c('participant_id', 'group')] %>%
+  data.table::melt(id.vars = c('participant_id', 'group'),
+                   measure.vars = c('AICc_SmRW',
+                                    'AICc_UmRW',
+                                    'AICc_USmRW'))
+
+# Paired t-test of AICcX - AICc_RW
+# All
+t.test(data_model_comp_rw[variable == 'AICc_SmRW']$value,
+       mu = 0)
+t.test(data_model_comp_rw[variable == 'AICc_UmRW']$value,
+       mu = 0)
+m = t.test(data_model_comp_rw[variable == 'AICc_USmRW']$value,
+       mu = 0)
+
+# Groups
+test_model_comp_rw = data_model_comp_rw %>%
+  .[, .(t = t.test(value, mu = 0)$statistic,
+        df = t.test(value, mu = 0)$parameter,
+        p = t.test(value, mu = 0)$p.value),
+    by = c('group', 'variable')] %>%
+  .[, p_adj := p.adjust(p, method = 'holm')] %>%
+  .[order(group, variable)]
+
+test_model_comp_rw
+
+data_model_comp_rw_mean = data_model_comp_rw %>%
+  .[, .(value = mean(value),
+        sd_value = sd(value),
+        n = .N,
+        sem_value = sd(value)/sqrt(.N)),
+    by = 'variable']
+
+p = ggplot(data = data_model_comp_rw,
+           aes(x = variable,
+               y = value,
+               fill = variable)) +
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0,
+                                        seed = 666)) +
+  geom_col(data = data_model_comp_rw_mean)
+Neurocodify_plot(p)
+```
 
 - Analyze winning model (Surprise):
    - Performance:
@@ -229,20 +299,39 @@ data_corr = data %>%
 
 # Plot correlation
 p = ggplot(data_corr,
+           aes(x = V1,
+               y = perc_correct_1v2)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x)
+Neurocodify_plot(p)
+
+# Plot correlation
+p = ggplot(data_corr,
            aes(x = V2,
                y = perc_correct_1v2)) +
   geom_point() +
   geom_smooth(method = 'lm',
               formula = y ~ x)
-p
+Neurocodify_plot(p)
 ```
 
 ```{r}
-# V2 ~ performance
-cor.test(data_corr$V2, data_corr$perc_correct_1v2)
-m = lm(perc_correct_1v2 ~ V2,
+# V1 ~ performance
+m = cor.test(data_corr$V1, data_corr$perc_correct_1v2)
+m = lm(perc_correct_1v2 ~ V1 * group,
        data = data_corr)
 anova(m)
+
+# V2 ~ performance
+cor.test(data_corr$V2, data_corr$perc_correct_1v2)
+m = lm(perc_correct_1v2 ~ V2 * group,
+       data = data_corr)
+anova(m)
+
+p.adjust(c(cor.test(data_corr$V1, data_corr$perc_correct_1v2)$p.value,
+           cor.test(data_corr$V2, data_corr$perc_correct_1v2)$p.value),
+         method = 'holm')
 ```
 
    - What are the properties of the winning model
@@ -270,6 +359,8 @@ data_param_group = data_surprise %>%
 
 data_param_summary = rbind(data_param_overall,
                            data_param_group)
+
+data_param_summary
 ```
 
 ```{r}
@@ -288,8 +379,6 @@ cor(data_param_corr[, .SD, .SDcols = c('param_intercept',
                                        'param_u')])
 ```
 
-         
-         
    - Learning model details:
       - Prediction: Older adults weigh higher PEs more
          - We find high variability in people: Some people seem to weigh more the lower PE, and some people the opposite
@@ -354,7 +443,7 @@ p = ggplot(data = data_surprise_param,
                    width = 0.5,
                    alpha = 0.8,
                    color = NA)
-p
+Neurocodify_plot(p)
 
 # t-test between groups
 t.test(data_surprise_param[group == 'younger']$param_uml,
@@ -510,9 +599,11 @@ data_cbe = data_cbe %>%
 ```
 
 ```{r}
+# Correlate effects of rare outcomes with parameters
 data_cbe_fit = data.table::merge.data.table(data_surprise_param,
                                             data_cbe,
                                             by = c('participant_id', 'group'))
+# model over/underweighting (continuous/dichotomized) and group
 m1 = lm(cbe ~ param_uml * group,
         data = data_cbe_fit)
 anova(m1)
@@ -522,14 +613,66 @@ m1 = lm(cbe ~ param_uml_dicho * group,
 anova(m1)
 
 
-#... as well as model fit
+# Including model fit model over/underweighting (continuous/dichotomized) and group
 m1 = lm(cbe ~ AICc * param_uml * group,
         data = data_cbe_fit)
 anova(m1)
+joint_tests(m1, by = c('group'))
+emmeans::emtrends(m1, ~ group | AICc, var = 'param_uml',
+                  at = list(AICc = quantile(data_param_corr$AICc, c(.166,.5,.833))))
 
-p = ggplot(data = data_cbe_fit,
-           aes(x = AIC,
-               y = param_uml))
+# Non-parametric correlation in terciles
+data_split_AICc_ya = data_cbe_fit[group == 'younger'] %>%
+  .[, AICc_split := fabricatr::split_quantile(AICc, type = 3)]
+data_split_AICc_oa = data_cbe_fit[group == 'older'] %>%
+  .[, AICc_split := fabricatr::split_quantile(AICc, type = 3)]
+data_split_AICc = rbind(data_split_AICc_ya,
+                        data_split_AICc_oa)
+
+p = ggplot(data = data_split_AICc,
+           aes(x = param_uml,
+               y = cbe,
+               color = AICc_split)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x) +
+  facet_wrap(~group)
+Neurocodify_plot(p)
+
+# Younger
+# Fit best
+data_test = data_split_AICc[group == 'younger' & AICc_split == '1']
+cor.test(x = data_test$param_uml,
+         y = data_test$cbe,
+         method = 'spearman')
+# Fit mid
+data_test = data_split_AICc[group == 'younger' & AICc_split == '2']
+cor.test(x = data_test$param_uml,
+         y = data_test$cbe,
+         method = 'spearman')
+# Fit worse
+data_test = data_split_AICc[group == 'younger' & AICc_split == '3']
+cor.test(x = data_test$param_uml,
+         y = data_test$cbe,
+         method = 'spearman')
+
+# Older
+# Fit best
+data_test = data_split_AICc[group == 'older' & AICc_split == '1']
+cor.test(x = data_test$param_uml,
+         y = data_test$cbe,
+         method = 'kendall')
+# Fit mid
+data_test = data_split_AICc[group == 'older' & AICc_split == '2']
+cor.test(x = data_test$param_uml,
+         y = data_test$cbe,
+         method = 'kendall')
+# Fit worse
+data_test = data_split_AICc[group == 'older' & AICc_split == '3']
+cor.test(x = data_test$param_uml,
+         y = data_test$cbe,
+         method = 'kendall')
+  
 
 m1 = lm(cbe ~ AICc * param_uml_dicho * group,
         data = data_cbe_fit)
@@ -537,1156 +680,1158 @@ anova(m1)
 ```
 
 
----
-
-```{r}
-sim_lrfunc = as.data.table(seq(-20, 20, by = 0.5))
-colnames(sim_lrfunc) = 's'
-sim_lrfunc$l = 0.1
-sim_lrfunc$u = 0.5
-sim_lrfunc$s_fact = as.factor(sim_lrfunc$s)
-
-sim_lrfunc = sim_lrfunc %>%
-  .[, .(as = LRfunction(l,u,s, PE = seq(0,60, by = 0.5))[[1]],
-        PE = seq(0,60, by = 0.5)),
-    by = 's_fact']
-
-p = ggplot(sim_lrfunc,
-           aes(x = PE,
-               y = as,
-               color = s_fact,
-               group = s_fact)) +
-  geom_line()
-p
-```
-
-```{r}
-sim_lrfunc = as.data.table(seq(-20, 20, by = 0.5))
-colnames(sim_lrfunc) = 's'
-sim_lrfunc$l = 0.5
-sim_lrfunc$u = 0.1
-sim_lrfunc$s_fact = as.factor(sim_lrfunc$s)
-
-sim_lrfunc = sim_lrfunc %>%
-  .[, .(as = LRfunction(l,u,s, PE = seq(0,60, by = 0.5))[[1]],
-        PE = seq(0,60, by = 0.5)),
-    by = 's_fact']
-
-p = ggplot(sim_lrfunc,
-           aes(x = PE,
-               y = as,
-               color = s_fact,
-               group = s_fact)) +
-  geom_line()
-p
-```
-
-
----
-
-
-## RW: Relationship with performance: Beta left/right & LR
-
-(Switch to percentage correct in 1v2)
-
-```{r}
-# Load choice data
-data_behav = Load_data() %>%
-  Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
-  Add_comp(.) %>%
-  .[,run := as.factor(run)]
-
-# Percentage of optimal choices
-check_noc = data_behav %>%
-  Add_comp(.) %>%
-  .[, trial := seq(.N),
-    by = c('participant_id', 'run')] %>%
-  .[trial_type == 'choice',] %>%
-  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
-    by = c('participant_id', 'run', 'trial')] %>%
-  .[, correct := correct_choice == choice] %>%
-  # Get percentage of correct choices (exclude timeouts from overall trials)
-  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
-    by = c('participant_id', 'group')]
-
-data_corr = data %>%
-  .[variable == 'coefs' & model == 'rw' & iter == 1] %>%
-  data.table::dcast(participant_id + group + AIC ~ x, value.var = 'value') %>%
-  data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
-
-# Plot correlation
-p1 = ggplot(data_corr,
-           aes(x = V1,
-               y = perc_correct)) +
-  geom_point() +
-  geom_smooth(method = 'lm',
-              formula = y ~ x)
-p1
-
-p2 = ggplot(data_corr,
-           aes(x = V2,
-               y = perc_correct)) +
-  geom_point() +
-  geom_smooth(method = 'lm',
-              formula = y ~ x)
-p2
-
-p3 = ggplot(data_corr,
-           aes(x = alpha,
-               y = perc_correct)) +
-  geom_point() +
-  geom_smooth(method = 'lm',
-              formula = y ~ x)
-p3
-```
-
-```{r}
-# V1 ~ performance
-cor.test(data_corr$V1, data_corr$perc_correct)
-m = lm(perc_correct ~ V1,
-       data = data_corr)
-Anova(m)
-```
-
-
-
-
-
-
-```{r}
-# Full model
-m = lm(perc_correct ~ V1 + V2 + alpha,
-       data = data_corr)
-anova(m)
-```
-
-```{r}
-# Average LR
-mean(data_corr$alpha)
-```
-
-# AIC average over participants
-
-## Across both age groups
-
-```{r}
-data_aic = data %>%
-  .[iter == 1] %>%
-  .[, .(AIC = mean(AIC),
-        sd_AIC = sd(AIC),
-        AICc = mean(AICc),
-        sd_AICc = sd(AICc),
-        BIC = mean(BIC),
-        sd_BIC = sd(BIC),
-        n_params = sum(variable == 'coefs')),
-    by = c('participant_id', 'group', 'model')]
-
-data_aic_all = data_aic %>%
-  .[, .(AIC = mean(AIC),
-        AICc = mean(AICc),
-        BIC = mean(BIC)),
-    by = 'model'] %>%
-  # Sort by lowest AIC
-  .[order(rank(AIC))]
-data_aic_all
-
-
-```
-
-## Age split
-
-```{r}
-
-```
-
-# Best fitting model counts
-
-## For all models
-
-```{r}
-# Get winning model within each participant
-data_counts = data_aic %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'model'),
-                   measure.vars = c('AIC', 'AICc', 'BIC')) %>%
-  .[, ':='(lowest = min(value),
-           loc_winning = value == min(value),
-           # Name of winning model
-           winning_model = model[value == min(value)]),
-    by = c('participant_id', 'variable')] %>%
-  # Only keep winning model
-  .[loc_winning == TRUE]
-
-# Count winning models across participants
-data_counts_all = data_counts %>%
-  .[, .(n_winning = .N),
-    by = c('variable', 'model')]
-
-# Count winning models within age-groups
-data_counts_age = data_counts %>%
-  .[, .(n_winning = .N),
-    by = c('variable', 'group', 'model')] %>%
-  .[order(group, -rank(model))]
-  
-data_counts_all
-data_counts_age
-
-chisq.test(cbind(data_counts_age[group == 'older' & variable == 'AIC']$n_winning,
-                 data_counts_age[group == 'younger' & variable == 'AIC']$n_winning))
-
-p = ggplot(data = data_counts_age,
-           aes(x = model,
-               y = n_winning,
-               fill = model)) +
-  geom_col() +
-  facet_wrap(group~variable, ncol = 3)
-p
-
-```
-
-### Exceedance probs
-
-```{r}
-data_ep = data_aic %>%
-  .[, ':='(nAIC = -(AIC),
-           nAICc = -(AICc),
-           nBIC = -(BIC))] %>%
-  data.table::dcast(participant_id + group ~ model, value.var = 'nAICc')
-
-bmsR::VB_bms(cbind(data_ep$rw,
-                   data_ep$uncertainty,
-                   data_ep$surprise,
-                   data_ep$uncertainty_surprise),
-             n_samples = 1000)
-```
-
-
-## For non-nested models
-
-```{r}
-# Get winning model within each participant
-data_counts_nn = data_aic %>%
-  .[model != 'uncertainty_surprise'] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'model'),
-                   measure.vars = c('AIC', 'AICc', 'BIC')) %>%
-  .[, ':='(lowest = min(value),
-           loc_winning = value == min(value),
-           # Name of winning model
-           winning_model = model[value == min(value)]),
-    by = c('participant_id', 'variable')] %>%
-  # Only keep winning model
-  .[loc_winning == TRUE]
-
-# Count winning models across participants
-data_counts_nn_all = data_counts_nn %>%
-  .[, .(n_winning = .N),
-    by = c('variable', 'model')]
-
-# Count winning models within age-groups
-data_counts_nn_age = data_counts_nn %>%
-  .[, .(n_winning = .N),
-    by = c('variable', 'group', 'model')] %>%
-  .[order(group, -rank(model))]
-  
-data_counts_nn_all
-data_counts_nn_age
-
-chisq.test(cbind(data_counts_nn_age[group == 'older' & variable == 'AICc']$n_winning,
-                 data_counts_nn_age[group == 'younger'& variable == 'AICc']$n_winning))
-
-p = ggplot(data = data_counts_nn_age,
-           aes(x = model,
-               y = n_winning,
-               fill = model)) +
-  geom_col() +
-  facet_wrap(group~variable, ncol = 3)
-p
-```
-
-## Exceedance probs
-
-```{r}
-data_ep = data_aic %>%
-  .[, ':='(nAIC = -(AIC),
-           nAICc = -(AICc),
-           nBIC = -(BIC))] %>%
-  data.table::dcast(participant_id + group ~ model, value.var = 'nAICc')
-
-# Younger
-bmsR::VB_bms(cbind(data_ep[group == 'younger']$rw,
-                   data_ep[group == 'younger']$uncertainty,
-                   data_ep[group == 'younger']$surprise),
-             n_samples = 1000)$pxp
-
-
-# Older
-bmsR::VB_bms(cbind(data_ep[group == 'older']$rw,
-                   data_ep[group == 'older']$uncertainty,
-                   data_ep[group == 'older']$surprise),
-             n_samples = 1000)$pxp
-```
-
-# Parameters of surprise model
-
-```{r}
-# Get data of surprise model
-data_surprise = data[model == 'surprise' & iter == 1] %>%
-  # Select learning coefficients
-  .[variable == 'coefs' & x %in% c('l','u','s')] %>%
-  .[, ':='(variable = as.factor(variable),
-           x = as.factor(x))] %>%
-  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
-  .[, uml := u-l] %>%
-  data.table::melt(id.vars = c('participant_id', 'group'))
-
-p = ggplot(data = data_surprise,
-           aes(x = group,
-               y = value,
-               color = group)) +
-  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.2) +
-  facet_wrap(~variable,
-             scale = 'free_y')
-p
-```
-
-```{r}
-# Get data of surprise model
-data_surprise_v = data[model == 'surprise' & iter == 1] %>%
-  # Select learning coefficients
-  .[variable == 'coefs'] %>%
-  .[, ':='(variable = as.factor(variable),
-           x = as.factor(x))] %>%
-  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
-  .[, uml := u-l]
-
-p = ggplot(data = data_surprise_v,
-           aes(x = V1,
-               y = l,
-               color = group)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.2) +
-  geom_smooth(method='lm',
-              formula = y~x)
-p
-#p
-
-
-p = ggplot(data = data_surprise_v,
-           aes(x = V1,
-               y = s,
-               color = group)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.2) +
-  geom_smooth(method='lm',
-              formula = y~x)
-p
-#p
-
-
-p = ggplot(data = data_surprise_v,
-           aes(x = V1,
-               y = uml,
-               color = group)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.7) +
-  geom_smooth(method='lm',
-              formula = y~x)
-p
-#p
-cor.test(data_surprise_v$V1, data_surprise_v$uml, method = 'spearman')
-cor.test(data_surprise_v[group == 'younger']$V1, data_surprise_v[group == 'younger']$uml)
-cor.test(data_surprise_v[group == 'older']$V1, data_surprise_v[group == 'older']$uml)
-
-
-
-p = ggplot(data = data_surprise_v,
-           aes(x = V2,
-               y = uml,
-               color = group)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.7) +
-  geom_smooth(method='lm',
-              formula = y~x)
-p
-```
-
-### Get LR functions
-
-```{r}
-data_lr_func = data_surprise %>%
-  .[, .(alpha_star = LRfunction(low = value[variable == 'l'],
-                                up = value[variable == 'u'],
-                                slope = value[variable == 's'],
-                                PE = seq(60))[[1]],
-        PEscaled = LRfunction(low = value[variable == 'l'],
-                              up = value[variable == 'u'],
-                              slope = value[variable == 's'],
-                              PE = seq(60))[[2]],
-        PE = seq(60),
-        l = value[variable == 'l'],
-        s = value[variable == 's'],
-        u = value[variable == 'u'],
-        uml = value[variable == 'uml']),
-    by = c('participant_id', 'group')] %>%
-  .[, ':='(slope_pos = s > 0,
-           uml_pos = uml > 0)]
-
-p = ggplot(data = data_lr_func,
-           aes(x = PE,
-               y = alpha_star,
-               group = participant_id,
-               color = group)) +
-  geom_line(alpha = 0.5) +
-  facet_wrap(uml_pos ~ group)
-p
-```
-
-```{r}
-count_uml = data_lr_func %>%
-  .[, .(uml_pos = unique(uml_pos)),
-    by = c('participant_id', 'group')] %>%
-  .[, .(count_uml_pos = sum(uml_pos),
-        n = .N),
-    by = c('group')]
-count_uml
-```
-
-
-```{r}
-# Get uml parameter for rising and falling graphs
-data_uml = data_surprise[variable == 'uml'] %>%
-  .[, uml := value] %>%
-  .[, uml_pos := uml >= 0] %>%
-  .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')]
-
-data_lrs = data[model == 'surprise' & variable == 'LRs' & !is.na(value)] %>%
-  # Fuse encountered LRs with uml
-  data.table::merge.data.table(., data_uml,
-                               by = c('participant_id', 'group')) %>%
-  .[, uml_pos := as.factor(uml_pos)]
-
-data_extremes = data_lrs %>%
-  .[, x := as.numeric(x)] %>%
-  # Get alpha* at lowest and highest |PE|
-  .[, .(a_at_min_pe = value[x == min(x)],
-        a_at_max_pe = value[x == max(x)]),
-    by = c('participant_id', 'group')] %>%
-  # Get difference between both to get rising or falling slope
-  .[, rising := a_at_max_pe - a_at_min_pe] %>%
-  .[, rising := rising > 0]
-
-data_lrs = data_lrs %>%
-  data.table::merge.data.table(., data_extremes,
-                               by = c('participant_id', 'group'))
-
-p = ggplot(data = data_lrs,
-           aes(x = as.numeric(x),
-               y = value,
-               group = participant_id,
-               color = group)) +
-  geom_line(alpha = 0.2) +
-  labs(x = '|PE|',
-        y = 'alpha*') +
-  facet_wrap(rising~group)
-p
-```
-
-```{r}
-data_rising = data_lrs %>%
-  .[, .(rising = unique(rising)),
-    by = c('participant_id', 'group')] %>%
-  .[, .(count_rising = sum(rising),
-        n = .N),
-    by = c('group')] %>%
-  .[, count_falling := n - count_rising] %>%
-  .[, .SD, .SDcols = c('group', 'count_rising', 'count_falling')]
-
-chisq.test(data_rising[, .SD, .SDcols = c('count_rising', 'count_falling')])
-```
-
-
-
-
-
-
-
----
-
-# What has Nico looked at?
-
-- RW analyses (Do participants behave like in an RL task?):
-   - (?) **Prob choosing left bandit positively related to value of left bandit (younger: p < .001; older: p <.001)**
-   - (?) **Prob choosing right bandit negatively related to value of left bandit (both p < .001)**
-   - (Y) Beta of left and right values related to percent of correct choices (r = .43, r = -.41; both p < .001)
-   - (Y) Average LR = .13
-   - (Y) LR positively correlated with overall performance (r = .29; p = .003)
-- Average AIC comparison between sophisticated models and RW:
-   - **(N)** AIC average over all participants for each model [uncertainty_surprise (242.02) < surprise (242.47) < uncertainty (245.13) < rw (247.40)]
-   - Splitting by age group:
-      - (?) **YA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .01)** **(CORRECTED??)**
-      - (?) **OA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .03)** **(CORRECTED??)**
-- Surprise or uncertainty mechanism better explanation in different age groups?
-   - Count best fit of non-nested models:
-      - **(N)** YA: uncertainty (24) > surprise (18) > rw (9)
-      - (Y) OA: surprise (25) > surprise (13) = rw (13)
-   - Protected exceedance probability:
-      - **(N)** YA: uncertainty (72%)
-      - (Y) OA: surprise (80.1%)
-- Chi-Square of model frequencies across age groups
-   - **(N)** marginal (p = .077)
-
-
-
-
-
-
-
-
-
-
-# Parameters of unc model
-
-```{r}
-data_unc = data_random[variable == 'coefs' & model == 'uncertainty' & x %in% c('V1u', 'V2u')] %>%
-  data.table::dcast(participant_id + group + model + AIC ~ x, value.var = 'value') %>%
-  .[, V2umV1u := V2u - V1u] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'model', 'AIC'),
-                   variable.name = 'variable',
-                   value.name = 'value')
-
-p = ggplot(data = data_unc,
-           aes(x = group,
-               y = value,
-               color = group)) +
-  geom_point() +
-  stat_summary(fun = 'mean', geom = 'point', size = 5, shape = 18, color = 'white') +
-  facet_wrap(~variable)
-p
-```
-
-
-# Only surprise best fitters
-
-```{r}
-data_winning_model = data_aic %>%
-  .[, .(winning_model = unique(winning_model)),
-    by = c('participant_id', 'group')] %>%
-  .[, .SD, .SDcols = c('participant_id', 'group', 'winning_model')]
-
-data_lrs_winning = data.table::merge.data.table(data_lrs, data_winning_model,
-                                                by = c('participant_id',
-                                                       'group'))
-data_lrs_surprise = data_lrs_winning[winning_model == 'surprise']
-
-p = ggplot(data = data_lrs_surprise,
-           aes(x = as.numeric(x),
-               y = value,
-               group = participant_id,
-               color = group)) +
-  geom_line(alpha = 0.2) +
-  facet_wrap(~group)
-p
-```
-
-```{r}
-data_surprise_winning_only = data.table::merge.data.table(data_surprise,
-                                                          data_winning_model,
-                                                          by = c('participant_id',
-                                                                 'group')) %>%
-  .[winning_model == 'surprise']
-
-p = ggplot(data = data_surprise_winning_only,
-           aes(x = group,
-               y = value,
-               color = group)) +
-  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.2) +
-  facet_wrap(~variable,
-             scale = 'free_y')
-p
-```
-
-# Parameters of uncertainty_surprise model
-
-```{r}
-# Get data of surprise model
-data_u_surprise = data[starting_values == 'random' & model == 'uncertainty_surprise' & iter == 1] %>%
-  # Select learning coefficients
-  .[variable == 'coefs' & x %in% c('l','u','s')] %>%
-  .[, ':='(variable = as.factor(variable),
-           x = as.factor(x))] %>%
-  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
-  .[, uml := u-l] %>%
-  data.table::melt(id.vars = c('participant_id', 'group'))
-
-p = ggplot(data = data_u_surprise,
-           aes(x = group,
-               y = value,
-               color = group)) +
-  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.2) +
-  facet_wrap(~variable,
-             scale = 'free_y')
-p
-```
-
-```{r}
-# Get uml parameter for rising and falling graphs
-data_uml = data_u_surprise[variable == 'uml'] %>%
-  .[, uml := value] %>%
-  .[, uml_pos := uml >= 0] %>%
-  .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')]
-
-data_lrs = data_random[model == 'uncertainty_surprise' & variable == 'LRs' & !is.na(value)] %>%
-  # Fuse encountered LRs with uml
-  data.table::merge.data.table(., data_uml,
-                               by = c('participant_id', 'group')) %>%
-  .[, uml_pos := as.factor(uml_pos)]
-
-p = ggplot(data = data_lrs,
-           aes(x = as.numeric(x),
-               y = value,
-               group = participant_id,
-               color = group)) +
-  geom_line(alpha = 0.2) +
-  facet_wrap(uml_pos~group)
-p
-```
-
-
-# Uncertainty-surprise parameters
-
-```{r}
-# Get data of surprise model
-data_u_surprise = data[starting_values == 'random' & model == 'uncertainty_surprise' & iter == 1] %>%
-  # Select learning coefficients
-  .[variable == 'coefs' & x %in% c('l','u','s', 'pi')] %>%
-  .[, ':='(variable = as.factor(variable),
-           x = as.factor(x))] %>%
-  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
-  .[, uml := u-l] %>%
-  data.table::melt(id.vars = c('participant_id', 'group'))
-
-p = ggplot(data = data_u_surprise,
-           aes(x = group,
-               y = value,
-               color = group)) +
-  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.2) +
-  facet_wrap(~variable,
-             scale = 'free_y')
-p
-```
-
-# Nico's fitting with 5000 maxeval
-
-```{r}
-file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico_5000.tsv',
-                 fsep = .Platform$file.sep)
-data_nico_5000 = data.table::fread(file, sep = '\t', na.strings = 'n/a')
-
-data_group = data %>%
-  .[, .(group = unique(group)),
-    by = 'participant_id']
-```
-
-
-
-# AIC average over participants
-
-## Across both age groups
-
-```{r}
-data_aic = data_nico_5000 %>%
-  data.table::merge.data.table(., data_group,
-                               by = 'participant_id') %>%
-  .[, .(AIC = mean(AIC),
-        sd_AIC = sd(AIC)),
-    by = c('participant_id', 'group', 'model')]
-
-data_aic_all = data_aic %>%
-  .[, .(AIC = mean(AIC)),
-    by = 'model'] %>%
-  # Sort by lowest AIC
-  .[order(rank(AIC))]
-data_aic_all
-```
-
-## Age split
-
-```{r}
-data_aic_age = data_aic %>%
-  .[, .(AIC = mean(AIC)),
-    by = c('group', 'model')] %>%
-  # Sort by age and lowest AIC
-  .[order(group, AIC)]
-data_aic_age
-```
-
-```{r}
-# Get winning model within each participant
-data_counts = data_aic %>%
-  .[, ':='(lowest_AIC = min(AIC),
-           loc_winning = AIC == min(AIC),
-           # Name of winning model
-           winning_model = model[AIC == min(AIC)]),
-    by = 'participant_id'] %>%
-  # Only keep winning model
-  .[loc_winning == TRUE]
-
-# Count winning models across participants
-data_counts_all = data_counts %>%
-  .[, .(n_winning = .N),
-    by = c('model')]
-
-# Count winning models within age-groups
-data_counts_age = data_counts %>%
-  .[, .(n_winning = .N),
-    by = c('group', 'model')] %>%
-  .[order(group, -rank(model))]
-  
-data_counts_all
-data_counts_age
-
-chisq.test(cbind(data_counts_age[group == 'older']$n_winning,
-                 data_counts_age[group == 'younger']$n_winning))
-
-p = ggplot(data = data_counts_age,
-           aes(x = model,
-               y = n_winning,
-               fill = model)) +
-  geom_col() +
-  facet_wrap(~group)
-p
-```
-
-```{r}
-# Get winning model within each participant
-data_counts_nn = data_aic %>%
-  .[model != 'uncertainty_surprise'] %>%
-  .[, ':='(lowest_AIC = min(AIC),
-           loc_winning = AIC == min(AIC),
-           # Name of winning model
-           winning_model = model[AIC == min(AIC)]),
-    by = 'participant_id'] %>%
-  # Only keep winning model
-  .[loc_winning == TRUE]
-
-# Count winning models across participants
-data_counts_nn_all = data_counts_nn %>%
-  .[, .(n_winning = .N),
-    by = c('model')]
-
-# Count winning models within age-groups
-data_counts_nn_age = data_counts_nn %>%
-  .[, .(n_winning = .N),
-    by = c('group', 'model')] %>%
-  .[order(group, -rank(model))]
-  
-data_counts_nn_all
-data_counts_nn_age
-
-chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning,
-                 data_counts_nn_age[group == 'younger']$n_winning))
-
-p = ggplot(data = data_counts_nn_age,
-           aes(x = model,
-               y = n_winning,
-               fill = model)) +
-  geom_col() +
-  facet_wrap(~group)
-p
-```
-
-# Parameters of surprise model
-
-```{r}
-# Get data of surprise model
-data_surprise = data_nico_5000[model == 'surprise'] %>%
-  data.table::merge.data.table(., data_group,
-                               by = 'participant_id') %>%
-  # Select learning coefficients
-  .[variable == 'coefs' & x %in% c('l','u','s')] %>%
-  .[, ':='(variable = as.factor(variable),
-           x = as.factor(x))] %>%
-  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
-  .[, uml := u-l] %>%
-  data.table::melt(id.vars = c('participant_id', 'group'))
-
-p = ggplot(data = data_surprise,
-           aes(x = group,
-               y = value,
-               color = group)) +
-  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.2) +
-  facet_wrap(~variable,
-             scale = 'free_y')
-p
-
-summary(data_nico_5000[x == 'l']$value)
-summary(data_nico_5000[x == 'u']$value)
-```
-
-```{r}
-data_lrs = data_random[model == 'surprise' & variable == 'LRs' & !is.na(value)]
-
-p = ggplot(data = data_lrs,
-           aes(x = as.numeric(x),
-               y = value,
-               group = participant_id,
-               color = group)) +
-  geom_line(alpha = 0.2) +
-  facet_wrap(~group)
-p
-```
-
-# Only bandit 1v2
-
-```{r}
-# Load modelling results
-data = Load_model_fits_new() %>%
-  Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
-  .[, ':='(participant_id = as.factor(participant_id),
-           group = as.factor(group),
-           sex = as.factor(sex),
-           starting_values = as.factor(starting_values))]
-# Sort model levels by number of parameters
-data$model = factor(data$model, levels = c('rw',
-                                           'uncertainty',
-                                           'surprise',
-                                           'uncertainty_surprise'))
-
-# Split data by starting values (random vs. fixed)
-data_1v2 = data[starting_values == 'fixed']
-
-# get number of participants
-n_participants = length(unique(data$participant_id))
-
-file = file.path('/Users/koch/Desktop/data_pedlr_modelfitting.tsv')
-data.table::fwrite(data_1v2, file, sep = '\t', na = 'n/a')
-
-
-# Load nico's model data
-file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico.tsv')
-data_fixed_nico = data.table::fread(file, sep = '\t', na.strings = 'n/a')
-# Name variable levels equally between both approaches
-data_fixed_nico = data_fixed_nico[order(participant_id, model)]
-data_fixed_nico[x == 'intercept']$x = '(Intercept)'
-# Add identifyer for nicos data
-data_fixed_nico$author = 'nico'
-```
-
-```{r}
-data_aic = data_1v2 %>%
-  .[iter == 1] %>%
-  .[, .(AIC = mean(AIC),
-        sd_AIC = sd(AIC)),
-    by = c('participant_id', 'group', 'model')]
-
-data_aic_all = data_aic %>%
-  .[, .(AIC = mean(AIC)),
-    by = 'model'] %>%
-  # Sort by lowest AIC
-  .[order(rank(AIC))]
-data_aic_all
-```
-
-## Age split
-
-```{r}
-data_aic_age = data_aic %>%
-  .[, .(AIC = mean(AIC)),
-    by = c('group', 'model')] %>%
-  # Sort by age and lowest AIC
-  .[order(group, AIC)]
-data_aic_age
-```
-
-```{r}
-# Get winning model within each participant
-data_counts = data_aic %>%
-  .[, ':='(lowest_AIC = min(AIC),
-           loc_winning = AIC == min(AIC),
-           # Name of winning model
-           winning_model = model[AIC == min(AIC)]),
-    by = 'participant_id'] %>%
-  # Only keep winning model
-  .[loc_winning == TRUE]
-
-# Count winning models across participants
-data_counts_all = data_counts %>%
-  .[, .(n_winning = .N),
-    by = c('model')]
-
-# Count winning models within age-groups
-data_counts_age = data_counts %>%
-  .[, .(n_winning = .N),
-    by = c('group', 'model')] %>%
-  .[order(group, -rank(model))]
-  
-data_counts_all
-data_counts_age
-
-chisq.test(cbind(data_counts_age[group == 'older']$n_winning,
-                 data_counts_age[group == 'younger']$n_winning))
-
-p = ggplot(data = data_counts_age,
-           aes(x = model,
-               y = n_winning,
-               fill = model)) +
-  geom_col() +
-  facet_wrap(~group)
-p
-```
-
-```{r}
-# Get data of surprise model
-data_surprise = data_1v2[model == 'surprise' & iter == 1] %>%
-  # Select learning coefficients
-  .[variable == 'coefs' & x %in% c('l','u','s')] %>%
-  .[, ':='(variable = as.factor(variable),
-           x = as.factor(x))] %>%
-  data.table::dcast(participant_id + group ~ x, value.var = 'value') %>%
-  .[, uml := u-l] %>%
-  data.table::melt(id.vars = c('participant_id', 'group'))
-
-p = ggplot(data = data_surprise,
-           aes(x = group,
-               y = value,
-               color = group)) +
-  geom_violin(draw_quantiles = c(0.25,0.5,0.75)) +
-  geom_point(position = position_jitter(height = 0,
-                                        width = 0.1,
-                                        seed = 666),
-             alpha = 0.2) +
-  facet_wrap(~variable,
-             scale = 'free_y')
-p
-```
-
-```{r}
-data_u = data_surprise[variable == 'u']
-
-mean(data_u[group == 'older']$value)
-mean(data_u[group == 'younger']$value)
-
-wilcox.test(data_u[group == 'older']$value, data_u[group == 'younger']$value)
-```
-
-
-```{r}
-# Get uml parameter for rising and falling graphs
-data_uml = data_surprise[variable == 'uml'] %>%
-  .[, uml := value] %>%
-  .[, uml_pos := uml >= 0] %>%
-  .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')]
-
-data_lrs = data_1v2[model == 'surprise' & variable == 'LRs' & !is.na(value)] %>%
-  # Fuse encountered LRs with uml
-  data.table::merge.data.table(., data_uml,
-                               by = c('participant_id', 'group')) %>%
-  .[, uml_pos := as.factor(uml_pos)]
-
-data_extremes = data_lrs %>%
-  .[, x := as.numeric(x)] %>%
-  # Get alpha* at lowest and highest |PE|
-  .[, .(a_at_min_pe = value[x == min(x)],
-        a_at_max_pe = value[x == max(x)]),
-    by = c('participant_id', 'group')] %>%
-  # Get difference between both to get rising or falling slope
-  .[, rising := a_at_max_pe - a_at_min_pe] %>%
-  .[, rising := rising > 0]
-
-data_lrs = data_lrs %>%
-  data.table::merge.data.table(., data_extremes,
-                               by = c('participant_id', 'group'))
-
-p = ggplot(data = data_lrs,
-           aes(x = as.numeric(x),
-               y = value,
-               group = participant_id,
-               color = group)) +
-  geom_line(alpha = 0.2) +
-  labs(x = '|PE|',
-        y = 'alpha*') +
-  facet_wrap(rising~group)
-p
-```
-
-```{r}
-# Get winning model within each participant
-data_counts_nn = data_aic %>%
-  .[model != 'uncertainty_surprise'] %>%
-  .[, ':='(lowest_AIC = min(AIC),
-           loc_winning = AIC == min(AIC),
-           # Name of winning model
-           winning_model = model[AIC == min(AIC)]),
-    by = 'participant_id'] %>%
-  # Only keep winning model
-  .[loc_winning == TRUE]
-
-# Count winning models across participants
-data_counts_nn_all = data_counts_nn %>%
-  .[, .(n_winning = .N),
-    by = c('model')]
-
-# Count winning models within age-groups
-data_counts_nn_age = data_counts_nn %>%
-  .[, .(n_winning = .N),
-    by = c('group', 'model')] %>%
-  .[order(group, -rank(model))]
-  
-data_counts_nn_all
-data_counts_nn_age
-
-chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning,
-                 data_counts_nn_age[group == 'younger']$n_winning))
-
-p = ggplot(data = data_counts_nn_age,
-           aes(x = model,
-               y = n_winning,
-               fill = model)) +
-  geom_col() +
-  facet_wrap(~group)
-p
-```
-
-```{r}
-file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico_1000.tsv',
-                 fsep = .Platform$file.sep)
-data_nico_1000 = data.table::fread(file, sep = '\t', na.strings = 'n/a')
-```
-
-```{r}
-data_aic = data_nico_1000 %>%
-  data.table::merge.data.table(., data_group,
-                               by = 'participant_id') %>%
-  .[, .(AIC = mean(AIC),
-        sd_AIC = sd(AIC)),
-    by = c('participant_id', 'group', 'model')]
-
-data_aic_all = data_aic %>%
-  .[, .(AIC = mean(AIC)),
-    by = 'model'] %>%
-  # Sort by lowest AIC
-  .[order(rank(AIC))]
-data_aic_all
-```
-
-## Age split
-
-```{r}
-data_aic_age = data_aic %>%
-  .[, .(AIC = mean(AIC)),
-    by = c('group', 'model')] %>%
-  # Sort by age and lowest AIC
-  .[order(group, AIC)]
-data_aic_age
-```
-
-```{r}
-# Get winning model within each participant
-data_counts = data_aic %>%
-  .[, ':='(lowest_AIC = min(AIC),
-           loc_winning = AIC == min(AIC),
-           # Name of winning model
-           winning_model = model[AIC == min(AIC)]),
-    by = 'participant_id'] %>%
-  # Only keep winning model
-  .[loc_winning == TRUE]
-
-# Count winning models across participants
-data_counts_all = data_counts %>%
-  .[, .(n_winning = .N),
-    by = c('model')]
-
-# Count winning models within age-groups
-data_counts_age = data_counts %>%
-  .[, .(n_winning = .N),
-    by = c('group', 'model')] %>%
-  .[order(group, -rank(model))]
-  
-data_counts_all
-data_counts_age
-
-chisq.test(cbind(data_counts_age[group == 'older']$n_winning,
-                 data_counts_age[group == 'younger']$n_winning))
-
-p = ggplot(data = data_counts_age,
-           aes(x = model,
-               y = n_winning,
-               fill = model)) +
-  geom_col() +
-  facet_wrap(~group)
-p
-```
-
-```{r}
-# Get winning model within each participant
-data_counts_nn = data_aic %>%
-  .[model != 'uncertainty_surprise'] %>%
-  .[, ':='(lowest_AIC = min(AIC),
-           loc_winning = AIC == min(AIC),
-           # Name of winning model
-           winning_model = model[AIC == min(AIC)]),
-    by = 'participant_id'] %>%
-  # Only keep winning model
-  .[loc_winning == TRUE]
-
-# Count winning models across participants
-data_counts_nn_all = data_counts_nn %>%
-  .[, .(n_winning = .N),
-    by = c('model')]
-
-# Count winning models within age-groups
-data_counts_nn_age = data_counts_nn %>%
-  .[, .(n_winning = .N),
-    by = c('group', 'model')] %>%
-  .[order(group, -rank(model))]
-  
-data_counts_nn_all
-data_counts_nn_age
-
-chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning,
-                 data_counts_nn_age[group == 'younger']$n_winning))
-
-p = ggplot(data = data_counts_nn_age,
-           aes(x = model,
-               y = n_winning,
-               fill = model)) +
-  geom_col() +
-  facet_wrap(~group)
-p
-```
-
-```{r}
-data_1v2
-```
-
-```{r}
-data_nico_1000
-```
+
+
+<!-- --- -->
+
+<!-- ```{r} -->
+<!-- sim_lrfunc = as.data.table(seq(-20, 20, by = 0.5)) -->
+<!-- colnames(sim_lrfunc) = 's' -->
+<!-- sim_lrfunc$l = 0.1 -->
+<!-- sim_lrfunc$u = 0.5 -->
+<!-- sim_lrfunc$s_fact = as.factor(sim_lrfunc$s) -->
+
+<!-- sim_lrfunc = sim_lrfunc %>% -->
+<!--   .[, .(as = LRfunction(l,u,s, PE = seq(0,60, by = 0.5))[[1]], -->
+<!--         PE = seq(0,60, by = 0.5)), -->
+<!--     by = 's_fact'] -->
+
+<!-- p = ggplot(sim_lrfunc, -->
+<!--            aes(x = PE, -->
+<!--                y = as, -->
+<!--                color = s_fact, -->
+<!--                group = s_fact)) + -->
+<!--   geom_line() -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- sim_lrfunc = as.data.table(seq(-20, 20, by = 0.5)) -->
+<!-- colnames(sim_lrfunc) = 's' -->
+<!-- sim_lrfunc$l = 0.5 -->
+<!-- sim_lrfunc$u = 0.1 -->
+<!-- sim_lrfunc$s_fact = as.factor(sim_lrfunc$s) -->
+
+<!-- sim_lrfunc = sim_lrfunc %>% -->
+<!--   .[, .(as = LRfunction(l,u,s, PE = seq(0,60, by = 0.5))[[1]], -->
+<!--         PE = seq(0,60, by = 0.5)), -->
+<!--     by = 's_fact'] -->
+
+<!-- p = ggplot(sim_lrfunc, -->
+<!--            aes(x = PE, -->
+<!--                y = as, -->
+<!--                color = s_fact, -->
+<!--                group = s_fact)) + -->
+<!--   geom_line() -->
+<!-- p -->
+<!-- ``` -->
+
+
+<!-- --- -->
+
+
+<!-- ## RW: Relationship with performance: Beta left/right & LR -->
+
+<!-- (Switch to percentage correct in 1v2) -->
+
+<!-- ```{r} -->
+<!-- # Load choice data -->
+<!-- data_behav = Load_data() %>% -->
+<!--   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>% -->
+<!--   Add_comp(.) %>% -->
+<!--   .[,run := as.factor(run)] -->
+
+<!-- # Percentage of optimal choices -->
+<!-- check_noc = data_behav %>% -->
+<!--   Add_comp(.) %>% -->
+<!--   .[, trial := seq(.N), -->
+<!--     by = c('participant_id', 'run')] %>% -->
+<!--   .[trial_type == 'choice',] %>% -->
+<!--   .[, correct_choice := if(option_left > option_right) 'left' else 'right', -->
+<!--     by = c('participant_id', 'run', 'trial')] %>% -->
+<!--   .[, correct := correct_choice == choice] %>% -->
+<!--   # Get percentage of correct choices (exclude timeouts from overall trials) -->
+<!--   .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))), -->
+<!--     by = c('participant_id', 'group')] -->
+
+<!-- data_corr = data %>% -->
+<!--   .[variable == 'coefs' & model == 'rw' & iter == 1] %>% -->
+<!--   data.table::dcast(participant_id + group + AIC ~ x, value.var = 'value') %>% -->
+<!--   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group')) -->
+
+<!-- # Plot correlation -->
+<!-- p1 = ggplot(data_corr, -->
+<!--            aes(x = V1, -->
+<!--                y = perc_correct)) + -->
+<!--   geom_point() + -->
+<!--   geom_smooth(method = 'lm', -->
+<!--               formula = y ~ x) -->
+<!-- p1 -->
+
+<!-- p2 = ggplot(data_corr, -->
+<!--            aes(x = V2, -->
+<!--                y = perc_correct)) + -->
+<!--   geom_point() + -->
+<!--   geom_smooth(method = 'lm', -->
+<!--               formula = y ~ x) -->
+<!-- p2 -->
+
+<!-- p3 = ggplot(data_corr, -->
+<!--            aes(x = alpha, -->
+<!--                y = perc_correct)) + -->
+<!--   geom_point() + -->
+<!--   geom_smooth(method = 'lm', -->
+<!--               formula = y ~ x) -->
+<!-- p3 -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # V1 ~ performance -->
+<!-- cor.test(data_corr$V1, data_corr$perc_correct) -->
+<!-- m = lm(perc_correct ~ V1, -->
+<!--        data = data_corr) -->
+<!-- Anova(m) -->
+<!-- ``` -->
+
+
+
+
+
+
+<!-- ```{r} -->
+<!-- # Full model -->
+<!-- m = lm(perc_correct ~ V1 + V2 + alpha, -->
+<!--        data = data_corr) -->
+<!-- anova(m) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Average LR -->
+<!-- mean(data_corr$alpha) -->
+<!-- ``` -->
+
+<!-- # AIC average over participants -->
+
+<!-- ## Across both age groups -->
+
+<!-- ```{r} -->
+<!-- data_aic = data %>% -->
+<!--   .[iter == 1] %>% -->
+<!--   .[, .(AIC = mean(AIC), -->
+<!--         sd_AIC = sd(AIC), -->
+<!--         AICc = mean(AICc), -->
+<!--         sd_AICc = sd(AICc), -->
+<!--         BIC = mean(BIC), -->
+<!--         sd_BIC = sd(BIC), -->
+<!--         n_params = sum(variable == 'coefs')), -->
+<!--     by = c('participant_id', 'group', 'model')] -->
+
+<!-- data_aic_all = data_aic %>% -->
+<!--   .[, .(AIC = mean(AIC), -->
+<!--         AICc = mean(AICc), -->
+<!--         BIC = mean(BIC)), -->
+<!--     by = 'model'] %>% -->
+<!--   # Sort by lowest AIC -->
+<!--   .[order(rank(AIC))] -->
+<!-- data_aic_all -->
+
+
+<!-- ``` -->
+
+<!-- ## Age split -->
+
+<!-- ```{r} -->
+
+<!-- ``` -->
+
+<!-- # Best fitting model counts -->
+
+<!-- ## For all models -->
+
+<!-- ```{r} -->
+<!-- # Get winning model within each participant -->
+<!-- data_counts = data_aic %>% -->
+<!--   data.table::melt(id.vars = c('participant_id', 'group', 'model'), -->
+<!--                    measure.vars = c('AIC', 'AICc', 'BIC')) %>% -->
+<!--   .[, ':='(lowest = min(value), -->
+<!--            loc_winning = value == min(value), -->
+<!--            # Name of winning model -->
+<!--            winning_model = model[value == min(value)]), -->
+<!--     by = c('participant_id', 'variable')] %>% -->
+<!--   # Only keep winning model -->
+<!--   .[loc_winning == TRUE] -->
+
+<!-- # Count winning models across participants -->
+<!-- data_counts_all = data_counts %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('variable', 'model')] -->
+
+<!-- # Count winning models within age-groups -->
+<!-- data_counts_age = data_counts %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('variable', 'group', 'model')] %>% -->
+<!--   .[order(group, -rank(model))] -->
+
+<!-- data_counts_all -->
+<!-- data_counts_age -->
+
+<!-- chisq.test(cbind(data_counts_age[group == 'older' & variable == 'AIC']$n_winning, -->
+<!--                  data_counts_age[group == 'younger' & variable == 'AIC']$n_winning)) -->
+
+<!-- p = ggplot(data = data_counts_age, -->
+<!--            aes(x = model, -->
+<!--                y = n_winning, -->
+<!--                fill = model)) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(group~variable, ncol = 3) -->
+<!-- p -->
+
+<!-- ``` -->
+
+<!-- ### Exceedance probs -->
+
+<!-- ```{r} -->
+<!-- data_ep = data_aic %>% -->
+<!--   .[, ':='(nAIC = -(AIC), -->
+<!--            nAICc = -(AICc), -->
+<!--            nBIC = -(BIC))] %>% -->
+<!--   data.table::dcast(participant_id + group ~ model, value.var = 'nAICc') -->
+
+<!-- bmsR::VB_bms(cbind(data_ep$rw, -->
+<!--                    data_ep$uncertainty, -->
+<!--                    data_ep$surprise, -->
+<!--                    data_ep$uncertainty_surprise), -->
+<!--              n_samples = 1000) -->
+<!-- ``` -->
+
+
+<!-- ## For non-nested models -->
+
+<!-- ```{r} -->
+<!-- # Get winning model within each participant -->
+<!-- data_counts_nn = data_aic %>% -->
+<!--   .[model != 'uncertainty_surprise'] %>% -->
+<!--   data.table::melt(id.vars = c('participant_id', 'group', 'model'), -->
+<!--                    measure.vars = c('AIC', 'AICc', 'BIC')) %>% -->
+<!--   .[, ':='(lowest = min(value), -->
+<!--            loc_winning = value == min(value), -->
+<!--            # Name of winning model -->
+<!--            winning_model = model[value == min(value)]), -->
+<!--     by = c('participant_id', 'variable')] %>% -->
+<!--   # Only keep winning model -->
+<!--   .[loc_winning == TRUE] -->
+
+<!-- # Count winning models across participants -->
+<!-- data_counts_nn_all = data_counts_nn %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('variable', 'model')] -->
+
+<!-- # Count winning models within age-groups -->
+<!-- data_counts_nn_age = data_counts_nn %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('variable', 'group', 'model')] %>% -->
+<!--   .[order(group, -rank(model))] -->
+
+<!-- data_counts_nn_all -->
+<!-- data_counts_nn_age -->
+
+<!-- chisq.test(cbind(data_counts_nn_age[group == 'older' & variable == 'AICc']$n_winning, -->
+<!--                  data_counts_nn_age[group == 'younger'& variable == 'AICc']$n_winning)) -->
+
+<!-- p = ggplot(data = data_counts_nn_age, -->
+<!--            aes(x = model, -->
+<!--                y = n_winning, -->
+<!--                fill = model)) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(group~variable, ncol = 3) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ## Exceedance probs -->
+
+<!-- ```{r} -->
+<!-- data_ep = data_aic %>% -->
+<!--   .[, ':='(nAIC = -(AIC), -->
+<!--            nAICc = -(AICc), -->
+<!--            nBIC = -(BIC))] %>% -->
+<!--   data.table::dcast(participant_id + group ~ model, value.var = 'nAICc') -->
+
+<!-- # Younger -->
+<!-- bmsR::VB_bms(cbind(data_ep[group == 'younger']$rw, -->
+<!--                    data_ep[group == 'younger']$uncertainty, -->
+<!--                    data_ep[group == 'younger']$surprise), -->
+<!--              n_samples = 1000)$pxp -->
+
+
+<!-- # Older -->
+<!-- bmsR::VB_bms(cbind(data_ep[group == 'older']$rw, -->
+<!--                    data_ep[group == 'older']$uncertainty, -->
+<!--                    data_ep[group == 'older']$surprise), -->
+<!--              n_samples = 1000)$pxp -->
+<!-- ``` -->
+
+<!-- # Parameters of surprise model -->
+
+<!-- ```{r} -->
+<!-- # Get data of surprise model -->
+<!-- data_surprise = data[model == 'surprise' & iter == 1] %>% -->
+<!--   # Select learning coefficients -->
+<!--   .[variable == 'coefs' & x %in% c('l','u','s')] %>% -->
+<!--   .[, ':='(variable = as.factor(variable), -->
+<!--            x = as.factor(x))] %>% -->
+<!--   data.table::dcast(participant_id + group ~ x, value.var = 'value') %>% -->
+<!--   .[, uml := u-l] %>% -->
+<!--   data.table::melt(id.vars = c('participant_id', 'group')) -->
+
+<!-- p = ggplot(data = data_surprise, -->
+<!--            aes(x = group, -->
+<!--                y = value, -->
+<!--                color = group)) + -->
+<!--   geom_violin(draw_quantiles = c(0.25,0.5,0.75)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.2) + -->
+<!--   facet_wrap(~variable, -->
+<!--              scale = 'free_y') -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get data of surprise model -->
+<!-- data_surprise_v = data[model == 'surprise' & iter == 1] %>% -->
+<!--   # Select learning coefficients -->
+<!--   .[variable == 'coefs'] %>% -->
+<!--   .[, ':='(variable = as.factor(variable), -->
+<!--            x = as.factor(x))] %>% -->
+<!--   data.table::dcast(participant_id + group ~ x, value.var = 'value') %>% -->
+<!--   .[, uml := u-l] -->
+
+<!-- p = ggplot(data = data_surprise_v, -->
+<!--            aes(x = V1, -->
+<!--                y = l, -->
+<!--                color = group)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.2) + -->
+<!--   geom_smooth(method='lm', -->
+<!--               formula = y~x) -->
+<!-- p -->
+<!-- #p -->
+
+
+<!-- p = ggplot(data = data_surprise_v, -->
+<!--            aes(x = V1, -->
+<!--                y = s, -->
+<!--                color = group)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.2) + -->
+<!--   geom_smooth(method='lm', -->
+<!--               formula = y~x) -->
+<!-- p -->
+<!-- #p -->
+
+
+<!-- p = ggplot(data = data_surprise_v, -->
+<!--            aes(x = V1, -->
+<!--                y = uml, -->
+<!--                color = group)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.7) + -->
+<!--   geom_smooth(method='lm', -->
+<!--               formula = y~x) -->
+<!-- p -->
+<!-- #p -->
+<!-- cor.test(data_surprise_v$V1, data_surprise_v$uml, method = 'spearman') -->
+<!-- cor.test(data_surprise_v[group == 'younger']$V1, data_surprise_v[group == 'younger']$uml) -->
+<!-- cor.test(data_surprise_v[group == 'older']$V1, data_surprise_v[group == 'older']$uml) -->
+
+
+
+<!-- p = ggplot(data = data_surprise_v, -->
+<!--            aes(x = V2, -->
+<!--                y = uml, -->
+<!--                color = group)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.7) + -->
+<!--   geom_smooth(method='lm', -->
+<!--               formula = y~x) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ### Get LR functions -->
+
+<!-- ```{r} -->
+<!-- data_lr_func = data_surprise %>% -->
+<!--   .[, .(alpha_star = LRfunction(low = value[variable == 'l'], -->
+<!--                                 up = value[variable == 'u'], -->
+<!--                                 slope = value[variable == 's'], -->
+<!--                                 PE = seq(60))[[1]], -->
+<!--         PEscaled = LRfunction(low = value[variable == 'l'], -->
+<!--                               up = value[variable == 'u'], -->
+<!--                               slope = value[variable == 's'], -->
+<!--                               PE = seq(60))[[2]], -->
+<!--         PE = seq(60), -->
+<!--         l = value[variable == 'l'], -->
+<!--         s = value[variable == 's'], -->
+<!--         u = value[variable == 'u'], -->
+<!--         uml = value[variable == 'uml']), -->
+<!--     by = c('participant_id', 'group')] %>% -->
+<!--   .[, ':='(slope_pos = s > 0, -->
+<!--            uml_pos = uml > 0)] -->
+
+<!-- p = ggplot(data = data_lr_func, -->
+<!--            aes(x = PE, -->
+<!--                y = alpha_star, -->
+<!--                group = participant_id, -->
+<!--                color = group)) + -->
+<!--   geom_line(alpha = 0.5) + -->
+<!--   facet_wrap(uml_pos ~ group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- count_uml = data_lr_func %>% -->
+<!--   .[, .(uml_pos = unique(uml_pos)), -->
+<!--     by = c('participant_id', 'group')] %>% -->
+<!--   .[, .(count_uml_pos = sum(uml_pos), -->
+<!--         n = .N), -->
+<!--     by = c('group')] -->
+<!-- count_uml -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- # Get uml parameter for rising and falling graphs -->
+<!-- data_uml = data_surprise[variable == 'uml'] %>% -->
+<!--   .[, uml := value] %>% -->
+<!--   .[, uml_pos := uml >= 0] %>% -->
+<!--   .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')] -->
+
+<!-- data_lrs = data[model == 'surprise' & variable == 'LRs' & !is.na(value)] %>% -->
+<!--   # Fuse encountered LRs with uml -->
+<!--   data.table::merge.data.table(., data_uml, -->
+<!--                                by = c('participant_id', 'group')) %>% -->
+<!--   .[, uml_pos := as.factor(uml_pos)] -->
+
+<!-- data_extremes = data_lrs %>% -->
+<!--   .[, x := as.numeric(x)] %>% -->
+<!--   # Get alpha* at lowest and highest |PE| -->
+<!--   .[, .(a_at_min_pe = value[x == min(x)], -->
+<!--         a_at_max_pe = value[x == max(x)]), -->
+<!--     by = c('participant_id', 'group')] %>% -->
+<!--   # Get difference between both to get rising or falling slope -->
+<!--   .[, rising := a_at_max_pe - a_at_min_pe] %>% -->
+<!--   .[, rising := rising > 0] -->
+
+<!-- data_lrs = data_lrs %>% -->
+<!--   data.table::merge.data.table(., data_extremes, -->
+<!--                                by = c('participant_id', 'group')) -->
+
+<!-- p = ggplot(data = data_lrs, -->
+<!--            aes(x = as.numeric(x), -->
+<!--                y = value, -->
+<!--                group = participant_id, -->
+<!--                color = group)) + -->
+<!--   geom_line(alpha = 0.2) + -->
+<!--   labs(x = '|PE|', -->
+<!--         y = 'alpha*') + -->
+<!--   facet_wrap(rising~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data_rising = data_lrs %>% -->
+<!--   .[, .(rising = unique(rising)), -->
+<!--     by = c('participant_id', 'group')] %>% -->
+<!--   .[, .(count_rising = sum(rising), -->
+<!--         n = .N), -->
+<!--     by = c('group')] %>% -->
+<!--   .[, count_falling := n - count_rising] %>% -->
+<!--   .[, .SD, .SDcols = c('group', 'count_rising', 'count_falling')] -->
+
+<!-- chisq.test(data_rising[, .SD, .SDcols = c('count_rising', 'count_falling')]) -->
+<!-- ``` -->
+
+
+
+
+
+
+
+<!-- --- -->
+
+<!-- # What has Nico looked at? -->
+
+<!-- - RW analyses (Do participants behave like in an RL task?): -->
+<!--    - (?) **Prob choosing left bandit positively related to value of left bandit (younger: p < .001; older: p <.001)** -->
+<!--    - (?) **Prob choosing right bandit negatively related to value of left bandit (both p < .001)** -->
+<!--    - (Y) Beta of left and right values related to percent of correct choices (r = .43, r = -.41; both p < .001) -->
+<!--    - (Y) Average LR = .13 -->
+<!--    - (Y) LR positively correlated with overall performance (r = .29; p = .003) -->
+<!-- - Average AIC comparison between sophisticated models and RW: -->
+<!--    - **(N)** AIC average over all participants for each model [uncertainty_surprise (242.02) < surprise (242.47) < uncertainty (245.13) < rw (247.40)] -->
+<!--    - Splitting by age group: -->
+<!--       - (?) **YA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .01)** **(CORRECTED??)** -->
+<!--       - (?) **OA: uncertainty < rw; surprise < rw; uncertainty_surprise < rw (ps < .03)** **(CORRECTED??)** -->
+<!-- - Surprise or uncertainty mechanism better explanation in different age groups? -->
+<!--    - Count best fit of non-nested models: -->
+<!--       - **(N)** YA: uncertainty (24) > surprise (18) > rw (9) -->
+<!--       - (Y) OA: surprise (25) > surprise (13) = rw (13) -->
+<!--    - Protected exceedance probability: -->
+<!--       - **(N)** YA: uncertainty (72%) -->
+<!--       - (Y) OA: surprise (80.1%) -->
+<!-- - Chi-Square of model frequencies across age groups -->
+<!--    - **(N)** marginal (p = .077) -->
+
+
+
+
+
+
+
+
+
+
+<!-- # Parameters of unc model -->
+
+<!-- ```{r} -->
+<!-- data_unc = data_random[variable == 'coefs' & model == 'uncertainty' & x %in% c('V1u', 'V2u')] %>% -->
+<!--   data.table::dcast(participant_id + group + model + AIC ~ x, value.var = 'value') %>% -->
+<!--   .[, V2umV1u := V2u - V1u] %>% -->
+<!--   data.table::melt(id.vars = c('participant_id', 'group', 'model', 'AIC'), -->
+<!--                    variable.name = 'variable', -->
+<!--                    value.name = 'value') -->
+
+<!-- p = ggplot(data = data_unc, -->
+<!--            aes(x = group, -->
+<!--                y = value, -->
+<!--                color = group)) + -->
+<!--   geom_point() + -->
+<!--   stat_summary(fun = 'mean', geom = 'point', size = 5, shape = 18, color = 'white') + -->
+<!--   facet_wrap(~variable) -->
+<!-- p -->
+<!-- ``` -->
+
+
+<!-- # Only surprise best fitters -->
+
+<!-- ```{r} -->
+<!-- data_winning_model = data_aic %>% -->
+<!--   .[, .(winning_model = unique(winning_model)), -->
+<!--     by = c('participant_id', 'group')] %>% -->
+<!--   .[, .SD, .SDcols = c('participant_id', 'group', 'winning_model')] -->
+
+<!-- data_lrs_winning = data.table::merge.data.table(data_lrs, data_winning_model, -->
+<!--                                                 by = c('participant_id', -->
+<!--                                                        'group')) -->
+<!-- data_lrs_surprise = data_lrs_winning[winning_model == 'surprise'] -->
+
+<!-- p = ggplot(data = data_lrs_surprise, -->
+<!--            aes(x = as.numeric(x), -->
+<!--                y = value, -->
+<!--                group = participant_id, -->
+<!--                color = group)) + -->
+<!--   geom_line(alpha = 0.2) + -->
+<!--   facet_wrap(~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data_surprise_winning_only = data.table::merge.data.table(data_surprise, -->
+<!--                                                           data_winning_model, -->
+<!--                                                           by = c('participant_id', -->
+<!--                                                                  'group')) %>% -->
+<!--   .[winning_model == 'surprise'] -->
+
+<!-- p = ggplot(data = data_surprise_winning_only, -->
+<!--            aes(x = group, -->
+<!--                y = value, -->
+<!--                color = group)) + -->
+<!--   geom_violin(draw_quantiles = c(0.25,0.5,0.75)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.2) + -->
+<!--   facet_wrap(~variable, -->
+<!--              scale = 'free_y') -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- # Parameters of uncertainty_surprise model -->
+
+<!-- ```{r} -->
+<!-- # Get data of surprise model -->
+<!-- data_u_surprise = data[starting_values == 'random' & model == 'uncertainty_surprise' & iter == 1] %>% -->
+<!--   # Select learning coefficients -->
+<!--   .[variable == 'coefs' & x %in% c('l','u','s')] %>% -->
+<!--   .[, ':='(variable = as.factor(variable), -->
+<!--            x = as.factor(x))] %>% -->
+<!--   data.table::dcast(participant_id + group ~ x, value.var = 'value') %>% -->
+<!--   .[, uml := u-l] %>% -->
+<!--   data.table::melt(id.vars = c('participant_id', 'group')) -->
+
+<!-- p = ggplot(data = data_u_surprise, -->
+<!--            aes(x = group, -->
+<!--                y = value, -->
+<!--                color = group)) + -->
+<!--   geom_violin(draw_quantiles = c(0.25,0.5,0.75)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.2) + -->
+<!--   facet_wrap(~variable, -->
+<!--              scale = 'free_y') -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get uml parameter for rising and falling graphs -->
+<!-- data_uml = data_u_surprise[variable == 'uml'] %>% -->
+<!--   .[, uml := value] %>% -->
+<!--   .[, uml_pos := uml >= 0] %>% -->
+<!--   .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')] -->
+
+<!-- data_lrs = data_random[model == 'uncertainty_surprise' & variable == 'LRs' & !is.na(value)] %>% -->
+<!--   # Fuse encountered LRs with uml -->
+<!--   data.table::merge.data.table(., data_uml, -->
+<!--                                by = c('participant_id', 'group')) %>% -->
+<!--   .[, uml_pos := as.factor(uml_pos)] -->
+
+<!-- p = ggplot(data = data_lrs, -->
+<!--            aes(x = as.numeric(x), -->
+<!--                y = value, -->
+<!--                group = participant_id, -->
+<!--                color = group)) + -->
+<!--   geom_line(alpha = 0.2) + -->
+<!--   facet_wrap(uml_pos~group) -->
+<!-- p -->
+<!-- ``` -->
+
+
+<!-- # Uncertainty-surprise parameters -->
+
+<!-- ```{r} -->
+<!-- # Get data of surprise model -->
+<!-- data_u_surprise = data[starting_values == 'random' & model == 'uncertainty_surprise' & iter == 1] %>% -->
+<!--   # Select learning coefficients -->
+<!--   .[variable == 'coefs' & x %in% c('l','u','s', 'pi')] %>% -->
+<!--   .[, ':='(variable = as.factor(variable), -->
+<!--            x = as.factor(x))] %>% -->
+<!--   data.table::dcast(participant_id + group ~ x, value.var = 'value') %>% -->
+<!--   .[, uml := u-l] %>% -->
+<!--   data.table::melt(id.vars = c('participant_id', 'group')) -->
+
+<!-- p = ggplot(data = data_u_surprise, -->
+<!--            aes(x = group, -->
+<!--                y = value, -->
+<!--                color = group)) + -->
+<!--   geom_violin(draw_quantiles = c(0.25,0.5,0.75)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.2) + -->
+<!--   facet_wrap(~variable, -->
+<!--              scale = 'free_y') -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- # Nico's fitting with 5000 maxeval -->
+
+<!-- ```{r} -->
+<!-- file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico_5000.tsv', -->
+<!--                  fsep = .Platform$file.sep) -->
+<!-- data_nico_5000 = data.table::fread(file, sep = '\t', na.strings = 'n/a') -->
+
+<!-- data_group = data %>% -->
+<!--   .[, .(group = unique(group)), -->
+<!--     by = 'participant_id'] -->
+<!-- ``` -->
+
+
+
+<!-- # AIC average over participants -->
+
+<!-- ## Across both age groups -->
+
+<!-- ```{r} -->
+<!-- data_aic = data_nico_5000 %>% -->
+<!--   data.table::merge.data.table(., data_group, -->
+<!--                                by = 'participant_id') %>% -->
+<!--   .[, .(AIC = mean(AIC), -->
+<!--         sd_AIC = sd(AIC)), -->
+<!--     by = c('participant_id', 'group', 'model')] -->
+
+<!-- data_aic_all = data_aic %>% -->
+<!--   .[, .(AIC = mean(AIC)), -->
+<!--     by = 'model'] %>% -->
+<!--   # Sort by lowest AIC -->
+<!--   .[order(rank(AIC))] -->
+<!-- data_aic_all -->
+<!-- ``` -->
+
+<!-- ## Age split -->
+
+<!-- ```{r} -->
+<!-- data_aic_age = data_aic %>% -->
+<!--   .[, .(AIC = mean(AIC)), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   # Sort by age and lowest AIC -->
+<!--   .[order(group, AIC)] -->
+<!-- data_aic_age -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get winning model within each participant -->
+<!-- data_counts = data_aic %>% -->
+<!--   .[, ':='(lowest_AIC = min(AIC), -->
+<!--            loc_winning = AIC == min(AIC), -->
+<!--            # Name of winning model -->
+<!--            winning_model = model[AIC == min(AIC)]), -->
+<!--     by = 'participant_id'] %>% -->
+<!--   # Only keep winning model -->
+<!--   .[loc_winning == TRUE] -->
+
+<!-- # Count winning models across participants -->
+<!-- data_counts_all = data_counts %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('model')] -->
+
+<!-- # Count winning models within age-groups -->
+<!-- data_counts_age = data_counts %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   .[order(group, -rank(model))] -->
+
+<!-- data_counts_all -->
+<!-- data_counts_age -->
+
+<!-- chisq.test(cbind(data_counts_age[group == 'older']$n_winning, -->
+<!--                  data_counts_age[group == 'younger']$n_winning)) -->
+
+<!-- p = ggplot(data = data_counts_age, -->
+<!--            aes(x = model, -->
+<!--                y = n_winning, -->
+<!--                fill = model)) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get winning model within each participant -->
+<!-- data_counts_nn = data_aic %>% -->
+<!--   .[model != 'uncertainty_surprise'] %>% -->
+<!--   .[, ':='(lowest_AIC = min(AIC), -->
+<!--            loc_winning = AIC == min(AIC), -->
+<!--            # Name of winning model -->
+<!--            winning_model = model[AIC == min(AIC)]), -->
+<!--     by = 'participant_id'] %>% -->
+<!--   # Only keep winning model -->
+<!--   .[loc_winning == TRUE] -->
+
+<!-- # Count winning models across participants -->
+<!-- data_counts_nn_all = data_counts_nn %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('model')] -->
+
+<!-- # Count winning models within age-groups -->
+<!-- data_counts_nn_age = data_counts_nn %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   .[order(group, -rank(model))] -->
+
+<!-- data_counts_nn_all -->
+<!-- data_counts_nn_age -->
+
+<!-- chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning, -->
+<!--                  data_counts_nn_age[group == 'younger']$n_winning)) -->
+
+<!-- p = ggplot(data = data_counts_nn_age, -->
+<!--            aes(x = model, -->
+<!--                y = n_winning, -->
+<!--                fill = model)) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- # Parameters of surprise model -->
+
+<!-- ```{r} -->
+<!-- # Get data of surprise model -->
+<!-- data_surprise = data_nico_5000[model == 'surprise'] %>% -->
+<!--   data.table::merge.data.table(., data_group, -->
+<!--                                by = 'participant_id') %>% -->
+<!--   # Select learning coefficients -->
+<!--   .[variable == 'coefs' & x %in% c('l','u','s')] %>% -->
+<!--   .[, ':='(variable = as.factor(variable), -->
+<!--            x = as.factor(x))] %>% -->
+<!--   data.table::dcast(participant_id + group ~ x, value.var = 'value') %>% -->
+<!--   .[, uml := u-l] %>% -->
+<!--   data.table::melt(id.vars = c('participant_id', 'group')) -->
+
+<!-- p = ggplot(data = data_surprise, -->
+<!--            aes(x = group, -->
+<!--                y = value, -->
+<!--                color = group)) + -->
+<!--   geom_violin(draw_quantiles = c(0.25,0.5,0.75)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.2) + -->
+<!--   facet_wrap(~variable, -->
+<!--              scale = 'free_y') -->
+<!-- p -->
+
+<!-- summary(data_nico_5000[x == 'l']$value) -->
+<!-- summary(data_nico_5000[x == 'u']$value) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data_lrs = data_random[model == 'surprise' & variable == 'LRs' & !is.na(value)] -->
+
+<!-- p = ggplot(data = data_lrs, -->
+<!--            aes(x = as.numeric(x), -->
+<!--                y = value, -->
+<!--                group = participant_id, -->
+<!--                color = group)) + -->
+<!--   geom_line(alpha = 0.2) + -->
+<!--   facet_wrap(~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- # Only bandit 1v2 -->
+
+<!-- ```{r} -->
+<!-- # Load modelling results -->
+<!-- data = Load_model_fits_new() %>% -->
+<!--   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>% -->
+<!--   .[, ':='(participant_id = as.factor(participant_id), -->
+<!--            group = as.factor(group), -->
+<!--            sex = as.factor(sex), -->
+<!--            starting_values = as.factor(starting_values))] -->
+<!-- # Sort model levels by number of parameters -->
+<!-- data$model = factor(data$model, levels = c('rw', -->
+<!--                                            'uncertainty', -->
+<!--                                            'surprise', -->
+<!--                                            'uncertainty_surprise')) -->
+
+<!-- # Split data by starting values (random vs. fixed) -->
+<!-- data_1v2 = data[starting_values == 'fixed'] -->
+
+<!-- # get number of participants -->
+<!-- n_participants = length(unique(data$participant_id)) -->
+
+<!-- file = file.path('/Users/koch/Desktop/data_pedlr_modelfitting.tsv') -->
+<!-- data.table::fwrite(data_1v2, file, sep = '\t', na = 'n/a') -->
+
+
+<!-- # Load nico's model data -->
+<!-- file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico.tsv') -->
+<!-- data_fixed_nico = data.table::fread(file, sep = '\t', na.strings = 'n/a') -->
+<!-- # Name variable levels equally between both approaches -->
+<!-- data_fixed_nico = data_fixed_nico[order(participant_id, model)] -->
+<!-- data_fixed_nico[x == 'intercept']$x = '(Intercept)' -->
+<!-- # Add identifyer for nicos data -->
+<!-- data_fixed_nico$author = 'nico' -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data_aic = data_1v2 %>% -->
+<!--   .[iter == 1] %>% -->
+<!--   .[, .(AIC = mean(AIC), -->
+<!--         sd_AIC = sd(AIC)), -->
+<!--     by = c('participant_id', 'group', 'model')] -->
+
+<!-- data_aic_all = data_aic %>% -->
+<!--   .[, .(AIC = mean(AIC)), -->
+<!--     by = 'model'] %>% -->
+<!--   # Sort by lowest AIC -->
+<!--   .[order(rank(AIC))] -->
+<!-- data_aic_all -->
+<!-- ``` -->
+
+<!-- ## Age split -->
+
+<!-- ```{r} -->
+<!-- data_aic_age = data_aic %>% -->
+<!--   .[, .(AIC = mean(AIC)), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   # Sort by age and lowest AIC -->
+<!--   .[order(group, AIC)] -->
+<!-- data_aic_age -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get winning model within each participant -->
+<!-- data_counts = data_aic %>% -->
+<!--   .[, ':='(lowest_AIC = min(AIC), -->
+<!--            loc_winning = AIC == min(AIC), -->
+<!--            # Name of winning model -->
+<!--            winning_model = model[AIC == min(AIC)]), -->
+<!--     by = 'participant_id'] %>% -->
+<!--   # Only keep winning model -->
+<!--   .[loc_winning == TRUE] -->
+
+<!-- # Count winning models across participants -->
+<!-- data_counts_all = data_counts %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('model')] -->
+
+<!-- # Count winning models within age-groups -->
+<!-- data_counts_age = data_counts %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   .[order(group, -rank(model))] -->
+
+<!-- data_counts_all -->
+<!-- data_counts_age -->
+
+<!-- chisq.test(cbind(data_counts_age[group == 'older']$n_winning, -->
+<!--                  data_counts_age[group == 'younger']$n_winning)) -->
+
+<!-- p = ggplot(data = data_counts_age, -->
+<!--            aes(x = model, -->
+<!--                y = n_winning, -->
+<!--                fill = model)) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get data of surprise model -->
+<!-- data_surprise = data_1v2[model == 'surprise' & iter == 1] %>% -->
+<!--   # Select learning coefficients -->
+<!--   .[variable == 'coefs' & x %in% c('l','u','s')] %>% -->
+<!--   .[, ':='(variable = as.factor(variable), -->
+<!--            x = as.factor(x))] %>% -->
+<!--   data.table::dcast(participant_id + group ~ x, value.var = 'value') %>% -->
+<!--   .[, uml := u-l] %>% -->
+<!--   data.table::melt(id.vars = c('participant_id', 'group')) -->
+
+<!-- p = ggplot(data = data_surprise, -->
+<!--            aes(x = group, -->
+<!--                y = value, -->
+<!--                color = group)) + -->
+<!--   geom_violin(draw_quantiles = c(0.25,0.5,0.75)) + -->
+<!--   geom_point(position = position_jitter(height = 0, -->
+<!--                                         width = 0.1, -->
+<!--                                         seed = 666), -->
+<!--              alpha = 0.2) + -->
+<!--   facet_wrap(~variable, -->
+<!--              scale = 'free_y') -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data_u = data_surprise[variable == 'u'] -->
+
+<!-- mean(data_u[group == 'older']$value) -->
+<!-- mean(data_u[group == 'younger']$value) -->
+
+<!-- wilcox.test(data_u[group == 'older']$value, data_u[group == 'younger']$value) -->
+<!-- ``` -->
+
+
+<!-- ```{r} -->
+<!-- # Get uml parameter for rising and falling graphs -->
+<!-- data_uml = data_surprise[variable == 'uml'] %>% -->
+<!--   .[, uml := value] %>% -->
+<!--   .[, uml_pos := uml >= 0] %>% -->
+<!--   .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')] -->
+
+<!-- data_lrs = data_1v2[model == 'surprise' & variable == 'LRs' & !is.na(value)] %>% -->
+<!--   # Fuse encountered LRs with uml -->
+<!--   data.table::merge.data.table(., data_uml, -->
+<!--                                by = c('participant_id', 'group')) %>% -->
+<!--   .[, uml_pos := as.factor(uml_pos)] -->
+
+<!-- data_extremes = data_lrs %>% -->
+<!--   .[, x := as.numeric(x)] %>% -->
+<!--   # Get alpha* at lowest and highest |PE| -->
+<!--   .[, .(a_at_min_pe = value[x == min(x)], -->
+<!--         a_at_max_pe = value[x == max(x)]), -->
+<!--     by = c('participant_id', 'group')] %>% -->
+<!--   # Get difference between both to get rising or falling slope -->
+<!--   .[, rising := a_at_max_pe - a_at_min_pe] %>% -->
+<!--   .[, rising := rising > 0] -->
+
+<!-- data_lrs = data_lrs %>% -->
+<!--   data.table::merge.data.table(., data_extremes, -->
+<!--                                by = c('participant_id', 'group')) -->
+
+<!-- p = ggplot(data = data_lrs, -->
+<!--            aes(x = as.numeric(x), -->
+<!--                y = value, -->
+<!--                group = participant_id, -->
+<!--                color = group)) + -->
+<!--   geom_line(alpha = 0.2) + -->
+<!--   labs(x = '|PE|', -->
+<!--         y = 'alpha*') + -->
+<!--   facet_wrap(rising~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get winning model within each participant -->
+<!-- data_counts_nn = data_aic %>% -->
+<!--   .[model != 'uncertainty_surprise'] %>% -->
+<!--   .[, ':='(lowest_AIC = min(AIC), -->
+<!--            loc_winning = AIC == min(AIC), -->
+<!--            # Name of winning model -->
+<!--            winning_model = model[AIC == min(AIC)]), -->
+<!--     by = 'participant_id'] %>% -->
+<!--   # Only keep winning model -->
+<!--   .[loc_winning == TRUE] -->
+
+<!-- # Count winning models across participants -->
+<!-- data_counts_nn_all = data_counts_nn %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('model')] -->
+
+<!-- # Count winning models within age-groups -->
+<!-- data_counts_nn_age = data_counts_nn %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   .[order(group, -rank(model))] -->
+
+<!-- data_counts_nn_all -->
+<!-- data_counts_nn_age -->
+
+<!-- chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning, -->
+<!--                  data_counts_nn_age[group == 'younger']$n_winning)) -->
+
+<!-- p = ggplot(data = data_counts_nn_age, -->
+<!--            aes(x = model, -->
+<!--                y = n_winning, -->
+<!--                fill = model)) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- file = file.path(base_path, 'derivatives', 'model_fitting', 'fitting_nico_1000.tsv', -->
+<!--                  fsep = .Platform$file.sep) -->
+<!-- data_nico_1000 = data.table::fread(file, sep = '\t', na.strings = 'n/a') -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data_aic = data_nico_1000 %>% -->
+<!--   data.table::merge.data.table(., data_group, -->
+<!--                                by = 'participant_id') %>% -->
+<!--   .[, .(AIC = mean(AIC), -->
+<!--         sd_AIC = sd(AIC)), -->
+<!--     by = c('participant_id', 'group', 'model')] -->
+
+<!-- data_aic_all = data_aic %>% -->
+<!--   .[, .(AIC = mean(AIC)), -->
+<!--     by = 'model'] %>% -->
+<!--   # Sort by lowest AIC -->
+<!--   .[order(rank(AIC))] -->
+<!-- data_aic_all -->
+<!-- ``` -->
+
+<!-- ## Age split -->
+
+<!-- ```{r} -->
+<!-- data_aic_age = data_aic %>% -->
+<!--   .[, .(AIC = mean(AIC)), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   # Sort by age and lowest AIC -->
+<!--   .[order(group, AIC)] -->
+<!-- data_aic_age -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get winning model within each participant -->
+<!-- data_counts = data_aic %>% -->
+<!--   .[, ':='(lowest_AIC = min(AIC), -->
+<!--            loc_winning = AIC == min(AIC), -->
+<!--            # Name of winning model -->
+<!--            winning_model = model[AIC == min(AIC)]), -->
+<!--     by = 'participant_id'] %>% -->
+<!--   # Only keep winning model -->
+<!--   .[loc_winning == TRUE] -->
+
+<!-- # Count winning models across participants -->
+<!-- data_counts_all = data_counts %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('model')] -->
+
+<!-- # Count winning models within age-groups -->
+<!-- data_counts_age = data_counts %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   .[order(group, -rank(model))] -->
+
+<!-- data_counts_all -->
+<!-- data_counts_age -->
+
+<!-- chisq.test(cbind(data_counts_age[group == 'older']$n_winning, -->
+<!--                  data_counts_age[group == 'younger']$n_winning)) -->
+
+<!-- p = ggplot(data = data_counts_age, -->
+<!--            aes(x = model, -->
+<!--                y = n_winning, -->
+<!--                fill = model)) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- # Get winning model within each participant -->
+<!-- data_counts_nn = data_aic %>% -->
+<!--   .[model != 'uncertainty_surprise'] %>% -->
+<!--   .[, ':='(lowest_AIC = min(AIC), -->
+<!--            loc_winning = AIC == min(AIC), -->
+<!--            # Name of winning model -->
+<!--            winning_model = model[AIC == min(AIC)]), -->
+<!--     by = 'participant_id'] %>% -->
+<!--   # Only keep winning model -->
+<!--   .[loc_winning == TRUE] -->
+
+<!-- # Count winning models across participants -->
+<!-- data_counts_nn_all = data_counts_nn %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('model')] -->
+
+<!-- # Count winning models within age-groups -->
+<!-- data_counts_nn_age = data_counts_nn %>% -->
+<!--   .[, .(n_winning = .N), -->
+<!--     by = c('group', 'model')] %>% -->
+<!--   .[order(group, -rank(model))] -->
+
+<!-- data_counts_nn_all -->
+<!-- data_counts_nn_age -->
+
+<!-- chisq.test(cbind(data_counts_nn_age[group == 'older']$n_winning, -->
+<!--                  data_counts_nn_age[group == 'younger']$n_winning)) -->
+
+<!-- p = ggplot(data = data_counts_nn_age, -->
+<!--            aes(x = model, -->
+<!--                y = n_winning, -->
+<!--                fill = model)) + -->
+<!--   geom_col() + -->
+<!--   facet_wrap(~group) -->
+<!-- p -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data_1v2 -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- data_nico_1000 -->
+<!-- ``` -->
 

@@ -4,10 +4,11 @@ library(lemon)
 Neurocodify_plot = function(input_plot){
   
   res = input_plot +
+    theme(panel.border=element_blank(), axis.line=element_line()) +
     # Use capped coordinate system (line will not touch extremes)
-    coord_capped_cart(left='both',
-                      bottom='both',
-                      expand = TRUE) +
+    lemon::coord_capped_cart(left = 'both',
+                             bottom = 'both',
+                             expand = TRUE) +
     # Set theme for plot
     theme(panel.border=element_blank(),
           axis.line=element_line(),
