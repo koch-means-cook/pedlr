@@ -99,15 +99,25 @@ Create_figures = function(){
   #        width = 6,
   #        height = 3)
   
-  # Model results
-  p_mr = Figure_model_results()
-  out_file = file.path(base_path, 'derivatives', 'figures', 'f_mr.pdf',
+  # Model comp
+  p_mc = Figure_model_comp()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_mc.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
-         plot = p_mr,
+         plot = p_mc,
          device = 'pdf',
-         width = 6,
-         height = 8)
+         width = 8,
+         height = 5)
+  
+  # Model results
+  # p_mr = Figure_model_results()
+  # out_file = file.path(base_path, 'derivatives', 'figures', 'f_mr.pdf',
+  #                      fsep = .Platform$file.sep)
+  # ggsave(filename = out_file,
+  #        plot = p_mr,
+  #        device = 'pdf',
+  #        width = 6,
+  #        height = 8)
   
   
 }

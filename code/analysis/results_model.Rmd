@@ -72,10 +72,6 @@ custom_guides = Get_plot_guides()
 # Setup
 
 ```{r}
-# Load data for demographics
-data_participants = Load_data() %>%
-  Apply_exclusion_criteria(., choice_based_exclusion = TRUE)
-
 # Load modelling results
 data = Load_model_fits_new() %>%
   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
@@ -121,6 +117,44 @@ data = data[starting_values == 'random']
 - Model description (methods):
    - surprise "sensitive", since no assumed linear relationship between more PE = more LR
       - Same for UNC
+
+- RW model: People behave like RL models
+
+```{r}
+# Get statistics of beta 1 and 2
+data_rw_beta = data[model == 'rw' & variable == 'coefs'] %>%
+  data.table::dcast(participant_id + group + model + AICc ~ x, value.var = 'value') %>%
+  data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
+  
+
+# Left bandit
+# Younger
+t.test(data_rw_beta[group == 'younger']$V2,
+       mu = 0)
+# Older
+t.test(data_rw_beta[group == 'older']$V2,
+       mu = 0)
+
+# Right bandit
+# Younger
+t.test(data_rw_beta[group == 'younger']$V1,
+       mu = 0)
+# Older
+t.test(data_rw_beta[group == 'older']$V1,
+       mu = 0)
+```
+
+```{r}
+# Get correlation of betas with percentage correct (high betas mean less random behavior)
+# Left bandit
+cor.test(data_rw_beta$V2,
+         data_rw_beta$perc_correct_1v2)
+
+# Right bandit
+cor.test(data_rw_beta$V1,
+         data_rw_beta$perc_correct_1v2)
+```
+
 
 - Model comparison:
    - Within-participant AIC comparisons across both groups (show distribution across groups (no age split))
@@ -367,7 +401,7 @@ data_param_summary
 # Correlations between parameters
 data_surprise[x == '(Intercept)']$x = 'intercept'
 data_param_corr = data_surprise %>%
-  data.table::dcast(participant_id + group + model + AIC + AICc + BIC ~ paste0('param_', x),
+  data.table::dcast(participant_id + group + model + AIC + AICc ~ paste0('param_', x),
                     value.var = 'value')
 
 # Corr mat
@@ -416,6 +450,29 @@ chisq.test(cbind(data_rising[group == 'younger']$value,
                  data_rising[group == 'older']$value))
 ```
 
+
+```{r}
+# Get individual LR functions for surprise model
+data_lrs = data[model == 'surprise' & variable == 'LRs' & !is.na(value)] %>%
+  .[, .SD, .SDcols = c('participant_id', 'group', 'model', 'AICc', 'variable',
+                       'x', 'value')] %>%
+  # Fuse encountered LRs with uml
+  data.table::merge.data.table(., data_surprise_param,
+                               by = c('participant_id', 'group', 'model', 'AICc'))
+
+p = ggplot(data = data_lrs,
+           aes(x = as.numeric(x),
+               y = value,
+               group = participant_id,
+               color = group)) +
+  geom_line(alpha = 0.2) +
+  labs(x = '|PE|',
+        y = 'alpha*') +
+  facet_wrap(param_uml_dicho~group)
+p
+```
+
+
 ```{r}
 # Continuous comparison
 p = ggplot(data = data_surprise_param,
@@ -450,9 +507,51 @@ t.test(data_surprise_param[group == 'younger']$param_uml,
        data_surprise_param[group == 'older']$param_uml)
 
 # t-test vs. 0
-t.test(data_surprise_param$param_uml,
+# Younger
+ty = t.test(data_surprise_param[group == 'younger']$param_uml,
        mu = 0)
+ty
+# Older
+to = t.test(data_surprise_param[group == 'older']$param_uml,
+       mu = 0)
+to
+
+p.adjust(c(ty$p.value, to$p.value),
+         method = 'holm')
 ```
+
+```{r}
+# Continuous comparison
+p = ggplot(data = data_surprise_param,
+       aes(x = group,
+           y = param_s,
+           fill = group,
+           color = group)) +
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0,
+                                        seed = 666)) +
+  geom_half_violin(data = data_surprise_param[group == 'younger'],
+                   side = 'r',
+                   position = position_nudge(x=-0.49,
+                                             y = 0),
+                   width = 0.5,
+                   alpha = 0.8,
+                   color = NA) +
+  geom_half_violin(data = data_surprise_param[group == 'older'],
+                   side = 'l',
+                   position = position_nudge(x=0.49,
+                                             y = 0),
+                   width = 0.5,
+                   alpha = 0.8,
+                   color = NA)
+Neurocodify_plot(p)
+
+
+# Slope parameter
+t.test(data_surprise_param[group == 'younger']$param_s,
+       data_surprise_param[group == 'older']$param_s)
+```
+
 
 ```{r}
 # Critical behavioral effect
@@ -613,10 +712,11 @@ m1 = lm(cbe ~ param_uml_dicho * group,
 anova(m1)
 
 
-# Including model fit model over/underweighting (continuous/dichotomized) and group
-m1 = lm(cbe ~ AICc * param_uml * group,
+
+# Including model fit model over/underweighting (continuous) and group
+m1 = lm(cbe ~ param_uml * AICc * group,
         data = data_cbe_fit)
-anova(m1)
+Anova(m1)
 joint_tests(m1, by = c('group'))
 emmeans::emtrends(m1, ~ group | AICc, var = 'param_uml',
                   at = list(AICc = quantile(data_param_corr$AICc, c(.166,.5,.833))))
@@ -686,6 +786,7 @@ anova(m1)
 
 <!-- ```{r} -->
 <!-- sim_lrfunc = as.data.table(seq(-20, 20, by = 0.5)) -->
+<!-- #sim_lrfunc = as.data.table(seq(0, 2.5, length.out = 5)) -->
 <!-- colnames(sim_lrfunc) = 's' -->
 <!-- sim_lrfunc$l = 0.1 -->
 <!-- sim_lrfunc$u = 0.5 -->
@@ -1110,7 +1211,7 @@ anova(m1)
 
 <!-- ```{r} -->
 <!-- # Get uml parameter for rising and falling graphs -->
-<!-- data_uml = data_surprise[variable == 'uml'] %>% -->
+<!-- data_uml = data_surprise[variable == 'param_uml'] %>% -->
 <!--   .[, uml := value] %>% -->
 <!--   .[, uml_pos := uml >= 0] %>% -->
 <!--   .[, .SD, .SDcols = c('participant_id', 'group', 'uml_pos')] -->

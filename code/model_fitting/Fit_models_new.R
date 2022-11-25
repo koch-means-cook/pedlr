@@ -153,7 +153,6 @@ Fit_models_new = function(data,
     temp = data.table(rbind(LRs, coefs, x0_vals))
     temp$AIC = AICs
     temp$AICc = AICc
-    temp$BIC = BICs
     temp$p_V1 = ps['V1']
     temp$p_V2 = ps['V2']
     # Add model
@@ -161,7 +160,7 @@ Fit_models_new = function(data,
     # Add participant_id
     temp$participant_id = participant_id
     # sort colums
-    temp = setcolorder(temp, c('participant_id', 'model', 'AIC', 'BIC', 'p_V1', 'p_V2',
+    temp = setcolorder(temp, c('participant_id', 'model', 'AIC', 'p_V1', 'p_V2',
                                'variable', 'x', 'value'))
     
     out = rbind(out, temp)
