@@ -109,15 +109,16 @@ Create_figures = function(){
          width = 8,
          height = 5)
   
-  # Model results
-  # p_mr = Figure_model_results()
-  # out_file = file.path(base_path, 'derivatives', 'figures', 'f_mr.pdf',
-  #                      fsep = .Platform$file.sep)
-  # ggsave(filename = out_file,
-  #        plot = p_mr,
-  #        device = 'pdf',
-  #        width = 6,
-  #        height = 8)
+  # Model surprsie
+  p_ms = Figure_model_surprise()
+  #base_path = here::here()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_ms.pdf',
+                       fsep = .Platform$file.sep)
+  ggsave(filename = out_file,
+         plot = p_ms,
+         device = 'pdf',
+         width = 8,
+         height = 9)
   
   
 }

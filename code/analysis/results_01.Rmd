@@ -74,11 +74,28 @@ data = Load_data() %>%
 n_participants = length(unique(data$participant_id))
 ```
 
+### Quick look at demographics
+
 ```{r}
-file = file.path('~', 'Desktop', 'pedlr_data.tsv',
-                 fsep = .Platform$file.sep)
-data.table::fwrite(data, file = file, na = 'n/a', sep = '\t', row.names = FALSE)
+data_demo = data %>%
+  .[, .(country_of_birth = unique(country_of_birth),
+        curent_country_of_residence = unique(curent_country_of_residence),
+        employment_status = unique(employment_status),
+        nationality = unique(nationality),
+        sex = unique(sex),
+        age = unique(age)),
+    by = c('participant_id', 'group')] %>%
+  # Split by groups
+  .[, .(min_age = min(age),
+        max_age = max(age),
+        mean_age = mean(age),
+        sd_age = sd(age),
+        n_male = length(which(sex == 'Male')),
+        n_female = length(which(sex == 'Female'))),
+    by = c('group')]
+data_demo
 ```
+
 
 
 ---

@@ -702,14 +702,14 @@ data_cbe = data_cbe %>%
 data_cbe_fit = data.table::merge.data.table(data_surprise_param,
                                             data_cbe,
                                             by = c('participant_id', 'group'))
-# model over/underweighting (continuous/dichotomized) and group
+# model over/underweighting (continuous) and group
 m1 = lm(cbe ~ param_uml * group,
         data = data_cbe_fit)
-anova(m1)
-
-m1 = lm(cbe ~ param_uml_dicho * group,
-        data = data_cbe_fit)
-anova(m1)
+summary(m1)
+# m2 = lm(cbe ~ param_uml * AICc * group,
+#         data = data_cbe_fit)
+# summary(m2)
+# anova(m1, m2)
 
 
 
