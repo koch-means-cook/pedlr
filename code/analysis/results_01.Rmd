@@ -66,11 +66,13 @@ custom_guides = Get_plot_guides()
 ```{r}
 # Load data
 data = Load_data() %>%
+  # Apply exclusion criteria (see R notebook 'data_quality.Rmd' for details)
   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
+  # Add bandit comparison type (i.e. 1v2, 2v3, 1v3, or low-mid, mid-high, low-high, respectively)
   Add_comp(.) %>%
   .[, run := as.factor(run)]
 
-# get number of participants (to adjust figure height)
+# Get number of participants (to adjust figure height for some figures)
 n_participants = length(unique(data$participant_id))
 ```
 
@@ -78,6 +80,9 @@ n_participants = length(unique(data$participant_id))
 
 ```{r}
 data_demo = data %>%
+  # Rename group factors
+  Prepare_data_for_plot(.) %>%
+  # Summarize data
   .[, .(country_of_birth = unique(country_of_birth),
         curent_country_of_residence = unique(curent_country_of_residence),
         employment_status = unique(employment_status),
@@ -85,7 +90,7 @@ data_demo = data %>%
         sex = unique(sex),
         age = unique(age)),
     by = c('participant_id', 'group')] %>%
-  # Split by groups
+  # Summarize separately for groups
   .[, .(min_age = min(age),
         max_age = max(age),
         mean_age = mean(age),
@@ -93,7 +98,10 @@ data_demo = data %>%
         n_male = length(which(sex == 'Male')),
         n_female = length(which(sex == 'Female'))),
     by = c('group')]
-data_demo
+
+# Display table
+knitr::kable(data_demo) %>%
+  kableExtra::kable_styling()
 ```
 
 
@@ -105,9 +113,12 @@ data_demo
 ```{r, fig.height=0.75*n_participants, out.width='100%'}
 # Percentage of optimal choices
 check_noc = data %>%
+  # Add trial variable
   .[, trial := seq(.N),
     by = c('participant_id', 'run')] %>%
+  # Select only free choices (no guided choices)
   .[trial_type == 'choice',] %>%
+  # Set correct choice by selecting (on average) higher outcome bandit
   .[, correct_choice := if(option_left > option_right) 'left' else 'right',
     by = c('participant_id', 'run', 'trial')] %>%
   .[, correct := correct_choice == choice] %>%
@@ -115,7 +126,6 @@ check_noc = data %>%
   .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
     by = c('participant_id', 'group', 'run', 'comp')]
 ```
-
 
 ## Plot
 
@@ -162,8 +172,11 @@ check_noc$comp = as.factor(check_noc$comp)
 check_noc$perc_correct = as.numeric(check_noc$perc_correct)
 
 # LME
+# Model percent of correct choices by group, run, and bandit comparison
 lme_noc = lme4::lmer(data = check_noc,
                      perc_correct ~ group * run * comp + (1 | participant_id))
+
+# Display results
 papeR::prettify(Anova(lme_noc))
 ```
 
@@ -174,11 +187,6 @@ emmeans::emmeans(lme_noc,
                  pairwise ~ run)
 ```
 
-```{r}
-check_noc
-```
-
-
 ### Main effect comp
 
 ```{r}
@@ -186,10 +194,11 @@ emmeans::emmeans(lme_noc,
                  pairwise ~ comp)
 ```
 
----
+### Robust regression (due to outliers)
 
 ```{r}
-bla = data %>%
+# Get correct choices
+data_rr = data %>%
   .[, trial := seq(.N),
     by = c('participant_id', 'run')] %>%
   .[trial_type == 'choice', correct := if(option_left > option_right) 'left' else 'right',
@@ -200,7 +209,9 @@ bla = data %>%
   .[!is.na(outcome), correct_choice := choice == correct,
     by = c('participant_id', 'run', 'trial')]
 
-bla_mean_correct = bla %>%
+# Average correct choices
+data_rr_mean_correct = data_rr %>%
+  # Only consider free choices
   .[trial_type == 'choice', ] %>%
   # Average over runs
   .[, .(mean_correct = mean(correct_choice, na.rm = TRUE),
@@ -221,27 +232,10 @@ bla_mean_correct = bla %>%
            participant_id = as.factor(participant_id))]
 ```
 
-## Stats
+**Plot including outliers of OA**
 
 ```{r}
-# Test difference in older adults against 0
-t.test(bla_mean_correct[group == 'older']$mean_bandit_effect)
-# Test difference in younger adults against 0
-t.test(bla_mean_correct[group == 'younger']$mean_bandit_effect)
-# Compare age groups
-t.test(bla_mean_correct[group == 'older']$mean_bandit_effect,
-       bla_mean_correct[group == 'younger']$mean_bandit_effect)
-
-# Exclusion of "outliers"
-outlier_excl = bla_mean_correct[!participant_id %in% c('456LJD0', '8TYYUVQ')]
-t.test(outlier_excl[group == 'older']$mean_bandit_effect,
-       outlier_excl[group == 'younger']$mean_bandit_effect)
-```
-
-## Plot
-
-```{r}
-data_plot = Prepare_data_for_plot(bla_mean_correct) 
+data_plot = Prepare_data_for_plot(data_rr_mean_correct) 
 
 file = file.path(base_path,
                  'derivatives',
@@ -289,62 +283,16 @@ p = ggplot(data = data_plot,
 Neurocodify_plot(p)
 ```
 
-```{r}
-data_plot = Prepare_data_for_plot(outlier_excl) 
-
-nudge_with = 0.15
-
-p = ggplot(data = data_plot,
-           aes(x = group,
-               y = mean_bandit_effect,
-               color = group,
-               fill = group)) +#
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = sdamr::position_jitternudge(nudge.x = -nudge_with,
-                                                    jitter.width = 0.05,
-                                                    jitter.height = 0,
-                                                    seed = 666),
-             alpha = 0.5) +
-  gghalves::geom_half_violin(side = 'r',
-                             width = 0.3,
-                             position = position_nudge(x = nudge_with),
-                             color = NA) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = 0.1) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               inherit.aes = TRUE,
-               fill = 'white',
-               size = 2,
-               stroke = 0.5,
-               show.legend = FALSE) +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides) +
-  scale_y_continuous(limits = c(-0.2, 0.5),
-                     breaks = seq(-0.2, 0.4, by = 0.2)) +
-  theme(legend.position = 'none')
-  
-Neurocodify_plot(p)
-```
-
-## Robust regression approach (bandit effect) {.tabset}
-
-### Standard OLS
-
-#### Regression model
+#### First: Standard OLS
 
 ```{r}
 # Standard OLS
 ols = lm(mean_bandit_effect ~ 1 + group,
-         data = bla_mean_correct)
+         data = data_rr_mean_correct)
 summary(ols)
 ```
 
-#### Plot residuals, QQ, weighting, and leverage
+##### Plot residuals, QQ, weighting, and leverage
 
 ```{r}
 # Plot residuals, QQ, weighting, and leverage
@@ -352,99 +300,69 @@ opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
 plot(ols, las = 1)
 ```
 
-#### Display by cooks distance
+##### Display by cooks distance
 
 ```{r}
 # Display values with large cook's distance
 cooks_d <- cooks.distance(ols)
 r <- stdres(ols)
-a <- cbind(bla_mean_correct, cooks_d, r)
+a <- cbind(data_rr_mean_correct, cooks_d, r)
 # Conventional cut-off (https://stats.oarc.ucla.edu/r/dae/robust-regression/)
-cutoff = 4/nrow(bla_mean_correct)
+cutoff = 4/nrow(data_rr_mean_correct)
 # Only absolute residuals matter
 a = a %>%
   .[, ':='(abs_r = abs(r),
            cutoff = cooks_d > cutoff)] %>%
   .[order(rank(-abs_r))]
-a
+
+# Notice the participants beyond the cut-off
+knitr::kable(a) %>%
+  kableExtra::kable_styling()
 ```
-
-### Robust regression
-
-Both robust regression approaches agree in significant group effect.
-
-#### Robust Regression with Huber weights
-
-```{r}
-# Robust Regression model (huber weights)
-rr.huber = MASS::rlm(mean_bandit_effect ~ 1 + group,
-                     data = bla_mean_correct)
-bla = summary(rr.huber)
-bla
-
-# Look at weights created by RR (low weights = "outlier-y behavior")
-hweights = bla_mean_correct %>%
-  .[, ':='(resid = rr.huber$resid,
-           weight = rr.huber$w)] %>%
-  # Sort by weight
-  .[order(rank(weight)),]
-hweights
-```
-
-```{r}
-out = data.table(bla$coefficients)
-
-plot_t = data.table(x = seq(-5,5, by = 0.01),
-                    y = dt(seq(-5,5, by = 0.01), df=bla$df[2]))
- p = ggplot(data = plot_t,
-       aes(x = x,
-           y = y)) +
-  geom_path() +
-   # Mark cut-offs
-  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
-             linetype = 'dashed') +
-   # Mark t-value of group statistic
-  geom_vline(xintercept = out$`t value`[2],
-             color = 'red') +
-   labs(x = 't-Value',
-        y = 'Density',
-        main = 't-Distribution for group effect') +
-   scale_y_continuous(expand = c(0,0))
- Neurocodify_plot(p) +
-   theme(panel.grid = element_blank())
-```
-
 
 #### Robust Regression with Bisquare weights
+
+**Summary**
 
 ```{r}
 # Robust regression (bisquare weights)
 rr.bisquare = MASS::rlm(mean_bandit_effect ~ 1 + group,
-                     data = bla_mean_correct,
+                     data = data_rr_mean_correct,
                      psi = psi.bisquare)
-bla = summary(rr.bisquare)
-bla
+res = summary(rr.bisquare)
+res
+```
 
+**Bisquare weights**
+
+```{r}
 # Look at weights created by RR (low weights = "outlier-y behavior")
-bweights = bla_mean_correct %>%
+bweights = data_rr_mean_correct %>%
   .[, ':='(resid = rr.bisquare$resid,
            weight = rr.bisquare$w)] %>%
   # Sort by weight
   .[order(rank(weight)),]
-bweights
+
+# Display weights by participant
+knitr::kable(bweights) %>%
+  kableExtra::kable_styling()
 ```
 
-```{r}
-out = data.table(bla$coefficients)
+**t-distribution and t-value of age group effect**
 
+```{r}
+# Convert stat summary to data.table
+out = data.table(res$coefficients)
+
+# plot t-distribution
 plot_t = data.table(x = seq(-5,5, by = 0.001),
-                    y = dt(seq(-5,5, by = 0.001), df=bla$df[2]))
+                    y = dt(seq(-5,5, by = 0.001), df=res$df[2]))
 p = ggplot(data = plot_t,
            aes(x = x,
                y = y)) +
   geom_path() +
   # Mark cut-offs
-  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
+  geom_vline(xintercept = qt(c(.025, .975), df = res$df[2]),
              linetype = 'dashed') +
   # Mark t-value of group statistic
   geom_vline(xintercept = out$`t value`[2],
@@ -455,58 +373,115 @@ p = ggplot(data = plot_t,
   scale_y_continuous(expand = c(0,0))
 Neurocodify_plot(p) +
   theme(panel.grid = element_blank())
+```
 
+**p-value of age group effect**
+
+```{r}
+# Derive p-value from t-distribution and display
 p_value = plot_t[x == round(out$`t value`[2], 3)]$y
 p_value
 ```
 
-
 ---
 
-# Risk aversion (proportion of M choices)
+# Reaction time (RT)
 
 ```{r}
-check_risk = data %>%
-  Add_comp() %>%
-  # Only take free choices
-  .[trial_type == 'choice',] %>%
-  .[comp != '1v3',] %>%
-  .[, .(n_overall = .N,
-        n_choice_2 = length(which(option_choice == 2))),
-    by = c('participant_id', 'group', 'run', 'trial_type')] %>%
-  .[, perc_choice_2 := n_choice_2 / n_overall * 100]
+# Get log(RT)
+check_rt = data %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  # Exclude time-outs
+  .[timeout == FALSE, ] %>%
+  .[, log_rt := log(rt)] %>%
+  # Long format for easier analysis
+  data.table::melt(.,
+                   id.vars = c('participant_id',
+                               'group',
+                               'run',
+                               'trial',
+                               'trial_type',
+                               'comp'),
+                   measure.vars = c('log_rt'))
+
+# Resolve RT by bandit comparison
+check_rt_mean = check_rt %>%
+  .[variable == 'log_rt', ] %>%
+  # Get mean log(rt) for each possible comparison
+  .[, .(mean_value = mean(value)),
+    by = c('participant_id', 'group', 'run', 'trial_type', 'comp')] %>%
+  # Restrict to choice trials (ommitting forced choices)
+  .[trial_type == 'choice',]
 ```
 
 ## Stats
 
 ```{r}
 # Assure data types
-check_risk$participant_id = as.factor(check_risk$participant_id)
-check_risk$group = as.factor(check_risk$group)
-check_risk$run = as.factor(check_risk$run)
-check_risk$trial_type = as.factor(check_risk$trial_type)
-check_risk$n_overall = as.numeric(check_risk$n_overall)
-check_risk$n_choice_2 = as.numeric(check_risk$n_choice_2)
-check_risk$perc_choice_2 = as.numeric(check_risk$perc_choice_2)
+check_rt_mean$participant_id = as.factor(check_rt_mean$participant_id)
+check_rt_mean$group = as.factor(check_rt_mean$group)
+check_rt_mean$run = as.factor(check_rt_mean$run)
+check_rt_mean$trial_type = as.factor(check_rt_mean$trial_type)
+check_rt_mean$comp = as.factor(check_rt_mean$comp)
+check_rt_mean$mean_value = as.numeric(check_rt_mean$mean_value)
 
-lme_risk = lme4::lmer(data = check_risk,
-           perc_choice_2 ~ group * run + (1|participant_id))
-papeR::prettify(Anova(lme_risk))
+# Stats model
+lme_rt_comp = lme4::lmer(data = check_rt_mean,
+                         mean_value ~ group * run * comp + (1|participant_id))
+# Display
+papeR::prettify(Anova(lme_rt_comp))
+```
+
+### Main effect: Comp
+
+```{r}
+emmeans::emmeans(lme_rt_comp,
+                 pairwise ~ comp)
+```
+
+### Main effect: Age group
+
+```{r}
+emmeans::emmeans(lme_rt_comp,
+                 pairwise ~ group)
+```
+
+
+### Interaction effect: Group x Comp
+
+```{r}
+em = emmeans::emmeans(lme_rt_comp,
+                  pairwise ~ group | comp)
+em
+# Accurate correction
+summary(em, by = NULL, adjust = 'sidak')
 ```
 
 ## Plot
 
 ```{r}
-data_plot = Prepare_data_for_plot(check_risk)
+data_plot = Prepare_data_for_plot(check_rt_mean)
+
+save_path = file.path(base_path,
+                      'derivatives',
+                      'figures',
+                      'f_rt.tsv',
+                      fsep = .Platform$file.sep)
+data.table::fwrite(data_plot,
+                   save_path,
+                   sep = '\t',
+                   row.names = FALSE,
+                   na = 'n/a')
 
 dodge_width = 0.3
 
-p_risk = ggplot(data = data_plot,
-                aes(x = group,
-                    y = perc_choice_2,
-                    color = group,
-                    fill = group)) +
-    geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+p_rt_comp = ggplot(data = data_plot,
+       aes(x = comp,
+           y = mean_value,
+           color = group,
+           fill = group)) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
                                              jitter.width = dodge_width/2,
                                              jitter.height = 0,
                                              seed = 666)) +
@@ -526,189 +501,33 @@ p_risk = ggplot(data = data_plot,
                show.legend = FALSE) +
   scale_color_manual(values = custom_guides) +
   scale_fill_manual(values = custom_guides)
-Neurocodify_plot(p_risk)
+Neurocodify_plot(p_rt_comp)
+  
 ```
-
-(Whats the baseline exactly? Could there be local bubbles of comparisons that would encourage deviations fpr risk aversion?)
-
-### Actually different from 50%?
-
-```{r}
-data_test = check_risk %>%
-  # calculate mean over runs
-  .[, .(mean_perc_choice_2 = mean(perc_choice_2)),
-    by = c('participant_id', 'group', 'trial_type')] %>%
-  # t.test against 50%
-  .[, .(estimate = t.test(mean_perc_choice_2, mu = 50)$estimate,
-        t = t.test(mean_perc_choice_2, mu = 50)$statistic,
-        df = t.test(mean_perc_choice_2, mu = 50)$parameter,
-        alpha = .05,
-        alpha_corr = .05 / 2,
-        p = t.test(mean_perc_choice_2, mu = 50)$p.value),
-    by = 'group']
-
-knitr::kable(data_test) %>%
-  kableExtra::kable_styling()
-```
-
-### Robust regression
-
-### Standard OLS
-
-#### Regression model
-
-```{r}
-# Standard OLS
-ols = lm(perc_choice_2 ~ group * run,
-         data = check_risk)
-summary(ols)
-```
-
-#### Plot residuals, QQ, weighting, and leverage
-
-```{r}
-# Plot residuals, QQ, weighting, and leverage
-opar <- par(mfrow = c(2,2), oma = c(0, 0, 1.1, 0))
-plot(ols, las = 1)
-```
-
-#### Display by cooks distance
-
-```{r}
-# Display values with large cook's distance
-cooks_d <- cooks.distance(ols)
-r <- stdres(ols)
-a <- cbind(check_risk, cooks_d, r)
-# Conventional cut-off (https://stats.oarc.ucla.edu/r/dae/robust-regression/)
-cutoff = 4/nrow(check_risk)
-# Only absolute residuals matter
-a = a %>%
-  .[, ':='(abs_r = abs(r),
-           cutoff = cooks_d > cutoff)] %>%
-  .[order(rank(-abs_r))]
-a
-```
-
-### Robust regression
-
-Both robust regression approaches agree in significant group effect.
-
-#### Robust Regression with Huber weights
-
-```{r}
-# Robust Regression model (huber weights)
-rr.huber = MASS::rlm(perc_choice_2 ~ group * run,
-                     data = check_risk)
-bla = summary(rr.huber)
-bla
-
-# Look at weights created by RR (low weights = "outlier-y behavior")
-hweights = check_risk %>%
-  .[, ':='(resid = rr.huber$resid,
-           weight = rr.huber$w)] %>%
-  # Sort by weight
-  .[order(rank(weight)),]
-hweights
-```
-
-```{r}
-out = data.table(bla$coefficients)
-
-plot_t = data.table(x = seq(-5,5, by = 0.01),
-                    y = dt(seq(-5,5, by = 0.01), df=bla$df[2]))
- p = ggplot(data = plot_t,
-       aes(x = x,
-           y = y)) +
-  geom_path() +
-   # Mark cut-offs
-  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
-             linetype = 'dashed') +
-   # Mark t-value of group statistic
-  geom_vline(xintercept = out$`t value`[2],
-             color = 'red') +
-   labs(x = 't-Value',
-        y = 'Density',
-        main = 't-Distribution for group effect') +
-   scale_y_continuous(expand = c(0,0))
- Neurocodify_plot(p) +
-   theme(panel.grid = element_blank())
- 
- p_value = plot_t[x == round(out$`t value`[2], 2)]$y
-p_value
-```
-
-
-#### Robust Regression with Bisquare weights
-
-```{r}
-# Robust regression (bisquare weights)
-rr.bisquare = MASS::rlm(perc_choice_2 ~ group * run,
-                     data = check_risk,
-                     psi = psi.bisquare)
-bla = summary(rr.bisquare)
-bla
-
-# Look at weights created by RR (low weights = "outlier-y behavior")
-bweights = check_risk %>%
-  .[, ':='(resid = rr.bisquare$resid,
-           weight = rr.bisquare$w)] %>%
-  # Sort by weight
-  .[order(rank(weight)),]
-bweights
-```
-
-```{r}
-out = data.table(bla$coefficients)
-
-plot_t = data.table(x = seq(-5,5, by = 0.001),
-                    y = dt(seq(-5,5, by = 0.001), df=bla$df[2]))
-p = ggplot(data = plot_t,
-           aes(x = x,
-               y = y)) +
-  geom_path() +
-  # Mark cut-offs
-  geom_vline(xintercept = qt(c(.025, .975), df = bla$df[2]),
-             linetype = 'dashed') +
-  # Mark t-value of group statistic
-  geom_vline(xintercept = out$`t value`[2],
-             color = 'red') +
-  labs(x = 't-Value',
-       y = 'Density',
-       main = 't-Distribution for group effect') +
-  scale_y_continuous(expand = c(0,0))
-Neurocodify_plot(p) +
-  theme(panel.grid = element_blank())
-
-p_value = plot_t[x == round(out$`t value`[2], 2)]$y
-p_value
-```
-
 
 ---
 
-# Effect of rare events on choice performance
+# Immediate influence of surprising outcomes
 
 ```{r}
 # Make sure we only include choices in 1v2 comps when calculating prob of choosing 2
-bla = data %>%
+data_ii = data %>%
   .[comp != '1v2' | trial_type != 'choice', correct_choice := NA,
     by = c('participant_id', 'run')] %>%
   # Get running averages
   .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 1),
+                                           choice_outcome = outcome,
+                                           stim = 1),
            avg_2_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 2),
+                                           choice_outcome = outcome,
+                                           stim = 2),
            avg_3_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 3)),
+                                           choice_outcome = outcome,
+                                           stim = 3)),
     by = c('participant_id', 'run')]
 
 # Allocate data holding +-5 trials from rare outcome of bandit 2
 window_data = data.table()
-
-#rep(NA, max(-z+wdsz, 0))
 
 # Function to get data slice +-5 trials from rare outcome of bandit 2
 Windowrize = function(data,
@@ -730,11 +549,11 @@ Windowrize = function(data,
 # i_run = '1'
 
 # For each participant & run
-for(i_id in unique(bla$participant_id)){
-  for(i_run in unique(bla$run)){
+for(i_id in unique(data_ii$participant_id)){
+  for(i_run in unique(data_ii$run)){
     
     # Select data
-    temp_data = bla[participant_id == i_id &
+    temp_data = data_ii[participant_id == i_id &
                       run == i_run]
     
     # Get all trials where rare outcomes were obtained
@@ -782,6 +601,8 @@ window_data_group = window_data_participant %>%
   .[order(rank(group), rank(window_relative)),]
 ```
 
+## Check: Average N of rare outcomes per group
+
 ```{r}
 avg_n_rare = window_data %>%
   # Eliminate windows which extended across trial boundaries (<1 or >240)
@@ -825,7 +646,7 @@ Neurocodify_plot(p)
 
 ```
 
-Average number of rare outcomes in each run
+**Average number of rare outcomes in each run**
 
 ```{r}
 # Average rare outcomes per run
@@ -833,7 +654,7 @@ avg_n_rare_per_run = mean(avg_n_rare$n_rare)
 avg_n_rare_per_run
 ```
 
-Average number of free-choice LM trials immediately preceding or following a rare outcome
+**Average number of free-choice low-mid trials immediately preceding or following a rare outcome**
 
 ```{r}
 # Avg n_data pre and post rare outcome
@@ -842,36 +663,19 @@ window_data_run[window_relative %in% c('-1', '1')] %>%
     by = c('window_relative')]
 ```
 
-
 ## Stats
 
 ```{r}
-# test pre vs post trial
-# younger
-t.test(window_data_participant[window_relative == '-1' & group == 'younger']$accuracy,
-       window_data_participant[window_relative == '1' & group == 'younger']$accuracy,
-       paired = TRUE)
-# older
-t.test(window_data_participant[window_relative == '-1' & group == 'older']$accuracy,
-       window_data_participant[window_relative == '1' & group == 'older']$accuracy,
-       paired = TRUE)
-# younger vs older
-t.test(
-  window_data_participant[window_relative == '-1' & group == 'younger']$accuracy -
-    window_data_participant[window_relative == '1' & group == 'younger']$accuracy,
-  window_data_participant[window_relative == '-1' & group == 'older']$accuracy -
-    window_data_participant[window_relative == '1' & group == 'older']$accuracy
-  )
-```
-
-```{r}
+# LME for immediate before, and immediate after rare outcome
 data_lme = window_data_run[window_relative %in% c('-1', '1')] %>%
   .[, group := as.factor(group)] %>%
   .[, participant_id := as.factor(participant_id)]
 
 lme = lme4::lmer(data = data_lme,
                  mean_accuracy ~ window_relative * group * run + (1 | participant_id))
-Anova(lme)
+
+res = Anova(lme)
+papeR::prettify(res)
 ```
 
 ### Main effect: Window
@@ -880,16 +684,20 @@ Anova(lme)
 emmeans::emmeans(lme, pairwise ~ window_relative)
 ```
 
+### Interaction effect: Window X group
+
+```{r}
+em = emmeans::emmeans(lme, pairwise ~ window_relative | group)
+em
+
+# Accurate correction
+summary(em, by = NULL, adjust = 'sidak')
+```
+
 ### Main effect: Run
 
 ```{r}
 emmeans::emmeans(lme, pairwise ~ run)
-```
-
-### Interaction effect: Window X group
-
-```{r}
-emmeans::emmeans(lme, pairwise ~ window_relative | group)
 ```
 
 
@@ -941,13 +749,6 @@ p = ggplot(data = data_plot,
                                              seed = 666),
              size = 0.5,
              alpha = 0.5) +
-  # geom_line(aes(group = participant_id),
-  #           alpha = 0.1,
-  #           size = 0.5) +
-  # geom_boxplot(color = 'black',
-  #              outlier.shape = NA,
-  #              width = dodge_width,
-  #              position = position_dodge(width = dodge_width)) +
   geom_vline(xintercept = 0,
              linetype = 'dashed') +
   geom_path(data = data_plot_mean,
@@ -990,22 +791,23 @@ Neurocodify_plot(p) +
   theme(panel.grid = element_blank())
 ```
 
-## Events between 20th and 40th percentile
+# Immediate influence of events between 20th and 40th percentile
 
 ```{r}
 window_data_normal = data.table()
 # For each participant & run
-for(i_id in unique(bla$participant_id)){
-  for(i_run in unique(bla$run)){
+for(i_id in unique(data_ii$participant_id)){
+  for(i_run in unique(data_ii$run)){
     
     # Select data
-    temp_data = bla[participant_id == i_id &
+    temp_data = data_ii[participant_id == i_id &
                       run == i_run]
     
     # Get percentiles of second bandit for upper and lower bound
     perc = temp_data[comp %in% c('1v2', '2v3')] %>%
       .[, sample_2 := c(reward_stim_1, reward_stim_2)[which(c(option_left, option_right) == 2)],
         by = c('trial')]
+    # Set boundaries to 20th-40th percentile of outcomes
     lb = quantile(perc$sample_2, prob = 0.2)
     ub = quantile(perc$sample_2, prob = 0.4)
     
@@ -1055,7 +857,7 @@ window_data_participant_normal = window_data_run_normal %>%
     by = c('participant_id', 'group', 'window_relative')]
 ```
 
-### Stats
+## Stats
 
 ```{r}
 data_lme = window_data_run_normal[window_relative %in% c('-1', '1')] %>%
@@ -1064,17 +866,13 @@ data_lme = window_data_run_normal[window_relative %in% c('-1', '1')] %>%
 
 lme = lme4::lmer(data = data_lme,
                  mean_accuracy ~ window_relative * group * run + (1 | participant_id))
-Anova(lme)
+res = Anova(lme)
+
+# Display
+papeR::prettify(res)
 ```
 
-#### Main effect run
-
-```{r}
-emmeans::emmeans(lme,
-                 pairwise ~ run)
-```
-
-### Plot
+## Plot
 
 ```{r}
 data_plot = Prepare_data_for_plot(window_data_participant_normal) %>%
@@ -1173,105 +971,54 @@ Neurocodify_plot(p) +
 
 ---
 
-## RT
+# Risk aversion (proportion of M choices)
 
 ```{r}
-check_rt = data %>%
-  .[, trial := seq(.N),
-    by = c('participant_id', 'run')] %>%
-  .[timeout == FALSE, ] %>%
-  .[, log_rt := log(rt)] %>%
-  data.table::melt(.,
-                   id.vars = c('participant_id',
-                               'group',
-                               'run',
-                               'trial',
-                               'trial_type',
-                               'comp'),
-                   measure.vars = c('log_rt'))
+check_risk = data %>%
+  Add_comp() %>%
+  # Only take free choices
+  .[trial_type == 'choice',] %>%
+  .[comp != '1v3',] %>%
+  .[, .(n_overall = .N,
+        n_choice_2 = length(which(option_choice == 2))),
+    by = c('participant_id', 'group', 'run', 'trial_type')] %>%
+  .[, perc_choice_2 := n_choice_2 / n_overall * 100]
 ```
 
-
-### Comp resolves RT difference
-
-```{r}
-check_rt_mean = check_rt %>%
-  .[variable == 'log_rt', ] %>%
-  # Get mean log(rt) for each possible comparison
-  .[, .(mean_value = mean(value)),
-    by = c('participant_id', 'group', 'run', 'trial_type', 'comp')] %>%
-  # Restrict to choice trials (ommitting forced choices)
-  .[trial_type == 'choice',]
-```
-
-#### Stats
+## Stats
 
 ```{r}
 # Assure data types
-check_rt_mean$participant_id = as.factor(check_rt_mean$participant_id)
-check_rt_mean$group = as.factor(check_rt_mean$group)
-check_rt_mean$run = as.factor(check_rt_mean$run)
-check_rt_mean$trial_type = as.factor(check_rt_mean$trial_type)
-check_rt_mean$comp = as.factor(check_rt_mean$comp)
-check_rt_mean$mean_value = as.numeric(check_rt_mean$mean_value)
+check_risk$participant_id = as.factor(check_risk$participant_id)
+check_risk$group = as.factor(check_risk$group)
+check_risk$run = as.factor(check_risk$run)
+check_risk$trial_type = as.factor(check_risk$trial_type)
+check_risk$n_overall = as.numeric(check_risk$n_overall)
+check_risk$n_choice_2 = as.numeric(check_risk$n_choice_2)
+check_risk$perc_choice_2 = as.numeric(check_risk$perc_choice_2)
 
-lme_rt_comp = lme4::lmer(data = check_rt_mean,
-                         mean_value ~ group * run * comp + (1|participant_id))
-papeR::prettify(Anova(lme_rt_comp))
+# LME
+lme_risk = lme4::lmer(data = check_risk,
+                      perc_choice_2 ~ group * run + (1|participant_id))
+res = Anova(lme_risk)
+
+# Display
+papeR::prettify(res)
 ```
 
-##### Main effect: Group
+## Plot
 
 ```{r}
-emmeans::emmeans(lme_rt_comp,
-                 pairwise ~ group)
-```
-
-##### Main effect: Comp
-
-```{r}
-emmeans::emmeans(lme_rt_comp,
-                 pairwise ~ comp)
-```
-
-```{r}
-emmeans::emmeans(lme_rt_comp,
-                  pairwise ~ group * comp)
-```
-
-
-##### Interaction effect: Group x Comp
-
-```{r}
-emmeans::emmeans(lme_rt_comp,
-                  pairwise ~ group | comp)
-```
-
-
-#### Plot
-
-```{r}
-data_plot = Prepare_data_for_plot(check_rt_mean)
-
-save_path = file.path(base_path,
-                      'derivatives',
-                      'figures',
-                      'f_rt.tsv',
-                      fsep = .Platform$file.sep)
-data.table::fwrite(data_plot,
-                   save_path,
-                   sep = '\t',
-                   row.names = FALSE,
-                   na = 'n/a')
+data_plot = Prepare_data_for_plot(check_risk)
 
 dodge_width = 0.3
 
-p_rt_comp = ggplot(data = data_plot,
-       aes(x = comp,
-           y = mean_value,
-           color = group,
-           fill = group)) +
-  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+p_risk = ggplot(data = data_plot,
+                aes(x = group,
+                    y = perc_choice_2,
+                    color = group,
+                    fill = group)) +
+    geom_point(position = position_jitterdodge(dodge.width = dodge_width,
                                              jitter.width = dodge_width/2,
                                              jitter.height = 0,
                                              seed = 666)) +
@@ -1291,17 +1038,13 @@ p_rt_comp = ggplot(data = data_plot,
                show.legend = FALSE) +
   scale_color_manual(values = custom_guides) +
   scale_fill_manual(values = custom_guides)
-Neurocodify_plot(p_rt_comp)
-  
+Neurocodify_plot(p_risk)
 ```
 
-Correlation RT to accuracy
 
 ---
 
 # Estimation
-
-Let running average not include first 10 trials or so
 
 ```{r}
 # State melt columns (to align data types to avoid warnings)
@@ -1330,8 +1073,10 @@ check_est = data %>%
                                      choice_outcome = outcome,
                                      stim = 3)),
     by = c('participant_id', 'run')] %>%
+  # Column to mark guided choices of mid bandit that produce a rare outcome
   .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
   .[!is.na(est_1_reward),] %>%
+  # Get count for estimation trials
   .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
   # Unify data types of measure columns
   .[, (measure_cols) := lapply(.SD, as.double), .SDcols = measure_cols] %>%
@@ -1342,16 +1087,20 @@ check_est = data %>%
                                'est_trial',
                                'forced_rare'),
                    measure.vars = measure_cols) %>%
+  # Isolate bandit from variable name to use as variable
   .[, est_stim := substr(variable, 5, 5)] %>%
+  # Isolate type of value (participants estimate of reward, running average, participants estimate of range/dispersion)
   .[, type := substr(variable, 7, 9)] %>%
   .[type == 'rew', type := 'reward'] %>%
   .[type == 'ran', type := 'range'] %>%
-  .[type == 'run', type := 'r_avg'] %>%
-  data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
-                    value.var = 'value')
+  .[type == 'run', type := 'r_avg']
+
 
 # Merge true means with estimation
 check_est_diff = check_est %>%
+  # Wide format to compare true running avg reward and estimate
+  data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
+                    value.var = 'value') %>%
   # Get difference between estimation and true mean
   .[, diff_from_true := reward - r_avg]
 
@@ -1403,41 +1152,8 @@ p_check_mean_est_diff = ggplot(data = data_plot[half == 'Second Half'],
 Neurocodify_plot(p_check_mean_est_diff)
 ```
 
-
-## Stats, Averaged over runs
-
 ```{r}
-# Assure data types
-check_mean_est_diff$participant_id = as.factor(check_mean_est_diff$participant_id)
-check_mean_est_diff$group = as.factor(check_mean_est_diff$group)
-check_mean_est_diff$run = as.factor(check_mean_est_diff$run)
-check_mean_est_diff$est_stim = factor(check_mean_est_diff$est_stim)
-levels(check_mean_est_diff$est_stim) = c('Low', 'Mid', 'High')
-check_mean_est_diff$mean_diff_from_true = as.numeric(check_mean_est_diff$mean_diff_from_true)
-
-#Only take second half (to allow learning)
-check_mean_est_diff_half = check_mean_est_diff %>%
-  .[half == '2',] %>%
-  # Average over runs
-  .[, .(mean_diff_from_true = mean(mean_diff_from_true)),
-    by = c('participant_id', 'group', 'half', 'est_stim')]
-
-
-# LME
-lme_est_diff = lme4::lmer(data = check_mean_est_diff_half,
-                          mean_diff_from_true ~ group * est_stim + (1 | participant_id))
-papeR::prettify(Anova(lme_est_diff))
-```
-
-### Main effect: Stimulus
-
-```{r}
-emmeans::emmeans(lme_est_diff,
-                 pairwise ~ est_stim)
-```
-
-```{r}
-data_plot = Prepare_data_for_plot(check_mean_est_diff_half)
+data_plot = Prepare_data_for_plot(check_mean_est_diff)
 
 p_check_mean_est_diff = ggplot(data = data_plot[half == 2],
                                aes(x = est_stim,
@@ -1472,21 +1188,28 @@ Neurocodify_plot(p_check_mean_est_diff)
 ## Actually different from zero?
 
 ```{r}
-data_test = check_mean_est_diff_half %>%
+data_test = check_mean_est_diff %>%
+  Prepare_data_for_plot(.) %>%
+  # Only select second half of trials in each run
+  .[half == 2,] %>%
+  # Average over runs
+  .[, .(mean_diff_from_true = mean(mean_diff_from_true)),
+    by = c('participant_id', 'group', 'half', 'est_stim')] %>%
   # Test against 0
   .[, .(estimate = t.test(mean_diff_from_true, mu = 0)$estimate,
         t = t.test(mean_diff_from_true, mu = 0)$statistic,
         df = t.test(mean_diff_from_true, mu = 0)$parameter,
         p = t.test(mean_diff_from_true, mu = 0)$p.value),
-    by = c('est_stim', 'group')]
+    by = c('est_stim', 'group')] %>%
+  .[, p_adj_holm := p.adjust(p, method = 'holm')]
 
 knitr::kable(data_test) %>%
   kableExtra::kable_styling()
-
 ```
 
+
 ```{r}
-data_plot = Prepare_data_for_plot(check_mean_est_diff_half)
+data_plot = Prepare_data_for_plot(check_mean_est_diff)
 
 p_check_mean_est_diff = ggplot(data = data_plot[half == 2],
                                aes(x = est_stim,
@@ -1513,11 +1236,10 @@ p_check_mean_est_diff = ggplot(data = data_plot[half == 2],
                stroke = 0.5,
                position = position_dodge(width = 0.6),
                show.legend = FALSE)+ 
-  geom_text(size = 3,
-             color = 'black') +
+  # geom_text(size = 3,
+  #            color = 'black') +
   scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'None')
+  scale_color_manual(values = custom_guides)
 Neurocodify_plot(p_check_mean_est_diff)
 ```
 
@@ -1527,36 +1249,7 @@ Neurocodify_plot(p_check_mean_est_diff)
 # Difference between real distance (running average) and estimated distance
 
 ```{r}
-check_est_dist = data %>%
-  # Exclude rating based
-  Apply_exclusion_criteria(., choice_based_exclusion = FALSE) %>%
-  # Get running average of chosen rewards
-  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 1),
-           avg_2_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 2),
-           avg_3_running = Get_running_avg(choice_option = option_choice,
-                                     choice_outcome = outcome,
-                                     stim = 3)),
-    by = c('participant_id', 'run')] %>%
-  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
-  .[!is.na(est_1_reward),] %>%
-  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
-  # Unify data types of measure columns
-  .[, (measure_cols) := lapply(.SD, as.double), .SDcols = measure_cols] %>%
-  # Melt to change variable names of estimation variables
-  data.table::melt(id.vars = c('participant_id',
-                               'group',
-                               'run',
-                               'est_trial',
-                               'forced_rare'),
-                   measure.vars = measure_cols) %>%
-  .[, est_stim := substr(variable, 5, 5)] %>%
-  .[, type := substr(variable, 7, 9)] %>%
-  .[type == 'rew', type := 'reward'] %>%
-  .[type == 'ran', type := 'range'] %>%
+check_est_dist = check_est %>%
   # Put back into long format to calculate distance between estimates
   data.table::dcast(., participant_id + group + run + est_trial + forced_rare ~ paste0(type, '_', est_stim),
                     value.var = 'value') %>%
@@ -1564,8 +1257,8 @@ check_est_dist = data %>%
   .[, ':='(dist_est_2m1 = reward_2 - reward_1,
            dist_est_3m2 = reward_3 - reward_2)] %>%
   # Get difference of running averages of critical comparisons
-  .[, ':='(dist_ravg_2m1 = run_2 - run_1,
-           dist_ravg_3m2 = run_3 - run_2)] %>%
+  .[, ':='(dist_ravg_2m1 = r_avg_2 - r_avg_1,
+           dist_ravg_3m2 = r_avg_3 - r_avg_2)] %>%
   # Add first and second half of run variable
   .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
     by = c('participant_id', 'group', 'run')] %>%
@@ -1580,7 +1273,6 @@ check_est_dist = data %>%
   # Average values
   .[, .(mean_value = mean(value, na.rm = TRUE)),
     by = c('participant_id', 'group', 'run', 'half', 'variable')]
-  
 ```
 
 ## Stats
@@ -1594,7 +1286,7 @@ check_est_dist$half = as.factor(check_est_dist$half)
 check_est_dist$variable = as.factor(check_est_dist$variable)
 check_est_dist$mean_value = as.numeric(check_est_dist$mean_value)
 
-lme_diff_EmR = lme4::lmer(data = check_est_dist,
+lme_diff_EmR = lme4::lmer(data = check_est_dist[half == '2'],
                           mean_value ~ group * run * variable + (1 | participant_id))
 papeR::prettify(Anova(lme_diff_EmR))
 ```
@@ -1609,8 +1301,10 @@ emmeans::emmeans(lme_diff_EmR,
 ### Interaction effect: Group X Variable
 
 ```{r}
-emmeans::emmeans(lme_diff_EmR,
+em = emmeans::emmeans(lme_diff_EmR,
                  pairwise ~ variable | group)
+# Accurate correction
+summary(em, by = NULL, adjust = 'sidak')
 ```
 
 ```{r}
@@ -1625,7 +1319,7 @@ emmeans::contrast(em_pairwise, 'consec', simple = 'group', combine = TRUE)
 ## Plot
 
 ```{r}
-data_plot = Prepare_data_for_plot(check_est_dist)
+data_plot = Prepare_data_for_plot(check_est_dist[half == '2'])
 
 save_path = file.path(base_path,
                       'derivatives',
@@ -1673,7 +1367,7 @@ Neurocodify_plot(p_diff_EmR)
 ```
 
 ```{r}
-data_plot = Prepare_data_for_plot(check_est_dist)
+data_plot = Prepare_data_for_plot(check_est_dist[half == '2'])
 
 dodge_width = 0.2
 

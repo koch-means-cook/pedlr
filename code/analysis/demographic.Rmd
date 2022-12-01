@@ -25,7 +25,7 @@ header-includes:
 email: koch@mpib-berlin.mpg.de
 ---
 
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -45,7 +45,7 @@ library(rgeos)
 library(rworldmap)
 ```
 
-```{r}
+```{r, message=FALSE}
 # Get directory of repository
 base_path = here::here()
 
@@ -84,7 +84,8 @@ table = group_info %>%
         sd_age = round(sd(age), 2),
         min_age = min(age),
         max_age = max(age)),
-    by = group]
+    by = group] %>%
+  Prepare_data_for_plot(.)
 
 knitr::kable(table) %>%
   kableExtra::kable_styling()
@@ -103,7 +104,8 @@ p_dist = ggplot(data = data_plot,
   theme(panel.grid.minor = element_blank(),
         legend.position = 'top')
 
-Neurocodify_plot(p_dist)
+Neurocodify_plot(p_dist) +
+  theme(panel.grid = element_blank())
 ```
 
 
@@ -199,7 +201,7 @@ loc_data = loc_data %>%
     by = region]
 
 # Plot worldmap
-ggplot(geo_data,
+p_map = ggplot(geo_data,
        aes(x = long,
            y = lat,
            group = group)) +
@@ -236,6 +238,6 @@ ggplot(geo_data,
         axis.ticks = element_blank(),
         legend.position = 'top')
 
-
+p_map
 ```
 
