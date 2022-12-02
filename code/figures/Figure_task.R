@@ -174,12 +174,18 @@ Figure_task = function(){
                             full.names = TRUE, recursive = TRUE)
   invisible(lapply(source_files, function(x) source(x)))
   
-  # Load task scheme as plot
+  # Load task scheme as plot (handmade pdf, should be in datalad repo)
   file = file.path(base_path, 'derivatives', 'figures', 'task.pdf',
                    fsep = .Platform$file.sep)
-  task = magick::image_read_pdf(file)
-  p_task = magick::image_ggplot(task, interpolate = FALSE) +
-    theme(plot.margin = margin(0,10,0,0))
+  if(file.exists(file)){
+    task = magick::image_read_pdf(file)
+    p_task = magick::image_ggplot(task, interpolate = FALSE) +
+      theme(plot.margin = margin(0,10,0,0))
+    # If handmade plot is not present, skip
+  } else{
+    p_task = NULL
+  }
+  
   
   p_dist_schema = Figure_dist_schema()
   
