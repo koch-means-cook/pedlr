@@ -7,7 +7,11 @@ Get_plot_guides = function(){
           'Mid' = '#009E73',
           'High' = '#E69F00',
           'Free\nchoices' = 'solid',
-          'Guided\nchoices' = 'dashed')
+          'Guided\nchoices' = 'dashed',
+          'RW' = '#A36A2C',
+          'Uncertainty' = '#D2C08E',
+          'Surprise' = '#B7C7B8',
+          'Combined' = '#2586A0')
   
   return(res)
   

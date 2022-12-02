@@ -193,5 +193,4 @@ Get_exclusions = function(){
     .[order(rank(-n_criteria), group, participant_id), ]
   return(excludes)
   
-  
 }

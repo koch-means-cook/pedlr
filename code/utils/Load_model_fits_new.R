@@ -2,21 +2,22 @@ library(data.table)
 library(here)
 
 # Function to load data
-Load_data = function(){
+Load_model_fits_new = function(){
   
   # Repository directory
   base_path = here::here()
   
   # Data dir
   data_dir = file.path(base_path,
-                       'data',
+                       'derivatives',
+                       'model_fitting',
                        fsep = .Platform$file.sep)
-  # List of all data points
+  # List of all files
   data_list = Sys.glob(file.path(data_dir,
-                                 '*_exp_data.tsv',
+                                 '*_sv-*.tsv',
                                  fsep = .Platform$file.sep))
   
-  # Load all data
+  # Load data
   data = data.table()
   for(file in data_list){
     # load individual file in data directory
