@@ -42,3 +42,5 @@ documentation
 *.slurm
 
 
+.Rproj.user
+.Rprofile
