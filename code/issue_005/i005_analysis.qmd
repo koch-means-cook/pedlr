@@ -1,0 +1,177 @@
+---
+title: "Issue 005 analysis"
+format: html
+editor: source
+---
+
+```{r}
+library(here)
+library(data.table)
+library(magrittr)
+library(ggplot2)
+```
+
+# Setup
+
+```{r}
+base_path = here::here()
+data_dir = file.path(base_path, 'derivatives', 'issue_005',
+                     fsep = .Platform$file.sep)
+
+
+# Load own functions
+source(file.path(base_path, 'code', 'utils', 'Apply_exclusion_criteria.R',
+                 fsep = .Platform$file.sep))
+```
+
+# Load data
+
+```{r}
+# Get path for all relevant files
+files_pattern = file.path(data_dir, 'i005_fit*.tsv',
+                          fsep = .Platform$file.sep)
+files = Sys.glob(files_pattern)
+
+# Allocate empty table
+data = data.table::data.table()
+
+# Iterate over data and append to data table
+for(f in files){
+  temp = data.table::fread(f, sep = '\t', na.strings = 'NaN')
+  data = rbind(data, temp)
+}
+```
+
+# Example LR functions for two participants
+
+```{r}
+data_lr_example = data %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  .[is.nan(value), value := NA] %>%
+  # Select two participants
+  .[participant_id %in% c('09RI1ZH', 'RB2ZSAB', 'SBIDE6J')]
+link = data_lr_example[x == 'l' & variable == 'coefs' & model == 'surprise' & participant_id == '09RI1ZH'] %>%
+  .[, l := value] %>%
+  .[, c('l_bound_iteration', 'l')] %>%
+  .[order(rank(l_bound_iteration)), ]
+data_lr_example = data_lr_example %>%
+  data.table::merge.data.table(., link) %>%
+  .[variable == 'LRs'] %>%
+  .[order(rank(participant_id), rank(model))]
+```
+
+```{r}
+#p = ggplot2::ggplot(data = data_lr_example[l %in% c(0, 0.01)],
+p = ggplot2::ggplot(data = data_lr_example,                    
+                    ggplot2::aes(x = as.numeric(x),
+                                 y = value,
+                                 color = l,
+                                 group = l_bound_iteration)) +
+  ggplot2::geom_line() +
+  ggplot2::facet_grid(model~participant_id) +
+  ggplot2::scale_x_continuous(breaks = seq(1,100, by = 10))
+p
+```
+
+# Influence of lower bound on LL
+
+## Get participants with rising or falling LR function in real fit
+
+```{r}
+files_pattern = file.path(base_path, 'derivatives', 'model_fitting', 'fit-*fixed.tsv',
+                          fsep = .Platform$file.sep)
+files = Sys.glob(files_pattern)
+data_full_fit = data.table::data.table()
+
+for(f in files){
+  temp = data.table::fread(f, sep = '\t', na.strings = 'NaN')
+  data_full_fit = rbind(data_full_fit, temp)
+}
+
+data_uml = data_full_fit %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  .[model %in% c('surprise', 'uncertainty_surprise') & variable == 'coefs',] %>%
+  data.table::dcast(participant_id + group + model + AIC + AICc ~ x, value.var = 'value') %>%
+  .[, uml := u - l] %>%
+  .[, uml_dicho := uml > 0] %>%
+  .[, c('participant_id', 'model', 'uml_dicho')]
+```
+
+
+```{r}
+#unique(data$participant_id)
+data_lower_ll = data %>%
+  .[variable == 'coefs' & x == 'l'] %>%
+  data.table::merge.data.table(., data_uml)
+
+data_lower_ll_min = data_lower_ll %>%
+  .[,min_AICc := AICc == min(AICc),
+    by = c('participant_id', 'model')] %>%
+  .[min_AICc == TRUE]
+
+p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE],
+                aes(x = value,
+                    y = AICc,
+                    color = model)) +
+  #theme_minimal() +
+  geom_line() +
+  scale_color_manual(values = c('blue', 'red')) +
+  scale_x_continuous(breaks = c(0,1)) +
+  scale_y_continuous(limits = c(0,300),
+                     breaks = c(0,300)) +
+  facet_wrap(~participant_id) +
+  ggtitle('Falling LR function') +
+  theme(strip.text = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black",
+                                    fill=NA,
+                                    linewidth=0.3),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 0.5,
+                                  face = 'bold',
+                                  size = 14)) +
+  geom_point(data = data_lower_ll_min[uml_dicho == FALSE])
+
+p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE],
+                aes(x = value,
+                    y = AICc,
+                    color = model)) +
+  theme_minimal() +
+  geom_line() +
+  scale_color_manual(values = c('blue', 'red')) +
+  facet_wrap(~participant_id) +
+  scale_x_continuous(breaks = c(0,1)) +
+  scale_y_continuous(limits = c(0,300),
+                     breaks = c(0,300)) +
+  ggtitle('Rising LR function') +
+  theme(strip.text = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black",
+                                    fill=NA,
+                                    linewidth=0.3),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        plot.title = element_text(hjust = 0.5,
+                                  face = 'bold',
+                                  size = 14),
+        axis.title.y = element_blank(),
+        legend.position = 'bottom') +
+  geom_point(data = data_lower_ll_min[uml_dicho == TRUE])
+
+p = cowplot::plot_grid(p1, p2,
+                   ncol = 2,
+                   rel_widths = c(1,1),
+                   axis = 't',
+                   align = 'h')
+p
+```
+
+# PE distribution in full fit
+
+```{r}
+
+```
+
+
