@@ -65,6 +65,7 @@ Fit_models_new = function(data,
   
   # Set empty data.table
   out = data.table::data.table()
+  pes = data.table::data.table()
   
   # Loop over models
   for (model_count in 1:n_models) {
@@ -162,12 +163,44 @@ Fit_models_new = function(data,
     # sort colums
     temp = setcolorder(temp, c('participant_id', 'model', 'AIC', 'p_V1', 'p_V2',
                                'variable', 'x', 'value'))
-    
+    # Fuse fitting output
     out = rbind(out, temp)
+    
+    # Output of updates/PEs at each trial
+    temp_pes = data.table::data.table(t(cres[[3]]))
+    colnames(temp_pes) = c('low', 'mid', 'high')
+    temp_pes = temp_pes %>%
+      .[, ':='(update_low = as.logical(c(0, diff(low)) != 0),
+               update_mid = as.logical(c(0, diff(mid)) != 0),
+               update_high = as.logical(c(0, diff(high) != 0)),
+               trial = seq(.N))] %>%
+      # Mark first trials of runs with NA (since no PE)
+      .[trial %in% c(1, 241), ':='(update_low = NA,
+                                   update_mid = NA,
+                                   update_high = NA)] %>%
+      # Put bandit that was updated in a trial into column
+      .[, updated_bandit := which(c(update_low, update_mid, update_high) == TRUE),
+        by = 'trial'] %>%
+      # Get PE for bandit that was updated
+      .[, pe := c(low,mid,high)[updated_bandit],
+        by = 'trial'] %>%
+      # Select only neccessary columns
+      .[, c('trial', 'updated_bandit', 'pe')]
+    # Add relevant information for output
+    temp_pes$participant_id = participant_id
+    temp_pes$model = model_name
+    temp_pes$b2_ll = b2_logLik
+    temp_pes$AIC = AICs
+    temp_pes$AICc = AICc
+    temp_pes = setcolorder(temp_pes, c('participant_id', 'model', 'b2_ll', 'AIC', 'AICc'))
+    # Fuse PE output
+    pes = rbind(pes, temp_pes)
 
   }
   
-  # Return fitting for all models
-  return(out)
+  # Return fitting and PE output for all models
+  output = list(fitting_out = out,
+                pes_out = pes)
+  return(output)
 }
 

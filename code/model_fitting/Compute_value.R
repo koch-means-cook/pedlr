@@ -52,7 +52,7 @@ Compute_value = function(V,
   for (i in 2:length(idx)){
     
     # Get reward in current trial
-    # note: before updating V[idx[i]] reflects the reward, not the value
+    # note: before updating, V[idx[i]] reflects the reward, not the value
     R = V[idx[i]]
     # Calculate PE from current outcome
     PE[idx[i]] = R-V[idx[i-1]]

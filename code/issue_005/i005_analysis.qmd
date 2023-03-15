@@ -101,8 +101,11 @@ data_uml = data_full_fit %>%
 ```{r}
 #unique(data$participant_id)
 data_lower_ll = data %>%
-  .[variable == 'coefs' & x == 'l'] %>%
-  data.table::merge.data.table(., data_uml)
+  .[variable == 'coefs' & x %in% c('l', 'u')] %>%
+  data.table::merge.data.table(., data_uml) %>%
+  data.table::dcast(participant_id + model + AICc + uml_dicho ~ x, value.var = 'value') %>%
+  # Select only surprise model
+  .[model == 'surprise',]
 
 data_lower_ll_min = data_lower_ll %>%
   .[,min_AICc := AICc == min(AICc),
@@ -110,11 +113,12 @@ data_lower_ll_min = data_lower_ll %>%
   .[min_AICc == TRUE]
 
 p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE],
-                aes(x = value,
+                aes(x = l,
                     y = AICc,
                     color = model)) +
   #theme_minimal() +
   geom_line() +
+  geom_vline(aes(xintercept = u)) +
   scale_color_manual(values = c('blue', 'red')) +
   scale_x_continuous(breaks = c(0,1)) +
   scale_y_continuous(limits = c(0,300),
@@ -135,11 +139,12 @@ p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE],
   geom_point(data = data_lower_ll_min[uml_dicho == FALSE])
 
 p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE],
-                aes(x = value,
+                aes(x = l,
                     y = AICc,
                     color = model)) +
   theme_minimal() +
   geom_line() +
+  geom_vline(aes(xintercept = u)) +
   scale_color_manual(values = c('blue', 'red')) +
   facet_wrap(~participant_id) +
   scale_x_continuous(breaks = c(0,1)) +
@@ -171,7 +176,33 @@ p
 # PE distribution in full fit
 
 ```{r}
+# Load PE data of full fit
+files_pattern = file.path(base_path, 'derivatives', 'model_fitting', 'pes-*fixed.tsv',
+                          fsep = .Platform$file.sep)
+files = Sys.glob(files_pattern)
+data_pes_full_fit = data.table::data.table()
 
+for(f in files){
+  temp = data.table::fread(f, sep = '\t', na.strings = 'n/a')
+  data_pes_full_fit = rbind(data_pes_full_fit, temp)
+}
+
+# Get experienced PEs in mid bandit choices (used for minimization)
+data_pes_mid = data_pes_full_fit %>%
+  .[updated_bandit == 2,] %>%
+  # Add absolute PE
+  .[, abs_pe := abs(pe)]
+
+# Plot distribution of absolute PEs
+p = ggplot2::ggplot(data = data_pes_mid,
+                    aes(x = abs_pe)) +
+  geom_histogram(binwidth = 1) +
+  ggtitle('PEs in mid bandit across all participants') +
+  labs(x = '|PE|') +
+  facet_wrap(~group) +
+  theme(plot.title = element_text(hjust = 0.5,
+                                  face = 'bold'))
+p
 ```
 
 
