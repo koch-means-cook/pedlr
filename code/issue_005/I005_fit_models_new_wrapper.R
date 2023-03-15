@@ -50,7 +50,10 @@ I005_fit_models_new_wrapper = function(participant_id,
   
   
   # Allocate data frame for storage of all iterations
-  out = data.table()
+  # Model Fit
+  out_fit = data.table::data.table()
+  # PE
+  out_pes = data.table::data.table()
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)
@@ -95,7 +98,7 @@ I005_fit_models_new_wrapper = function(participant_id,
     message(paste('   Iteration:   ', n_iter, '...', sep = ''), appendLF = FALSE)
     
     # Fit model
-    fit = I005_fit_models_new(data = data,
+    res = I005_fit_models_new(data = data,
                               algorithm = algorithm,
                               xtol_rel = xtol_rel,
                               maxeval = maxeval,
@@ -103,11 +106,17 @@ I005_fit_models_new_wrapper = function(participant_id,
                               lb = lb,
                               ub = ub)
     
-    # Add iteration to data
+    # Get model fit output
+    fit = res$fitting_out
+    # Get PEs
+    pes = res$pes_out
+    # Add iteration
     fit$iter = n_iter
+    pes$iter = n_iter
     
     # Concatenate data
-    out = rbind(out, fit)
+    out_fit = rbind(out_fit, fit)
+    out_pes = rbind(out_pes, pes)
    
     # Send message to user
     message(paste('done!\n', sep = ''), appendLF = FALSE)
@@ -115,27 +124,51 @@ I005_fit_models_new_wrapper = function(participant_id,
   }
   
   # Add fitting variables to output
-  out$starting_values = starting_values
-  out$algorithm = algorithm
-  out$xtol_rel = xtol_rel
-  out$maxeval = maxeval
-  out$n_iterations = iterations
+  # Fit
+  out_fit$starting_values = starting_values
+  out_fit$algorithm = algorithm
+  out_fit$xtol_rel = xtol_rel
+  out_fit$maxeval = maxeval
+  out_fit$n_iterations = iterations
+  # PEs
+  out_pes$starting_values = starting_values
+  out_pes$algorithm = algorithm
+  out_pes$xtol_rel = xtol_rel
+  out_pes$maxeval = maxeval
+  out_pes$n_iterations = iterations
   
   # Add demographic variable to output
-  out$age = unique(data$age)
-  out$sex = unique(data$sex)
-  out$group = unique(data$group)
+  # Fit
+  out_fit$age = unique(data$age)
+  out_fit$sex = unique(data$sex)
+  out_fit$group = unique(data$group)
+  # PEs
+  out_pes$age = unique(data$age)
+  out_pes$sex = unique(data$sex)
+  out_pes$group = unique(data$group)
   
   # Change column order
-  out = setcolorder(out, neworder = c('participant_id', 'group', 'age', 'sex',
-                                      'starting_values', 'algorithm', 'xtol_rel',
-                                      'maxeval', 'n_iterations', 'iter'))
+  # Fit
+  out_fit = setcolorder(out_fit, neworder = c('participant_id', 'group', 'age', 'sex',
+                                              'starting_values', 'algorithm', 'xtol_rel',
+                                              'maxeval', 'n_iterations', 'iter'))
+  # PEs
+  out_pes = setcolorder(out_pes, neworder = c('participant_id', 'group', 'age', 'sex',
+                                              'starting_values', 'algorithm', 'xtol_rel',
+                                              'maxeval', 'n_iterations', 'iter'))
   
   # Save outputs
+  # Fit
   file_name = paste('i005_fit', '-', participant_id, '_', 'sv', '-', starting_values, '.tsv', sep = '')
   save_dir = file.path(base_path, 'derivatives', 'issue_005', file_name,
                        fsep = .Platform$file.sep)
-  data.table::fwrite(out, file = save_dir, sep = '\t', na = 'n/a',
+  data.table::fwrite(out_fit, file = save_dir, sep = '\t', na = 'n/a',
+                     col.names = TRUE, row.names = FALSE)
+  # PEs
+  file_name = paste('i005_pes', '-', participant_id, '_', 'sv', '-', starting_values, '.tsv', sep = '')
+  save_dir = file.path(base_path, 'derivatives', 'issue_005', file_name,
+                       fsep = .Platform$file.sep)
+  data.table::fwrite(out_pes, file = save_dir, sep = '\t', na = 'n/a',
                      col.names = TRUE, row.names = FALSE)
   
 }
