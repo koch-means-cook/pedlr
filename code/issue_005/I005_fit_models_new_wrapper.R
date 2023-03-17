@@ -8,12 +8,12 @@ I005_fit_models_new_wrapper = function(participant_id,
                                   xtol_rel,
                                   maxeval,
                                   iterations){
-  
+
   # participant_id = '09RI1ZH'
   # starting_values = 'fixed'
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
-  # maxeval = 10
+  # maxeval = 1000
   # iterations = 1
   
   # Set base_path

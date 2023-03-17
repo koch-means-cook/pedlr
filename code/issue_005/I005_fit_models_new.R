@@ -140,11 +140,40 @@ I005_fit_models_new = function(data,
       # Add model prediction
       cres[[2]]$model_p = predict(cglm, type = 'response')
       model_p_my = cres[[2]]$model_p
+      
+      # Output of updates/PEs at each trial
+      temp_pes = data.table::data.table(t(cres[[3]]))
+      colnames(temp_pes) = c('low', 'mid', 'high')
+      temp_pes = temp_pes %>%
+        .[, ':='(update_low = as.logical(c(0, diff(low)) != 0),
+                 update_mid = as.logical(c(0, diff(mid)) != 0),
+                 update_high = as.logical(c(0, diff(high) != 0)),
+                 trial = seq(.N))] %>%
+        # Mark first trials of runs with NA (since no PE)
+        .[trial %in% c(1, 241), ':='(update_low = NA,
+                                     update_mid = NA,
+                                     update_high = NA)] %>%
+        # Put bandit that was updated in a trial into column
+        .[, updated_bandit := which(c(update_low, update_mid, update_high) == TRUE),
+          by = 'trial'] %>%
+        # Get PE for bandit that was updated
+        .[, pe := c(low,mid,high)[updated_bandit],
+          by = 'trial'] %>%
+        # Select only neccessary columns
+        .[, c('trial', 'updated_bandit', 'pe')]
+      
       # AICs
+      # Probability of model given participant's behavior
+      # Model predicts probability of behavior (choice of rightmost bandit given value of both options)
+      # Is then compared with true choice of participant (large mismatch = low probability of output, because choice is very unlikely given the model)
       probs = dbinom(cres[[2]]$choice=='right', prob=cres[[2]]$model_p, size=1, log=TRUE)
       probs_my = probs
       # Potential bug: also includes chosen bandit = 2; cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
       cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21'))
+      #-----
+      # Issue 005: Factor in PE
+      #cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21') & (temp_pes))
+      #-----
       cidx_my = cidx
       b2_logLik = sum(probs[cidx])
       b2_logLik_my = b2_logLik
@@ -178,26 +207,7 @@ I005_fit_models_new = function(data,
       # Fuse fitting output
       out = rbind(out, temp)
       
-      # Output of updates/PEs at each trial
-      temp_pes = data.table::data.table(t(cres[[3]]))
-      colnames(temp_pes) = c('low', 'mid', 'high')
-      temp_pes = temp_pes %>%
-        .[, ':='(update_low = as.logical(c(0, diff(low)) != 0),
-                 update_mid = as.logical(c(0, diff(mid)) != 0),
-                 update_high = as.logical(c(0, diff(high) != 0)),
-                 trial = seq(.N))] %>%
-        # Mark first trials of runs with NA (since no PE)
-        .[trial %in% c(1, 241), ':='(update_low = NA,
-                                     update_mid = NA,
-                                     update_high = NA)] %>%
-        # Put bandit that was updated in a trial into column
-        .[, updated_bandit := which(c(update_low, update_mid, update_high) == TRUE),
-          by = 'trial'] %>%
-        # Get PE for bandit that was updated
-        .[, pe := c(low,mid,high)[updated_bandit],
-          by = 'trial'] %>%
-        # Select only neccessary columns
-        .[, c('trial', 'updated_bandit', 'pe')]
+      
       # Add relevant information for output
       temp_pes$participant_id = participant_id
       temp_pes$model = model_name

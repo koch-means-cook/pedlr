@@ -146,6 +146,7 @@ p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE],
   geom_line() +
   geom_vline(aes(xintercept = u)) +
   scale_color_manual(values = c('blue', 'red')) +
+  #scale_linetype_manual(values = c('dashed', 'solid')) +
   facet_wrap(~participant_id) +
   scale_x_continuous(breaks = c(0,1)) +
   scale_y_continuous(limits = c(0,300),
