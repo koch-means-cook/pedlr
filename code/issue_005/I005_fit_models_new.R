@@ -105,6 +105,10 @@ I005_fit_models_new = function(data,
       
       # Replace lower bound parameter while keeping others constant
       cmod$solution[1] = new_lower
+      
+      # Add trial counter to data
+      data$trial = seq(1:nrow(data))
+      
       # Get LL
       cres = Regression_model(x = cmod$solution,
                               cdf = data,
@@ -169,10 +173,18 @@ I005_fit_models_new = function(data,
       probs = dbinom(cres[[2]]$choice=='right', prob=cres[[2]]$model_p, size=1, log=TRUE)
       probs_my = probs
       # Potential bug: also includes chosen bandit = 2; cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
-      cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21'))
+      bandit_index = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21'))
       #-----
       # Issue 005: Factor in PE
-      #cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21') & (temp_pes))
+      # Choices that come AFTER the experience of a certain PE from bandit 1 or 2
+      # If reward was experienced at trial i, the respective PE is entered at i+1, together with the updated value
+      # Add previously experience PE to data (also considering forced choices)
+      #bla = cres[[2]] %>%
+        # for each choice that is evaluated: find the PE that was encountered for THE CHOSEN BANDIT the last time the chosen bandit was updated (chosen) (this also included forced choices!)
+      # Which of the evaluated choices happened AFTER a specified PE happened?
+      #pe_index = 
+      # Combine index
+      #cidx = 
       #-----
       cidx_my = cidx
       b2_logLik = sum(probs[cidx])
