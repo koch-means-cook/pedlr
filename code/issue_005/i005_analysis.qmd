@@ -46,14 +46,20 @@ for(f in files){
 
 ```{r}
 data_lr_example = data %>%
+  # Restrict to one PE band since no influence on LR functions (only on LL of them)
+  .[pe_band_high == 5,] %>%
+  # Apply exclusion
   Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  # Convert NaN to NA
   .[is.nan(value), value := NA] %>%
   # Select two participants
   .[participant_id %in% c('09RI1ZH', 'RB2ZSAB', 'SBIDE6J')]
-link = data_lr_example[x == 'l' & variable == 'coefs' & model == 'surprise' & participant_id == '09RI1ZH'] %>%
-  .[, l := value] %>%
-  .[, c('l_bound_iteration', 'l')] %>%
-  .[order(rank(l_bound_iteration)), ]
+
+
+# link = data_lr_example[x == 'l' & variable == 'coefs' & model == 'surprise' & participant_id == '09RI1ZH'] %>%
+#   .[, l := value] %>%
+#   .[, c('l_bound_iteration', 'l')] %>%
+#   .[order(rank(l_bound_iteration)), ]
 data_lr_example = data_lr_example %>%
   data.table::merge.data.table(., link) %>%
   .[variable == 'LRs'] %>%
@@ -97,32 +103,36 @@ data_uml = data_full_fit %>%
   .[, c('participant_id', 'model', 'uml_dicho')]
 ```
 
-
 ```{r}
-#unique(data$participant_id)
 data_lower_ll = data %>%
   .[variable == 'coefs' & x %in% c('l', 'u')] %>%
   data.table::merge.data.table(., data_uml) %>%
-  data.table::dcast(participant_id + model + AICc + uml_dicho ~ x, value.var = 'value') %>%
+  data.table::dcast(participant_id + model + AIC + uml_dicho + pe_band_high ~ x, value.var = 'value') %>%
   # Select only surprise model
-  .[model == 'surprise',]
+  .[model == 'surprise',] %>%
+  # Sort table
+  .[order(rank(participant_id), rank(pe_band_high), rank(l))]
 
 data_lower_ll_min = data_lower_ll %>%
-  .[,min_AICc := AICc == min(AICc),
-    by = c('participant_id', 'model')] %>%
-  .[min_AICc == TRUE]
+  .[,min_AIC := AIC == min(AIC),
+    by = c('participant_id', 'model', 'pe_band_high')] %>%
+  .[min_AIC == TRUE]
+```
 
-p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE],
+
+```{r}
+pe_band = 5
+p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE & pe_band_high == pe_band],
                 aes(x = l,
-                    y = AICc,
+                    y = AIC,
                     color = model)) +
   #theme_minimal() +
   geom_line() +
   geom_vline(aes(xintercept = u)) +
   scale_color_manual(values = c('blue', 'red')) +
   scale_x_continuous(breaks = c(0,1)) +
-  scale_y_continuous(limits = c(0,300),
-                     breaks = c(0,300)) +
+  scale_y_continuous(limits = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0)),
+                     breaks = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0))) +
   facet_wrap(~participant_id) +
   ggtitle('Falling LR function') +
   theme(strip.text = element_blank(),
@@ -136,11 +146,11 @@ p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE],
         plot.title = element_text(hjust = 0.5,
                                   face = 'bold',
                                   size = 14)) +
-  geom_point(data = data_lower_ll_min[uml_dicho == FALSE])
+  geom_point(data = data_lower_ll_min[uml_dicho == FALSE & pe_band_high == pe_band])
 
-p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE],
+p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE & pe_band_high == pe_band],
                 aes(x = l,
-                    y = AICc,
+                    y = AIC,
                     color = model)) +
   theme_minimal() +
   geom_line() +
@@ -149,8 +159,8 @@ p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE],
   #scale_linetype_manual(values = c('dashed', 'solid')) +
   facet_wrap(~participant_id) +
   scale_x_continuous(breaks = c(0,1)) +
-  scale_y_continuous(limits = c(0,300),
-                     breaks = c(0,300)) +
+  scale_y_continuous(limits = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0)),
+                     breaks = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0))) +
   ggtitle('Rising LR function') +
   theme(strip.text = element_blank(),
         strip.background = element_blank(),
@@ -164,13 +174,153 @@ p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE],
                                   size = 14),
         axis.title.y = element_blank(),
         legend.position = 'bottom') +
-  geom_point(data = data_lower_ll_min[uml_dicho == TRUE])
+  geom_point(data = data_lower_ll_min[uml_dicho == TRUE & pe_band_high == pe_band])
 
 p = cowplot::plot_grid(p1, p2,
                    ncol = 2,
                    rel_widths = c(1,1),
                    axis = 't',
-                   align = 'h')
+                   align = 'h') +
+  labs(title = paste('PE band: ', as.character(pe_band),
+                     sep = '')) +
+  theme(plot.title = element_text(size = 15,
+                     face = 'bold'))
+p
+```
+
+```{r}
+pe_band = 10
+p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE & pe_band_high == pe_band],
+                aes(x = l,
+                    y = AIC,
+                    color = model)) +
+  #theme_minimal() +
+  geom_line() +
+  geom_vline(aes(xintercept = u)) +
+  scale_color_manual(values = c('blue', 'red')) +
+  scale_x_continuous(breaks = c(0,1)) +
+  scale_y_continuous(limits = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0)),
+                     breaks = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0))) +
+  facet_wrap(~participant_id) +
+  ggtitle('Falling LR function') +
+  theme(strip.text = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black",
+                                    fill=NA,
+                                    linewidth=0.3),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 0.5,
+                                  face = 'bold',
+                                  size = 14)) +
+  geom_point(data = data_lower_ll_min[uml_dicho == FALSE & pe_band_high == pe_band])
+
+p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE & pe_band_high == pe_band],
+                aes(x = l,
+                    y = AIC,
+                    color = model)) +
+  theme_minimal() +
+  geom_line() +
+  geom_vline(aes(xintercept = u)) +
+  scale_color_manual(values = c('blue', 'red')) +
+  #scale_linetype_manual(values = c('dashed', 'solid')) +
+  facet_wrap(~participant_id) +
+  scale_x_continuous(breaks = c(0,1)) +
+  scale_y_continuous(limits = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0)),
+                     breaks = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0))) +
+  ggtitle('Rising LR function') +
+  theme(strip.text = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black",
+                                    fill=NA,
+                                    linewidth=0.3),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        plot.title = element_text(hjust = 0.5,
+                                  face = 'bold',
+                                  size = 14),
+        axis.title.y = element_blank(),
+        legend.position = 'bottom') +
+  geom_point(data = data_lower_ll_min[uml_dicho == TRUE & pe_band_high == pe_band])
+
+p = cowplot::plot_grid(p1, p2,
+                   ncol = 2,
+                   rel_widths = c(1,1),
+                   axis = 't',
+                   align = 'h') +
+  labs(title = paste('PE band: ', as.character(pe_band),
+                     sep = '')) +
+  theme(plot.title = element_text(size = 15,
+                     face = 'bold'))
+p
+```
+
+```{r}
+pe_band = 15
+p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE & pe_band_high == pe_band],
+                aes(x = l,
+                    y = AIC,
+                    color = model)) +
+  #theme_minimal() +
+  geom_line() +
+  geom_vline(aes(xintercept = u)) +
+  scale_color_manual(values = c('blue', 'red')) +
+  scale_x_continuous(breaks = c(0,1)) +
+  scale_y_continuous(limits = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0)),
+                     breaks = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0))) +
+  facet_wrap(~participant_id) +
+  ggtitle('Falling LR function') +
+  theme(strip.text = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black",
+                                    fill=NA,
+                                    linewidth=0.3),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        legend.position = 'none',
+        plot.title = element_text(hjust = 0.5,
+                                  face = 'bold',
+                                  size = 14)) +
+  geom_point(data = data_lower_ll_min[uml_dicho == FALSE & pe_band_high == pe_band])
+
+p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE & pe_band_high == pe_band],
+                aes(x = l,
+                    y = AIC,
+                    color = model)) +
+  theme_minimal() +
+  geom_line() +
+  geom_vline(aes(xintercept = u)) +
+  scale_color_manual(values = c('blue', 'red')) +
+  #scale_linetype_manual(values = c('dashed', 'solid')) +
+  facet_wrap(~participant_id) +
+  scale_x_continuous(breaks = c(0,1)) +
+  scale_y_continuous(limits = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0)),
+                     breaks = c(round(min(data_lower_ll$AIC),0), round(max(data_lower_ll$AIC), 0))) +
+  ggtitle('Rising LR function') +
+  theme(strip.text = element_blank(),
+        strip.background = element_blank(),
+        panel.border = element_rect(colour = "black",
+                                    fill=NA,
+                                    linewidth=0.3),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        plot.title = element_text(hjust = 0.5,
+                                  face = 'bold',
+                                  size = 14),
+        axis.title.y = element_blank(),
+        legend.position = 'bottom') +
+  geom_point(data = data_lower_ll_min[uml_dicho == TRUE & pe_band_high == pe_band])
+
+p = cowplot::plot_grid(p1, p2,
+                   ncol = 2,
+                   rel_widths = c(1,1),
+                   axis = 't',
+                   align = 'h') +
+  labs(title = paste('PE band: ', as.character(pe_band),
+                     sep = '')) +
+  theme(plot.title = element_text(size = 15,
+                     face = 'bold'))
 p
 ```
 
