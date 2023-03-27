@@ -3,18 +3,14 @@ Compute_value_per_trial = function(V,
                                    S,
                                    x,
                                    tau) {
-  
-  # Get index for all rewards relevant for current bandit
-  # Not relevant since single trial
-  #idx = which(!is.na(V))
-  
-  # Not relevant (not a vector)
-  # # Initialize PE vector
-  # PE = rep(0, length(V))
-  # # Initialize LR vector
-  # LR = rep(NA, length(V))
-  # # alpha_hat = x[1]
-  # # w = x[2]
+
+  # Example 
+  # source(file.path(here::here(), 'code', 'model_fitting', 'LRfunction.R'))
+  # V = 12
+  # R = 45
+  # S = 0
+  # x = c(0.1,0.5,0.9,NA)
+  # tau = 0.2
   
   # Allocate parameters
   # rw
@@ -96,14 +92,3 @@ Compute_value_per_trial = function(V,
   return(out)
 }
 
-
-#comp_updates = function(x) {
-#  idx = which(abs(x) > 0)
-#  for (i in 2:length(idx)){
-#    if ((idx[i] - idx[i-1]) > 0) {
-#      x[idx[i-1]:(idx[i]-1)] = x[idx[i-1]]
-#    }
-#  }
-#  x[idx[i]:length(x)] = x[idx[i]]
-#  return(x)
-#}
