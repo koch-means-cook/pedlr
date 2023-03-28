@@ -2,7 +2,6 @@ library(data.table)
 library(magrittr)
 
 Simulate = function(data,
-                    model,
                     x,
                     temperature,
                     tau){
@@ -13,7 +12,6 @@ Simulate = function(data,
 
 #   data = data.table::fread(file.path(here::here(), 'data', '09RI1ZH_exp_data.tsv'),
 #                            sep = '\t', na.strings = 'n/a')
-#   model = 'surprise'
 #   x = c(0.1, 0.5, 0.7, NA)
 #   tau = 0.2
 #   temperature = 7
