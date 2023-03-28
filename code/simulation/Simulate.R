@@ -10,7 +10,7 @@ Simulate = function(data,
   source(file.path(here::here(), 'code', 'simulation', 'Make_choice.R'))
   source(file.path(here::here(), 'code', 'simulation', 'Compute_value_per_trial.R'))
   source(file.path(here::here(), 'code', 'model_fitting', 'LRfunction.R'))
-# 
+
 #   data = data.table::fread(file.path(here::here(), 'data', '09RI1ZH_exp_data.tsv'),
 #                            sep = '\t', na.strings = 'n/a')
 #   model = 'surprise'
