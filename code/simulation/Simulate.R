@@ -101,7 +101,7 @@ Simulate = function(data,
     value = c(trial_data$val_b_1,
               trial_data$val_b_2,
               trial_data$val_b_3)[model_choice_option]
-    # Outcome of choice
+    # Outcome of model's choice
     reward = c(trial_data$reward_stim_1,
                trial_data$reward_stim_2)[model_choice_side]
     # Trailing surprise
@@ -127,7 +127,7 @@ Simulate = function(data,
       data[(t+1):nrow(data), value_bandit] = update$v_updated
       # Add trailing surprise of updated bandit for all consecutive trials
       s_bandit = paste0('s_b_', model_choice_option)
-      data[(t+1):nrow(data), s_bandit] = update$s_updated  
+      data[(t+1):nrow(data), s_bandit] = update$s_updated
     }
     
     # Add model information
@@ -137,6 +137,7 @@ Simulate = function(data,
     model_information_temp$model_choice_side = model_choice_side
     model_information_temp$model_choice_prob = model_choice_prob
     model_information_temp$model_choice_option = model_choice_option
+    model_information_temp$model_outcome = reward
     model_information_temp$x1 = x[1]
     model_information_temp$x2 = x[2]
     model_information_temp$x3 = x[3]

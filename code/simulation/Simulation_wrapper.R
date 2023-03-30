@@ -91,7 +91,7 @@ Simulation_wrapper = function(participant_id,
   
   # Load specified participant (we are not using participant choices, only the
   # specific design a participant was assigned to)
-  file = file.path(here::here(), 'data', paste('09RI1ZH', '_exp_data.tsv', sep = ''),
+  file = file.path(here::here(), 'data', paste(participant_id, '_exp_data.tsv', sep = ''),
                    fsep = .Platform$file.sep)
   data = data.table::fread(file, sep = '\t', na.strings = 'n/a')
   
@@ -127,8 +127,6 @@ Simulation_wrapper = function(participant_id,
                                    '_model-', model, '.tsv', sep = ''),
                    fsep = .Platform$file.sep)
   data.table::fwrite(x = out, file = file, sep = '\t', na = 'n/a')
-  
-  # After: build HPC script
   
   
 }
@@ -247,7 +245,7 @@ Simulation_wrapper(participant_id = opt$participant_id,
                    temperature = opt$temperature,
                    tau = opt$tau)
 
-# Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'rw' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0 --x2_high 0 --x2_n 0 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --temperature 7 --tau 0.2
+# Rscript Simulation_wrapper.R --participant_id '1SLA8RA' --model 'rw' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0 --x2_high 0 --x2_n 0 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --temperature 7 --tau 0.2
 # Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --temperature 7 --tau 0.2
 # Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low -10 --x3_high 10 --x3_n 5 --x4_low 0 --x4_high 0 --x4_n 0 --temperature 7 --tau 0.2
 # Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty_surprise' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low -10 --x3_high 10 --x3_n 5 --x4_low 0.1 --x4_high 0.7 --x4_n 5 --temperature 7 --tau 0.2

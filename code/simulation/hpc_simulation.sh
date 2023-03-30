@@ -36,7 +36,7 @@ fi
 PARTICIPANTS=$1
 # Get data to work on
 cd ${PATH_DATA}
-DATA_LIST=$(ls *.tsv)
+DATA_LIST=$(ls *data.tsv)
 cd ${PATH_RETURN}
 # Only overwrite data with provided input if not empty
 if [ ! -z "${PARTICIPANTS}" ]; then
@@ -60,7 +60,8 @@ MEM_MB=1000
 # ===
 # Set fitting parameters
 # ===
-MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
+#MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
+MODEL_LIST='surprise'
 TEMPERATURE=7
 TAU=0.2
 
@@ -174,7 +175,7 @@ for DATA in ${DATA_LIST}; do
 		echo "module load R/4.0" >> job.slurm
 
 		echo "Rscript Simulation_wrapper.R \
-		--participant_id '09RI1ZH' \
+		--participant_id ${PARTICIPANT_ID} \
 		--model ${MODEL} \
 		--x1_low ${X1_LOW} --x1_high ${X1_HIGH} --x1_n ${X1_N} \
 		--x2_low ${X2_LOW} --x2_high ${X2_HIGH} --x2_n ${X2_N} \
