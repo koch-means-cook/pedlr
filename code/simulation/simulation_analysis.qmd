@@ -29,7 +29,7 @@ source(file.path(base_path, 'code', 'utils', 'Get_running_avg.R',
 pattern = file.path(base_path,
                     'derivatives',
                     'simulation',
-                    'modelsim_*0*model-surprise.tsv')
+                    'modelsim_analysis-windowrize_base-*.tsv')
 files = Sys.glob(pattern)
 # Function to load text files (.tsv)
 Load_tsv = function(file_path){
@@ -48,30 +48,52 @@ data = data.table::rbindlist(data_list)
 ```
 
 ```{r}
-# Organize data table
-data = data %>%
-  # Rename "participants" column to avoid confusion (not real participant data, 
-  # but used design is tied to participant)
-  setnames(old = 'participant_id',
-           new = 'design_base',
-           skip_absent = TRUE) %>%
-  # Set PE for not updated bandits to NA
-  .[model_choice_option == 1, ':='(pe_b_2 = NA,
-                                   pe_b_3 = NA)] %>%
-  .[model_choice_option == 2, ':='(pe_b_1 = NA,
-                                   pe_b_3 = NA)] %>%
-  .[model_choice_option == 3, ':='(pe_b_1 = NA,
-                                   pe_b_2 = NA)] %>%
-  # Add ID for unique parameter combinations
-  .[, para_id := paste0(x1,x2,x3,x4)] %>%
-  Add_comp(.) %>%
-  # Get side of model choice
-  .[model_choice_side == 1, model_choice_side_rl := 'left'] %>%
-  .[model_choice_side == 2, model_choice_side_rl := 'right'] %>%
-  # Set correct choice by selecting (on average) higher outcome bandit
-  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
-    by = c('design_base',  'para_id', 'run', 'trial')] %>%
-  .[, correct := correct_choice == model_choice_side_rl]
+# Average over design bases ("participants")
+data_avg = data %>%
+  # Focus on surprise model
+  .[model == 'surprise',] %>%
+  # Focus on one trial before and two trials after
+  .[window_relative %in% c(-1,1,2)] %>%
+  # Rename parameters
+  setnames(old = c('x1', 'x2', 'x3'),
+           new = c('l', 'u', 's')) %>%
+  # Delete all l = u 
+  .[!l == u,] %>%
+  # Reduce s space
+  .[s %in% c(-10,0,5)] %>%
+  # Add variable for rising/falling LRfunction
+  .[, lmu_dicho := if(l-u < 0) 1 else 0,
+    by = c('para_id', 'design_base', 'model', 'run', 'window_relative')] %>%
+  .[, lmu_dicho := as.logical(lmu_dicho)] %>%
+  # Average over IDs and runs
+  .[, .(mean_accuracy = mean(mean_accuracy),
+        sd = sd(mean_accuracy),
+        l = unique(l),
+        u = unique(u),
+        s = unique(s),
+        lmu_dicho = unique(lmu_dicho),
+        n = .N),
+    by = c('para_id', 'model', 'window_relative')]
+
+```
+
+```{r}
+#| out-width: 100%
+p = ggplot(data = data_avg,
+       aes(x = window_relative,
+           y = mean_accuracy,
+           color = l,
+           group = l)) +
+  labs(x = '1v2 x trials after rare outcome',
+       y = 'Prob of choosing 2 in 1v2 trials') +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 0) +
+  annotate(geom = 'label', x = 0, y = 0.85, label = 'Rare outcome', size = 3) +
+  scale_y_continuous(limits = c(0.7,0.9),
+                     breaks = c(0.7,0.9)) +
+  facet_grid(u~s, labeller = label_both)
+p
 ```
 
 ```{r}
@@ -164,7 +186,7 @@ window_data_run = window_data %>%
   # Get mean accuracy across all relative window positions (-2 to +3)
   .[, .(mean_accuracy = mean(correct, na.rm = TRUE),
         n_data = sum(!is.na(correct))),
-    by = c('para_id', 'design_base','run', 'window_relative')]
+    by = c('para_id', 'design_base', 'model', 'run', 'window_relative')]
 
 # Get mean across runs
 window_data_participant = window_data_run %>%
@@ -179,4 +201,3 @@ window_data_group = window_data_participant %>%
   .[order(rank(group), rank(window_relative)),]
 
 ```
-

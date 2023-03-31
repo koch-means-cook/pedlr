@@ -115,6 +115,9 @@ Simulation_wrapper = function(participant_id,
     out = rbind(out, temp)
   }
   
+  # Add base generating of simulation to output
+  out$model = model
+  
   # Save data in simulation out
   # Create save location if it does not exist yet
   save_dir = file.path(here::here(), 'derivatives', 'simulation',

@@ -58,16 +58,7 @@ MEM_MB=1000
 #MEM_MB="$((${MEM_GB} * 1000))"
 
 # ===
-# Set fitting parameters
-# ===
-#MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
-#MODEL_LIST='surprise'
-MODEL_LIST='rw'
-TEMPERATURE=7
-TAU=0.2
-
-# ===
-# Run model fitting
+# Run analysis
 # ===
 # loop over all subjects:
 for DATA in ${DATA_LIST}; do
@@ -76,87 +67,10 @@ for DATA in ${DATA_LIST}; do
 	SUB_LABEL=${DATA:0:7}
 
   # Function input
-  PARTICIPANT_ID="${SUB_LABEL}"
-
-	for MODEL in ${MODEL_LIST}; do
-		echo ${MODEL}
-
-		# Set grid parameters for simulation
-		if [[ ${MODEL} == 'rw' ]]
-		then
-			X1_LOW=0.1
-			X1_HIGH=0.7
-			X1_N=5
-			X2_LOW=0.1
-			X2_HIGH=0.7
-			X2_N=5
-			X3_LOW=0
-			X3_HIGH=0
-			X3_N=0
-			X4_LOW=0
-			X4_HIGH=0
-			X4_N=0
-		elif [[ ${MODEL} == 'uncertainty' ]]
-		then
-			X1_LOW=0.1
-			X1_HIGH=0.7
-			X1_N=5
-			X2_LOW=0.1
-			X2_HIGH=0.7
-			X2_N=5
-			X3_LOW=0
-			X3_HIGH=0
-			X3_N=0
-			X4_LOW=0
-			X4_HIGH=0
-			X4_N=0
-		elif [[ ${MODEL} == 'surprise' ]]
-		then
-			X1_LOW=0.1
-			X1_HIGH=0.7
-			X1_N=5
-			X2_LOW=0.1
-			X2_HIGH=0.7
-			X2_N=5
-			X3_LOW=-10
-			X3_HIGH=10
-			X3_N=5
-			X4_LOW=0
-			X4_HIGH=0
-			X4_N=0
-		elif [[ ${MODEL} == 'uncertainty_surprise' ]]
-		then
-			X1_LOW=0.1
-			X1_HIGH=0.7
-			X1_N=5
-			X2_LOW=0.1
-			X2_HIGH=0.7
-			X2_N=5
-			X3_LOW=-10
-			X3_HIGH=10
-			X3_N=5
-			X4_LOW=0.1
-			X4_HIGH=0.7
-			X4_N=5
-		else
-			echo 'No condition applied'
-		fi
-
-		# echo ${X1_LOW}
-		# echo ${X1_HIGH}
-		# echo ${X1_N}
-		# echo ${X2_LOW}
-		# echo ${X2_HIGH}
-		# echo ${X2_N}
-		# echo ${X3_LOW}
-		# echo ${X3_HIGH}
-		# echo ${X3_N}
-		# echo ${X4_LOW}
-		# echo ${X4_HIGH}
-		# echo ${X4_N}
+  DESIGN_BASE="${SUB_LABEL}"
 
 		# Get job name
-		JOB_NAME="modelsim_base-${PARTICIPANT_ID}_model-${MODEL}"
+		JOB_NAME="modelsim_analysis-windorize_base-${DESIGN_BASE}"
 
 		# Create job file
 		echo "#!/bin/bash" > job.slurm
@@ -175,19 +89,11 @@ for DATA in ${DATA_LIST}; do
 		echo "module unload R" >> job.slurm
 		echo "module load R/4.0" >> job.slurm
 
-		echo "Rscript Simulation_wrapper.R \
-		--participant_id ${PARTICIPANT_ID} \
-		--model ${MODEL} \
-		--x1_low ${X1_LOW} --x1_high ${X1_HIGH} --x1_n ${X1_N} \
-		--x2_low ${X2_LOW} --x2_high ${X2_HIGH} --x2_n ${X2_N} \
-		--x3_low ${X3_LOW} --x3_high ${X3_HIGH} --x3_n ${X3_N} \
-		--x4_low ${X4_LOW} --x4_high ${X4_HIGH} --x4_n ${X4_N} \
-		--temperature ${TEMPERATURE} \
-		--tau ${TAU}" >> job.slurm
+		echo "Rscript Simulation_windowrize.R \
+		--design_base ${DESIGN_BASE}" >> job.slurm
 
 		# submit job to cluster queue and remove it to avoid confusion:
 		sbatch job.slurm
 		rm -f job.slurm
 
-	done
 done
