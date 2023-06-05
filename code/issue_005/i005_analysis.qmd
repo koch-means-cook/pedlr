@@ -9,6 +9,7 @@ library(here)
 library(data.table)
 library(magrittr)
 library(ggplot2)
+library(parallel)
 ```
 
 # Setup
@@ -29,18 +30,36 @@ source(file.path(base_path, 'code', 'utils', 'Apply_exclusion_criteria.R',
 ```{r}
 #| message: false
 # Get path for all relevant files
+# 
+# 
+# # Allocate empty table
+# data = data.table::data.table()
+# 
+# # Iterate over data and append to data table
+# for(f in files){
+#   temp = data.table::fread(f, sep = '\t', na.strings = 'NaN')
+#   data = rbind(data, temp)
+# }
+
+# Load data
+# Get paths of files to load
 files_pattern = file.path(data_dir, 'i005_fit*.tsv',
                           fsep = .Platform$file.sep)
 files = Sys.glob(files_pattern)
-
-# Allocate empty table
-data = data.table::data.table()
-
-# Iterate over data and append to data table
-for(f in files){
-  temp = data.table::fread(f, sep = '\t', na.strings = 'NaN')
-  data = rbind(data, temp)
+# Function to load text files (.tsv)
+Load_tsv = function(file_path){
+  tsv = data.table::fread(file_path,
+                          sep = '\t',
+                          na.strings = 'NaN')
+  return(tsv)
 }
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+data = data.table::rbindlist(data_list)
 ```
 
 # Example LR functions for two participants
