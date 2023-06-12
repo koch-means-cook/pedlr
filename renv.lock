@@ -4,7 +4,7 @@
     "Repositories": [
       {
         "Name": "CRAN",
-        "URL": "https://cran.rstudio.com"
+        "URL": "https://cran.r-project.org/"
       }
     ]
   },
@@ -304,7 +304,7 @@
     },
     "dotCall64": {
       "Package": "dotCall64",
-      "Version": "1.0-1",
+      "Version": "1.0-2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "d0ef6cd1546530da4d72179b52856e84",
@@ -1104,7 +1104,7 @@
     },
     "showtext": {
       "Package": "showtext",
-      "Version": "0.9-5",
+      "Version": "0.9-6",
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "b588dee88e238bf811e27f12edee9433",
