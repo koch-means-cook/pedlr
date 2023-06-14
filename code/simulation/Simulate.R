@@ -108,7 +108,10 @@ Simulate = function(data,
     surprise = c(trial_data$s_b_1,
                  trial_data$s_b_2,
                  trial_data$s_b_3)[model_choice_option]
-    # Use current value and reward to update values for coming trials (different updating for different models)
+    
+    # Use current value and reward to update values for coming trials
+    # DETERMINES WHICH MODEL to use based on number of parameters (different
+    # updating for different models)
     update = Compute_value_per_trial(V = value,
                                      R = reward,
                                      S = surprise,
