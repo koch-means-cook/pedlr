@@ -1,11 +1,24 @@
 ---
 title: "Issue 005 analysis"
-format: html
+format: 
+  html:
+    theme:
+      light: yeti
+      dark: superhero
+    code-fold: true
+    toc: true
+    toc-location: left
+    toc-title: Contents
+    toc-depth: 3
+    toc-expand: true
+    embed-resources: true
+    html-math-method: katex
 editor: source
 ---
 
 ```{r}
 library(here)
+library(quarto)
 library(data.table)
 library(magrittr)
 library(ggplot2)
@@ -25,16 +38,17 @@ source(file.path(base_path, 'code', 'utils', 'Apply_exclusion_criteria.R',
                  fsep = .Platform$file.sep))
 ```
 
+
 # Load data
 
 ```{r}
 #| message: false
 # Get path for all relevant files
-# 
-# 
+#
+#
 # # Allocate empty table
 # data = data.table::data.table()
-# 
+#
 # # Iterate over data and append to data table
 # for(f in files){
 #   temp = data.table::fread(f, sep = '\t', na.strings = 'NaN')
@@ -83,7 +97,7 @@ data_lr_example = data_lr_example %>%
 
 ```{r}
 #p = ggplot2::ggplot(data = data_lr_example[l %in% c(0, 0.01)],
-p = ggplot2::ggplot(data = data_lr_example,                    
+p = ggplot2::ggplot(data = data_lr_example,
                     ggplot2::aes(x = as.numeric(x),
                                  y = value,
                                  color = l,
@@ -136,7 +150,7 @@ data_lower_ll_min = data_lower_ll %>%
 # Function to plot l influence
 Plot_l_influence = function(data_lower_ll,
                             data_lower_ll_min){
-  
+
   # Falling slope
   p1 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == FALSE & pe_band_high == pe_band],
                        aes(x = l,
@@ -163,7 +177,7 @@ Plot_l_influence = function(data_lower_ll,
                                     face = 'bold',
                                     size = 14)) +
     geom_point(data = data_lower_ll_min[uml_dicho == FALSE & pe_band_high == pe_band])
-  
+
   # Rising slope
   p2 = ggplot2::ggplot(data = data_lower_ll[uml_dicho == TRUE & pe_band_high == pe_band],
                        aes(x = l,
@@ -192,7 +206,7 @@ Plot_l_influence = function(data_lower_ll,
           axis.title.y = element_blank(),
           legend.position = 'bottom') +
     geom_point(data = data_lower_ll_min[uml_dicho == TRUE & pe_band_high == pe_band])
-  
+
   # Combine plots
   p = cowplot::plot_grid(p1, p2,
                          ncol = 2,
