@@ -9,7 +9,8 @@ Fit_models_new = function(data,
                           maxeval,
                           x0,
                           lb,
-                          ub){
+                          ub,
+                          param_recov = FALSE){
 
   # data = Load_data() %>%
   #   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
@@ -67,8 +68,31 @@ Fit_models_new = function(data,
   out = data.table::data.table()
   pes = data.table::data.table()
   
+  # Normal fitting:
+  # Fit all 4 models
+  if(param_recov == FALSE){
+    model_pool = 1:n_models
+  } else if(param_recov == TRUE){
+    # For parameter recovery:
+    # Fit only model that was used for simulation of data (based on number of parameters)
+    if(is.na(unique(data$x2))){
+      # RW model
+      model_pool = 1
+    } else if(is.na(unique(data$x3))){
+      # Uncertainty model
+      model_pool = 2
+    } else if(is.na(unique(data$x4))){
+      # Surprise model
+      model_pool = 3
+    } else{
+      # Surprise+Uncertainty model
+      model_pool = 4
+    }
+  }
+  
+  
   # Loop over models
-  for (model_count in 1:n_models) {
+  for (model_count in model_pool) {
     
     # Get model name
     model_name = names(glmods)[model_count]
