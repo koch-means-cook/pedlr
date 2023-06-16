@@ -19,17 +19,18 @@ Fit_models_new = function(data,
   # xtol_rel = 1.0e-5
   # maxeval = 10
   # x0 = list(0.2,
-  #           0.2,
+  #           c(0.2, 0.2),
   #           c(0.2, 0.5, 1),
-  #           c(0.2, 0.5, 1))
+  #           c(0.2, 0.5, 1,0.2))
   # lb = list(0.01,
-  #           0.01,
-  #           c(exp(-5), exp(-5), -20),
-  #           c(exp(-5), exp(-5), -20))
+  #           c(0.01, 0.01),
+  #           c(0.01, 0.01, -20),
+  #           c(0.01, 0.01, -20, 0.01))
   # ub = list(1,
-  #           1,
+  #           c(1, 1),
   #           c(1, 1, 20),
-  #           c(1, 1, 20))
+  #           c(1, 1, 20, 1))
+    
   
   # Set base_path
   base_path = here::here()
@@ -108,11 +109,23 @@ Fit_models_new = function(data,
       para_names = c('l', 'u', 's', 'pi')
     }
     
+    if(param_recov == FALSE){
+      x0_model = x0[[model_count]]
+      lb_model = lb[[model_count]]
+      ub_model = ub[[model_count]]
+      
+    # Only allow specified parameters for single model for parameter recovery
+    } else if(param_recov == TRUE){
+      x0_model = x0
+      lb_model = lb
+      ub_model = ub
+    }
+    
     # Fit model
-    cmod = nloptr::nloptr(x0 = x0[[model_count]],
+    cmod = nloptr::nloptr(x0 = x0_model,
                           eval_f = LL_reg,
-                          lb = lb[[model_count]],
-                          ub = ub[[model_count]],
+                          lb = lb_model,
+                          ub = ub_model,
                           opts = copts,
                           data = data,
                           glmods = glmods,
@@ -162,15 +175,15 @@ Fit_models_new = function(data,
     cidx_my = cidx
     b2_logLik = sum(probs[cidx])
     b2_logLik_my = b2_logLik
-    #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0[[model_count]])) + 2*b2_logLik
+    #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0_model)) + 2*b2_logLik
     # number of parameters
-    k = (length(coef(cglm)) + length(x0[[model_count]]))
+    k = (length(coef(cglm)) + length(x0_model))
     # Number of samples
     n = length(cidx)
     AICs = 2*k - 2*b2_logLik
     AICc = AICs + ((2*(k^2) + 2*k) / (n - k - 1))
     # x0
-    x0_vals = as.data.table(cbind(para_names, x0[[model_count]]))
+    x0_vals = as.data.table(cbind(para_names, x0_model))
     colnames(x0_vals) = c('x', 'value')
     x0_vals$variable = 'x0'
     

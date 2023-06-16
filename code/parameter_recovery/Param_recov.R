@@ -58,27 +58,32 @@ Param_recov = function(data,
   sim = sim %>%
     .[, bandit := paste(substr(comp, 1, 1), substr(comp, 3,3), sep = '')]
   
+  # Delete NA from parameter vectors
+  x0 = x0[!is.na(x0)]
+  lb = lb[!is.na(lb)]
+  ub = ub[!is.na(ub)]
 
   # Fit model to simulated data
   recov = Fit_models_new(data = sim,
-                         algorithm = 'NLOPT_GN_DIRECT_L',
-                         xtol_rel = 1.0e-5,
-                         maxeval = 5000,
-                         x0,
-                         lb,
-                         ub,
+                         algorithm = algorithm,
+                         xtol_rel = xtol_rel,
+                         maxeval = maxeval,
+                         x0 = x0,
+                         lb = lb,
+                         ub = ub,
                          param_recov = TRUE)
     
   # Get fitting result
   res = recov$fitting_out %>%
     .[variable != 'LRs',]
-  # Data frame filled with values of input parameters
+  # Create data frame filled with values of input parameters that were used for simulation
   add = res[variable == 'x0']
   add$variable = 'input_params'
   add$value = input_params[!is.na(input_params)]
   # Fuse input_params to results
   res = rbind(res, add)
   
+  # Return results table
   return(res)
   
 }
