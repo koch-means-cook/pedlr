@@ -25,12 +25,41 @@ Param_recov_wrapper = function(participant_id,
   # ub = c(1, 1, 20, NA)
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
-  # maxeval = 1000
+  # maxeval = 10
   # iterations = 3
   # temperature = 7
   # tau = 0.2
   # ips = c(0.1, 0.7, 2, NA)
   # svs = c(0.5, 0.5, 5, NA)
+  
+  # Give message to user
+  message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)
+  # Print input
+  message(paste('   model:\t\t\t', model, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   random_input_params:\t\t', random_input_params, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   random_starting_values:\t', random_starting_values, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   lb:\t\t\t\t', sep = ''), appendLF = FALSE)
+  message(paste(lb, collapse = ' | '), appendLF = FALSE)
+  message('\n', appendLF = FALSE)
+  message(paste('   ub:\t\t\t\t', sep = ''), appendLF = FALSE)
+  message(paste(ub, collapse = ' | '), appendLF = FALSE)
+  message('\n', appendLF = FALSE)
+  message(paste('   algorithm:\t\t\t', algorithm, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   xtol_rel:\t\t\t', xtol_rel, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   maxeval:\t\t\t', maxeval, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   iterations:\t\t\t', iterations, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   temperature:\t\t\t', temperature, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   tau:\t\t\t\t', tau, '\n', sep = ''), appendLF = FALSE)
+  if(random_input_params == FALSE){
+    message(paste('   ips:\t\t\t', sep = ''), appendLF = FALSE)
+    message(paste(ips, collapse = ' | '), appendLF = FALSE)
+    message('\n', appendLF = FALSE)
+  }
+  if(random_starting_values == FALSE){
+    message(paste('   svs:\t\t\t', sep = ''), appendLF = FALSE)
+    message(paste(svs, collapse = ' | '), appendLF = FALSE)
+    message('\n', appendLF = FALSE)
+  }
 
   # Load own functions
   source(file.path(here::here(), 'code', 'parameter_recovery', 'Param_recov.R', fsep = .Platform$file.sep))
@@ -68,8 +97,11 @@ Param_recov_wrapper = function(participant_id,
   
   out = data.table()
   
-  # Loop over iterations
+  # Loop over simulation iterations
   for(n_iter in seq(iterations)){
+    
+    # Give message to user
+    message(paste('\n----------Iteration: ', n_iter, '\n', sep = ''), appendLF = FALSE)
     
     # Get random input parameters and optim starting values for each model if specified
     # (otherwise take specified ips and svs)
@@ -172,6 +204,15 @@ Param_recov_wrapper = function(participant_id,
     # Round inputs
     ips = round(ips, 2)
     svs = round(svs, 2)
+      
+    # Give message to user
+    message(paste('Simulating and fitting model...\n', sep = ''), appendLF = FALSE)
+    message(paste('   Input parameters:\t\t\t', sep = ''), appendLF = FALSE)
+    message(paste(ips, collapse = ' | '), appendLF = FALSE)
+    message('\n', appendLF = FALSE)
+    message(paste('   Fitting starting values:\t\t', sep = ''), appendLF = FALSE)
+    message(paste(svs, collapse = ' | '), appendLF = FALSE)
+    message('\n', appendLF = FALSE)
     
     # Start parameter recovery
     res = Param_recov(data = data,
@@ -184,21 +225,58 @@ Param_recov_wrapper = function(participant_id,
                       ub = ub,
                       temperature = temperature,
                       tau = tau)
-    
-    # Fuse output over iterations
-    res$iter = n_iter
-    out = rbind(out, res)
+      
+      # Fuse output over iterations
+      res$iter = n_iter
+      out = rbind(out, res)
     
   }
   
+  # Add identifiers to output
+  out$model = model
+  out$algorithm = algorithm
+  out$xtol_rel = xtol_rel
+  out$maxeval = maxeval
+  out$temperature = temperature
+  out$tau = tau
   
+  # Savefile name giing base of simulation for recovery
+  file_name = paste('paramrecov_base-',
+                    participant_id,
+                    '_model-',
+                    model,
+                    '_randips-',
+                    random_input_params,
+                    '_randsvs-',
+                    random_starting_values,
+                    '.tsv',
+                    sep = '')
   
-  # Set up optparse
-  # Set up hpc submit script
+  # Create save directory in case it does not exist yet
+  save_dir = file.path(here::here(),
+                       'derivatives',
+                       'parameter_recovery',
+                       fsep = .Platform$file.sep)
+  if(!dir.exists(save_dir)){
+    dir.create(save_dir)
+  }
+  
+  # Save output
+  file = file.path(save_dir,
+                   file_name,
+                   fsep = .Platform$file.sep)
+  data.table::fwrite(x = out,
+                     file = file,
+                     na = 'n/a',
+                     sep = '\t')
+  
+  message(paste('\nSaving output to: ', file, '...\n', sep = ''), appendLF = FALSE)
+  message(paste('...Well done Superperson!', sep = ''), appendLF = FALSE)
+  message('\n')
+  
   # Write analysis script for param recov
-  
-  
-}
+
+  }
 
 # Function to split list inputs (used as callback function during argument parsing)
 split_list = function(object,
@@ -218,18 +296,21 @@ option_list = list(
               default = NULL,
               help = 'ID of participant',
               metavar = 'PARTICIPANT_ID'),
-  make_option(c('-m', '--model'),
+  make_option(c('-M', '--model'),
               type='character',
               default = NULL,
               help = 'Name of model. Options are `rw`, `uncertainty`, `surprise`, and `uncertainty_surprise`',
               metavar = 'MODEL'),
-  # random_input_params
-  # random_starting_values
-  make_option(c('-s', '--starting_values'),
+  make_option(c('-R', '--random_input_params'),
               type='character',
               default = NULL,
-              help = '`random` for uniform random between boundaries, `fixed` for fixed starting values',
-              metavar = 'STARTING_VALUES'),
+              help = 'if `TRUE`, parameters for simulation will be random within specified lower and upper bound',
+              metavar = 'RANDOM_INPUT_PARAMS'),
+  make_option(c('-r', '--random_starting_values'),
+              type='character',
+              default = NULL,
+              help = 'if `TRUE`, starting values for fitting will be random within specified lower and upper bound',
+              metavar = 'RANDOM_STARTING_VALUES'),
   make_option(c('-l', '--lb'),
               action = 'callback',
               callback = split_list,
@@ -243,7 +324,7 @@ option_list = list(
               type='character',
               default = NULL,
               help = 'series of values giving upper bound of parameters. E.g. `1,1,20,NA`',
-              metavar = 'LB'),
+              metavar = 'UB'),
   make_option(c('-a', '--algorithm'),
               type='character',
               default = NULL,
@@ -262,13 +343,32 @@ option_list = list(
   make_option(c('-i', '--iterations'),
               type='numeric',
               default = NULL,
-              help = 'Int giving number of iterations fitting is repeated. Random starting values will be different each iteration',
+              help = 'Int giving number of iterations of simulating data and fitting model. Random starting values will be different each iteration.',
               metavar = 'ITERATIONS'),
-  # temperature
-  # tau
-  # ips
-  # svs
-  )
+  make_option(c('-T', '--temperature'),
+              type='numeric',
+              default = NULL,
+              help = 'Value for temperature parameter of softmax choice used during simulation of data. E.g. `7`',
+              metavar = 'TEMPERATURE'),
+  make_option(c('-t', '--tau'),
+              type='numeric',
+              default = NULL,
+              help = 'Value for fixed tau parameter used in Suprise model. E.g. `0.2`',
+              metavar = 'TAU'),
+  make_option(c('-P', '--ips'),
+              action = 'callback',
+              callback = split_list,
+              type='character',
+              default = NULL,
+              help = 'series of values giving input parameters for simulation. Number of parameters unique to model: 1 = `rw`, 2 = `uncertainty`, 3 = `surprise`, 4 = `uncertainty_surprise`. Needs to be padded with NA to reach length = 4. E.g. `0.1,0.6,5,NA`. Ignored if `random_input_params == TRUE`',
+              metavar = 'IPS'),
+  make_option(c('-s', '--svs'),
+              action = 'callback',
+              callback = split_list,
+              type='character',
+              default = NULL,
+              help = 'series of values giving starting values for model fitting. Number of parameters unique to model: 1 = `rw`, 2 = `uncertainty`, 3 = `surprise`, 4 = `uncertainty_surprise`. Needs to be padded with NA to reach length = 4. E.g. `0.5,0.5,7,NA`. Ignored if `random_starting_values == TRUE`',
+              metavar = 'SVS'))
 
 # provide options in list to be callable by script
 opt_parser = OptionParser(option_list = option_list)
@@ -289,3 +389,5 @@ Param_recov_wrapper(participant_id = opt$participant_id,
                     tau = opt$tau,
                     ips = opt$ips,
                     svs = opt$svs)
+
+# Rscript Param_recov_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --random_input_params 'TRUE' --random_starting_values 'TRUE' --lb 0.01,0.01,-20,NA --ub 1,1,20,NA --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.0001 --maxeval 10 --iterations 3 --temperature 7 --tau 0.2 --ips 0.1,0.7,2,NA --svs 0.5,0.5,0,NA
