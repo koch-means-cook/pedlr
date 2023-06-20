@@ -27,6 +27,7 @@ library(data.table)
 library(parallel)
 library(magrittr)
 library(ggplot2)
+library(ggh4x)
 ```
 
 ## Source functions
@@ -90,8 +91,7 @@ data_rw_recov = data_rw %>%
 # Plot correlation between true parameter and recovered parameter
 p = ggplot2::ggplot(data = data_rw_recov,
                     ggplot2::aes(x = input_params,
-                                 y = coefs,
-                                 color = params)) +
+                                 y = coefs)) +
   ggplot2::geom_point() +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
@@ -100,15 +100,19 @@ p = ggplot2::ggplot(data = data_rw_recov,
                       nrow = 1) +
   labs(x = 'Input (Simulation)',
        y = 'Estimate (Recovery)') +
-  theme(panel.border=element_blank(), axis.line=element_line(),
-        legend.position = 'none') +
-    # Use capped coordinate system (line will not touch extremes)
-    lemon::coord_capped_cart(left = 'none',
-                             bottom = 'none') +
+  guides(x = 'axis_truncated',
+         y = 'axis_truncated') +
+  theme(axis.ticks.length = unit(5, 'pt'),
+        panel.background = element_rect(fill = 'transparent',
+                                        color = 'transparent'),
+        strip.background = element_rect(fill = 'transparent',
+                                        color = 'transparent'),
+        panel.border=element_blank(),
+        axis.line=element_line(),
+        panel.grid = element_line(color = '#f5f5f5'),
+        strip.text = element_text(face = 'bold'),
+        aspect.ratio = 1)
 p  
-
-Neurocodify_plot(p) +
-  theme(aspect.ratio = 1)
 ```
 
 ## Uncertainty
@@ -118,12 +122,12 @@ data_uncertainty = data %>%
   .[model == 'uncertainty',]
 
 data_uncertainty_recov = data_uncertainty %>%
-  .[x %in% c('alpha', 'pi'),] %>%
+  .[params %in% c('alpha', 'pi'),] %>%
   .[variable %in% c('coefs', 'input_params')] %>%
   data.table::dcast(.,
-                    participant_id + model + AIC + AICc + iter + x ~ variable,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
                     value.var = 'value') %>%
-  data.table::setorder(., 'participant_id', 'iter', 'x')
+  data.table::setorder(., 'participant_id', 'iter', 'params')
 
 # Plot correlation between true parameter and recovered parameter
 p = ggplot2::ggplot(data = data_uncertainty_recov,
@@ -132,10 +136,23 @@ p = ggplot2::ggplot(data = data_uncertainty_recov,
   ggplot2::geom_point() +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
-  ggplot2::facet_wrap(~ x,
+  ggplot2::facet_wrap(~ params,
                       scales = 'free',
                       nrow = 1) +
-  theme(aspect.ratio = 1)
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  guides(x = 'axis_truncated',
+         y = 'axis_truncated') +
+  theme(axis.ticks.length = unit(5, 'pt'),
+        panel.background = element_rect(fill = 'transparent',
+                                        color = 'transparent'),
+        strip.background = element_rect(fill = 'transparent',
+                                        color = 'transparent'),
+        panel.border=element_blank(),
+        axis.line=element_line(),
+        panel.grid = element_line(color = '#f5f5f5'),
+        strip.text = element_text(face = 'bold'),
+        aspect.ratio = 1)
 p
 ```
 
@@ -146,12 +163,12 @@ data_surprise = data %>%
   .[model == 'surprise',]
 
 data_surprise_recov = data_surprise %>%
-  .[x %in% c('l', 'u', 's'),] %>%
+  .[params %in% c('l', 'u', 's'),] %>%
   .[variable %in% c('coefs', 'input_params')] %>%
   data.table::dcast(.,
-                    participant_id + model + AIC + AICc + iter + x ~ variable,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
                     value.var = 'value') %>%
-  data.table::setorder(., 'participant_id', 'iter', 'x')
+  data.table::setorder(., 'participant_id', 'iter', 'params')
 
 # Plot correlation between true parameter and recovered parameter
 p = ggplot2::ggplot(data = data_surprise_recov,
@@ -160,10 +177,19 @@ p = ggplot2::ggplot(data = data_surprise_recov,
   ggplot2::geom_point() +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
-  ggplot2::facet_wrap(~ x,
+  ggplot2::facet_wrap(~ params,
                       scales = 'free',
                       nrow = 1) +
-  theme(aspect.ratio = 1)
+  theme(axis.ticks.length = unit(5, 'pt'),
+        panel.background = element_rect(fill = 'transparent',
+                                        color = 'transparent'),
+        strip.background = element_rect(fill = 'transparent',
+                                        color = 'transparent'),
+        panel.border=element_blank(),
+        axis.line=element_line(),
+        panel.grid = element_line(color = '#f5f5f5'),
+        strip.text = element_text(face = 'bold'),
+        aspect.ratio = 1)
 p
 ```
 
@@ -174,12 +200,12 @@ data_uncertainty_surprise = data %>%
   .[model == 'uncertainty_surprise',]
 
 data_uncertainty_surprise_recov = data_uncertainty_surprise %>%
-  .[x %in% c('l', 'u', 's', 'pi'),] %>%
+  .[params %in% c('l', 'u', 's', 'pi'),] %>%
   .[variable %in% c('coefs', 'input_params')] %>%
   data.table::dcast(.,
-                    participant_id + model + AIC + AICc + iter + x ~ variable,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
                     value.var = 'value') %>%
-  data.table::setorder(., 'participant_id', 'iter', 'x')
+  data.table::setorder(., 'participant_id', 'iter', 'params')
 
 # Plot correlation between true parameter and recovered parameter
 p = ggplot2::ggplot(data = data_uncertainty_surprise_recov,
@@ -188,9 +214,18 @@ p = ggplot2::ggplot(data = data_uncertainty_surprise_recov,
   ggplot2::geom_point() +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
-  ggplot2::facet_wrap(~ x,
+  ggplot2::facet_wrap(~ params,
                       scales = 'free',
                       nrow = 1) +
-  theme(aspect.ratio = 1)
+  theme(axis.ticks.length = unit(5, 'pt'),
+        panel.background = element_rect(fill = 'transparent',
+                                        color = 'transparent'),
+        strip.background = element_rect(fill = 'transparent',
+                                        color = 'transparent'),
+        panel.border=element_blank(),
+        axis.line=element_line(),
+        panel.grid = element_line(color = '#f5f5f5'),
+        strip.text = element_text(face = 'bold'),
+        aspect.ratio = 1)
 p
 ```

@@ -691,6 +691,24 @@
       ],
       "Hash": "dd68b9b215b2d3119603549a794003c3"
     },
+    "ggh4x": {
+      "Package": "ggh4x",
+      "Version": "0.2.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "cli",
+        "ggplot2",
+        "grid",
+        "gtable",
+        "lifecycle",
+        "rlang",
+        "scales",
+        "stats",
+        "vctrs"
+      ],
+      "Hash": "31191cd4554699b1a22f3114e6344c9e"
+    },
     "gghalves": {
       "Package": "gghalves",
       "Version": "0.1.1",
@@ -707,7 +725,7 @@
     },
     "ggplot2": {
       "Package": "ggplot2",
-      "Version": "3.4.0",
+      "Version": "3.4.2",
       "Source": "Repository",
       "Repository": "CRAN",
       "Requirements": [
@@ -728,7 +746,7 @@
         "vctrs",
         "withr"
       ],
-      "Hash": "fd2aab12f54400c6bca43687231e246b"
+      "Hash": "3a147ee02e85a8941aad9909f1b43b7b"
     },
     "ggridges": {
       "Package": "ggridges",
