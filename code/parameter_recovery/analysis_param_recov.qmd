@@ -1,0 +1,196 @@
+---
+title: "Issue 005 analysis"
+format: 
+  html:
+    theme:
+      light: yeti
+      dark: superhero
+    code-fold: true
+    toc: true
+    toc-location: left
+    toc-title: Contents
+    toc-depth: 3
+    toc-expand: true
+    embed-resources: true
+    html-math-method: katex
+editor: source
+---
+
+# Setup
+
+## Libraries
+
+```{r}
+# Libraries
+library(here)
+library(data.table)
+library(parallel)
+library(magrittr)
+library(ggplot2)
+```
+
+## Source functions
+
+```{r}
+base_path = file.path(here::here(),
+                      'code',
+                      fsep = .Platform$file.sep)
+source(file.path(base_path, 'utils', 'Neurocodify_plot.R',
+                 fsep = .Platform$file.sep))
+```
+
+
+## Load data
+
+```{r}
+# Glob files based on naming pattern
+load_path = file.path(here::here(),
+                      'derivatives',
+                      'parameter_recovery',
+                      fsep = .Platform$file.sep)
+files = Sys.glob(file.path(load_path,
+                           'paramrecov_base-*.tsv',
+                           fsep = .Platform$file.sep))
+
+# Function to load text files (.tsv)
+Load_tsv = function(file_path){
+  tsv = data.table::fread(file_path,
+                          sep = '\t',
+                          na.strings = 'NaN')
+  return(tsv)
+}
+
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+data = data.table::rbindlist(data_list) %>%
+  # Rename to avoid 'x' as column name
+  data.table::setnames(., old = 'x', new = 'params')
+```
+
+# Correlation: Input and recovered parameter
+
+## RW
+
+```{r}
+data_rw = data %>%
+  .[model == 'rw',]
+
+data_rw_recov = data_rw %>%
+  .[params == 'alpha',] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_rw_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs,
+                                 color = params)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(panel.border=element_blank(), axis.line=element_line(),
+        legend.position = 'none') +
+    # Use capped coordinate system (line will not touch extremes)
+    lemon::coord_capped_cart(left = 'none',
+                             bottom = 'none') +
+p  
+
+Neurocodify_plot(p) +
+  theme(aspect.ratio = 1)
+```
+
+## Uncertainty
+
+```{r}
+data_uncertainty = data %>%
+  .[model == 'uncertainty',]
+
+data_uncertainty_recov = data_uncertainty %>%
+  .[x %in% c('alpha', 'pi'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + x ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'x')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_uncertainty_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ x,
+                      scales = 'free',
+                      nrow = 1) +
+  theme(aspect.ratio = 1)
+p
+```
+
+## Surprise
+
+```{r}
+data_surprise = data %>%
+  .[model == 'surprise',]
+
+data_surprise_recov = data_surprise %>%
+  .[x %in% c('l', 'u', 's'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + x ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'x')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_surprise_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ x,
+                      scales = 'free',
+                      nrow = 1) +
+  theme(aspect.ratio = 1)
+p
+```
+
+## Uncertainty+Surprise
+
+```{r}
+data_uncertainty_surprise = data %>%
+  .[model == 'uncertainty_surprise',]
+
+data_uncertainty_surprise_recov = data_uncertainty_surprise %>%
+  .[x %in% c('l', 'u', 's', 'pi'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + x ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'x')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_uncertainty_surprise_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point() +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ x,
+                      scales = 'free',
+                      nrow = 1) +
+  theme(aspect.ratio = 1)
+p
+```
