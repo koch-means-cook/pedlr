@@ -1,5 +1,5 @@
 ---
-title: "Issue 005 analysis"
+title: "Analysis: Parameter Recovery"
 format: 
   html:
     theme:
@@ -28,6 +28,7 @@ library(parallel)
 library(magrittr)
 library(ggplot2)
 library(ggh4x)
+library(viridis)
 ```
 
 ## Source functions
@@ -38,8 +39,9 @@ base_path = file.path(here::here(),
                       fsep = .Platform$file.sep)
 source(file.path(base_path, 'utils', 'Neurocodify_plot.R',
                  fsep = .Platform$file.sep))
+source(file.path(base_path, 'model_fitting', 'LRfunction.R',
+                 fsep = .Platform$file.sep))
 ```
-
 
 ## Load data
 
@@ -77,9 +79,12 @@ data = data.table::rbindlist(data_list) %>%
 ## RW
 
 ```{r}
+# Isolate target model
 data_rw = data %>%
   .[model == 'rw',]
 
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
 data_rw_recov = data_rw %>%
   .[params == 'alpha',] %>%
   .[variable %in% c('coefs', 'input_params')] %>%
@@ -92,7 +97,7 @@ data_rw_recov = data_rw %>%
 p = ggplot2::ggplot(data = data_rw_recov,
                     ggplot2::aes(x = input_params,
                                  y = coefs)) +
-  ggplot2::geom_point() +
+  ggplot2::geom_point(alpha = 0.3) +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
   ggplot2::facet_wrap(~ params,
@@ -100,27 +105,22 @@ p = ggplot2::ggplot(data = data_rw_recov,
                       nrow = 1) +
   labs(x = 'Input (Simulation)',
        y = 'Estimate (Recovery)') +
-  guides(x = 'axis_truncated',
-         y = 'axis_truncated') +
-  theme(axis.ticks.length = unit(5, 'pt'),
-        panel.background = element_rect(fill = 'transparent',
-                                        color = 'transparent'),
-        strip.background = element_rect(fill = 'transparent',
-                                        color = 'transparent'),
-        panel.border=element_blank(),
-        axis.line=element_line(),
-        panel.grid = element_line(color = '#f5f5f5'),
-        strip.text = element_text(face = 'bold'),
-        aspect.ratio = 1)
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
 p  
 ```
 
 ## Uncertainty
 
 ```{r}
+# Isolate target model
 data_uncertainty = data %>%
   .[model == 'uncertainty',]
 
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
 data_uncertainty_recov = data_uncertainty %>%
   .[params %in% c('alpha', 'pi'),] %>%
   .[variable %in% c('coefs', 'input_params')] %>%
@@ -133,7 +133,7 @@ data_uncertainty_recov = data_uncertainty %>%
 p = ggplot2::ggplot(data = data_uncertainty_recov,
                     ggplot2::aes(x = input_params,
                                  y = coefs)) +
-  ggplot2::geom_point() +
+  ggplot2::geom_point(alpha = 0.3) +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
   ggplot2::facet_wrap(~ params,
@@ -141,27 +141,22 @@ p = ggplot2::ggplot(data = data_uncertainty_recov,
                       nrow = 1) +
   labs(x = 'Input (Simulation)',
        y = 'Estimate (Recovery)') +
-  guides(x = 'axis_truncated',
-         y = 'axis_truncated') +
-  theme(axis.ticks.length = unit(5, 'pt'),
-        panel.background = element_rect(fill = 'transparent',
-                                        color = 'transparent'),
-        strip.background = element_rect(fill = 'transparent',
-                                        color = 'transparent'),
-        panel.border=element_blank(),
-        axis.line=element_line(),
-        panel.grid = element_line(color = '#f5f5f5'),
-        strip.text = element_text(face = 'bold'),
-        aspect.ratio = 1)
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
 p
 ```
 
 ## Surprise
 
 ```{r}
+# Isolate target model
 data_surprise = data %>%
   .[model == 'surprise',]
 
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
 data_surprise_recov = data_surprise %>%
   .[params %in% c('l', 'u', 's'),] %>%
   .[variable %in% c('coefs', 'input_params')] %>%
@@ -174,31 +169,30 @@ data_surprise_recov = data_surprise %>%
 p = ggplot2::ggplot(data = data_surprise_recov,
                     ggplot2::aes(x = input_params,
                                  y = coefs)) +
-  ggplot2::geom_point() +
+  ggplot2::geom_point(alpha = 0.3) +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
   ggplot2::facet_wrap(~ params,
                       scales = 'free',
                       nrow = 1) +
-  theme(axis.ticks.length = unit(5, 'pt'),
-        panel.background = element_rect(fill = 'transparent',
-                                        color = 'transparent'),
-        strip.background = element_rect(fill = 'transparent',
-                                        color = 'transparent'),
-        panel.border=element_blank(),
-        axis.line=element_line(),
-        panel.grid = element_line(color = '#f5f5f5'),
-        strip.text = element_text(face = 'bold'),
-        aspect.ratio = 1)
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
 p
 ```
 
 ## Uncertainty+Surprise
 
 ```{r}
+# Isolate target model
 data_uncertainty_surprise = data %>%
   .[model == 'uncertainty_surprise',]
 
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
 data_uncertainty_surprise_recov = data_uncertainty_surprise %>%
   .[params %in% c('l', 'u', 's', 'pi'),] %>%
   .[variable %in% c('coefs', 'input_params')] %>%
@@ -211,21 +205,127 @@ data_uncertainty_surprise_recov = data_uncertainty_surprise %>%
 p = ggplot2::ggplot(data = data_uncertainty_surprise_recov,
                     ggplot2::aes(x = input_params,
                                  y = coefs)) +
-  ggplot2::geom_point() +
+  ggplot2::geom_point(alpha = 0.3) +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
   ggplot2::facet_wrap(~ params,
                       scales = 'free',
                       nrow = 1) +
-  theme(axis.ticks.length = unit(5, 'pt'),
-        panel.background = element_rect(fill = 'transparent',
-                                        color = 'transparent'),
-        strip.background = element_rect(fill = 'transparent',
-                                        color = 'transparent'),
-        panel.border=element_blank(),
-        axis.line=element_line(),
-        panel.grid = element_line(color = '#f5f5f5'),
-        strip.text = element_text(face = 'bold'),
-        aspect.ratio = 1)
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
 p
 ```
+
+# Analysis of `s`
+
+## What does `s` do?
+
+```{r}
+# Create artificial LR functions with varying 's' parameter (both for rising and
+# falling LR functions)
+lr_func = data.table::data.table(s = seq(0,20)) %>%
+  .[, .(dir = c('pos', 'neg')),
+    by = 's'] %>%
+  .[, .(l = if (dir == 'pos') 0.1 else 0.7,
+        u = if (dir == 'pos') 0.7 else 0.1),
+    by = c('s', 'dir')] %>%
+  .[, .(pe = seq(1,60)),
+    by = c('s', 'dir', 'l', 'u')] %>%
+  # Get LR function (LR based on PE) for fixed 'l' and 'u' but varying 's'
+  .[, .(pe = pe,
+        alpha_star = LRfunction(low = l,
+                                up = u,
+                                slope = s,
+                                PE = pe,
+                                tau = 0.2)[[1]],
+        pe_scaled = LRfunction(low = l,
+                               up = u,
+                               slope = s,
+                               PE = pe,
+                               tau = 0.2)[[2]]),
+    by = c('s', 'dir', 'l', 'u')]
+lr_func$s = as.factor(lr_func$s)
+lr_func$dir = as.factor(lr_func$dir)
+
+# Plot LR functions for each value of 's'
+p = ggplot(data = lr_func,
+       aes(x = pe,
+           y = alpha_star,
+           color = s)) +
+  geom_line() +
+  scale_color_viridis(option = 'D',
+                      discrete = TRUE) +
+  facet_wrap(~dir) +
+  theme(aspect.ratio = 1)
+
+Neurocodify_plot(p)
+```
+
+## (Mis-)match Estimate vs. Input: LR-Function
+
+```{r}
+#| out-width: 100%
+
+# Create LR function for parameters used in simulation (input_params) and
+# those that were recovered (coefs)
+data_lr_func_recov = data_surprise %>%
+  .[params %in% c('l','u','s'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(participant_id + model + AIC + AICc + variable + iter ~ params,
+                    value.var = 'value') %>%
+  .[, .(pe = seq(1,60)),
+    by = c('participant_id', 'model', 'AIC', 'AICc', 'variable', 'iter', 'l', 'u', 's')] %>%
+  # Get LR functions based on parameters
+  .[, .(pe = pe,
+        alpha_star = LRfunction(low = l,
+                                up = u,
+                                slope = s,
+                                PE = pe,
+                                tau = 0.2)[[1]],
+        pe_scaled = LRfunction(low = l,
+                               up = u,
+                               slope = s,
+                               PE = pe,
+                               tau = 0.2)[[2]]),
+    by = c('participant_id', 'model', 'AIC', 'AICc', 'variable', 'iter', 'l', 'u', 's')] %>%
+  # Add individual identifier to each simulation (for easier plottinh)
+  .[, sim_id := paste(participant_id, '_', iter, sep = '')] %>%
+  # Rename simulation/recovery identifiers
+  .[variable == 'coefs', variable := 'Estimated (Recovery)'] %>%
+  .[variable == 'input_params', variable := 'Input (Simulation)']
+data_lr_func_recov$sim_id = as.factor(data_lr_func_recov$sim_id)
+
+# Plot 'real' LR function used in simulation and the recovered LR function
+p = ggplot(data = data_lr_func_recov[iter %in% c(1,2)],
+           aes(x = pe,
+               y = alpha_star,
+               color = variable,
+               linewidth = variable)) +
+  geom_line() +
+  scale_linewidth_manual(values = c(0.5, 0.3)) +
+  scale_color_manual(values = c('blue', 'black')) +
+  facet_wrap(~sim_id) +
+  theme(aspect.ratio = 1,
+        strip.background = element_blank(),
+        strip.text.x = element_blank())
+p = Neurocodify_plot(p) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        panel.border = element_rect(color = 'black',
+                                    fill = 'transparent',
+                                    linewidth = 0.1),
+        legend.position = 'bottom')
+p
+```
+
+## Quantify (Mis-)match between LR function Estimate vs. Input (SSE?)
+
+## See if mismatch relates to values of L or U or S
+
+## See if flat input LR curves come from unrealistic `s` values
