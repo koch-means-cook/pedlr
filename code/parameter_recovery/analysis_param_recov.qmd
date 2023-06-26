@@ -74,6 +74,12 @@ data = data.table::rbindlist(data_list) %>%
   data.table::setnames(., old = 'x', new = 'params')
 ```
 
+# Information on fitting process
+
+1. Regression model gives probability of `choice == right` for each trial
+2. Returns `-sum(LL)` only from `low vs. mid` trials
+3. `-sum(LL)` is then adjusted using parameters of current model (AIC) or parameters of current model and number of `low vs. mid` trials (AICc)
+
 # Correlation: Input and recovered parameter
 
 ## RW
@@ -112,6 +118,8 @@ p = Neurocodify_plot(p)
 p  
 ```
 
+Good Recovery of Standard RW.
+
 ## Uncertainty
 
 ```{r}
@@ -147,6 +155,8 @@ p = ggplot2::ggplot(data = data_uncertainty_recov,
 p = Neurocodify_plot(p)
 p
 ```
+
+`pi` does not seem to recover at all. Implementation problem?
 
 ## Surprise
 
@@ -184,6 +194,60 @@ p = Neurocodify_plot(p)
 p
 ```
 
+`u` seems to recover slightly better than `l`. `s` cannot be recovered.
+
+- Recovery (almost) never goes to values `s < 0` or `s > 10`, although `-20 < s < 20` in simulations.
+
+```{r}
+#| message: false
+
+data_corrplot = data_surprise_recov %>%
+  .[, sim_id := paste0(participant_id, '_', iter)] %>%
+  data.table::setnames(., old = c('coefs', 'input_params'),
+                       new = c('est', 'in'),
+                       skip_absent=TRUE) %>%
+  data.table::dcast(sim_id ~ params, value.var = c('est', 'in'))
+
+p_in = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[!colnames(data_corrplot) %in% c('sim_id', 'est_l', 'est_s', 'est_u')],
+                    title = 'Input parameters')
+p_in
+```
+
+- As intended: No correlation between parameters used for simulation
+
+```{r}
+#| message: false
+
+p_est = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[!colnames(data_corrplot) %in% c('sim_id', 'in_l', 'in_s', 'in_u')],
+                    title = 'Recovered parameters')
+p_est
+```
+
+- Slight correlation between recovered parameters of `l` and `s`
+- Bias in `l` to estimate values that are either **very high** (more often) or very low (less often)
+- Bias away from estimating `l = u`
+
+```{r}
+#| message: false
+
+p = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[colnames(data_corrplot) != 'sim_id'],
+                    title = 'All parameters')
+p
+```
+
+
 ## Uncertainty+Surprise
 
 ```{r}
@@ -220,6 +284,9 @@ p = Neurocodify_plot(p)
 p
 ```
 
+- No recovery in `s` or `pi`
+- Otherwise similar pattern to `surprise` model
+
 # Analysis of `s`
 
 ## What does `s` do?
@@ -227,7 +294,7 @@ p
 ```{r}
 # Create artificial LR functions with varying 's' parameter (both for rising and
 # falling LR functions)
-lr_func = data.table::data.table(s = seq(0,20)) %>%
+lr_func = data.table::data.table(s = seq(-5,20)) %>%
   .[, .(dir = c('pos', 'neg')),
     by = 's'] %>%
   .[, .(l = if (dir == 'pos') 0.1 else 0.7,
@@ -252,11 +319,18 @@ lr_func$s = as.factor(lr_func$s)
 lr_func$dir = as.factor(lr_func$dir)
 
 # Plot LR functions for each value of 's'
-p = ggplot(data = lr_func,
+p = ggplot(data = lr_func[!s %in% c(0,10)],
        aes(x = pe,
            y = alpha_star,
            color = s)) +
   geom_line() +
+  geom_line(data = lr_func[s == 0],
+            color = 'black',
+            linewidth = 2) +
+  geom_line(data = lr_func[s == 10],
+            color = 'blue',
+            linewidth = 2) +
+  scale_y_continuous(limits = c(0,1)) +
   scale_color_viridis(option = 'D',
                       discrete = TRUE) +
   facet_wrap(~dir) +
@@ -264,6 +338,11 @@ p = ggplot(data = lr_func,
 
 Neurocodify_plot(p)
 ```
+
+- `black`: `s = 0`
+- `blue`: `s = 10`
+- Steepness and inflection point not independent
+- Ability to identify `s` from behavior probably low for `s > 10` 
 
 ## (Mis-)match Estimate vs. Input: LR-Function
 
@@ -298,9 +377,10 @@ data_lr_func_recov = data_surprise %>%
   .[variable == 'coefs', variable := 'Estimated (Recovery)'] %>%
   .[variable == 'input_params', variable := 'Input (Simulation)']
 data_lr_func_recov$sim_id = as.factor(data_lr_func_recov$sim_id)
+data.table::setorder(data_lr_func_recov, 'sim_id', 'iter', 'variable', 'pe')
 
 # Plot 'real' LR function used in simulation and the recovered LR function
-p = ggplot(data = data_lr_func_recov[iter %in% c(1,2)],
+p = ggplot(data = data_lr_func_recov[sim_id %in% unique(data_lr_func_recov$sim_id)[1:156]],
            aes(x = pe,
                y = alpha_star,
                color = variable,
@@ -324,8 +404,283 @@ p = Neurocodify_plot(p) +
 p
 ```
 
-## Quantify (Mis-)match between LR function Estimate vs. Input (SSE?)
+- Many flat lines in `Input (Simulation)` -- Probably from too high or low values of `s`
 
-## See if mismatch relates to values of L or U or S
+## Quantify (mis-)match between LR function Estimate vs. Input (SSE)
+
+```{r}
+# Bring comparison between input and recovery into wide format
+data_lr_func_recov_comp = data_lr_func_recov %>%
+  .[variable == 'Estimated (Recovery)', variable := 'est',] %>%
+  .[variable == 'Input (Simulation)', variable := 'in',] %>%
+  data.table::dcast(sim_id + participant_id + model + AIC + AICc + iter + pe ~ variable,
+                    value.var = c('l', 'u', 's', 'alpha_star', 'pe_scaled'))
+data_lr_func_sse = data_lr_func_recov_comp %>%
+  # Get SSE between input LR function and recovered LR function (alpha_star)
+  .[, SE_alpha_star := (alpha_star_est - alpha_star_in)^2] %>%
+  .[, .(SSE_alpha_star = sum(SE_alpha_star)),
+    by = 'sim_id']
+
+data_lr_func_recov_sse = data.table::merge.data.table(data_lr_func_recov,
+                                                      data_lr_func_sse) %>%
+  data.table::setorder(-'SSE_alpha_star', 'sim_id') %>%
+  # Split in 4 tiers
+  .[, SSE_tier := cut(x = SSE_alpha_star,
+                   breaks = quantile(SSE_alpha_star, probs = seq(0, 1, by = 0.25)),
+                   labels = c('1','2','3','4'))]
+
+# Plot 'real' LR function used in simulation and the recovered LR function for high SSE
+p_high_sse = ggplot(data = data_lr_func_recov_sse[SSE_tier == '4'],
+           aes(x = pe,
+               y = alpha_star,
+               color = variable,
+               linewidth = variable)) +
+  geom_line() +
+  scale_linewidth_manual(values = c(0.5, 0.3)) +
+  scale_color_manual(values = c('blue', 'black')) +
+  labs(title = 'High SSE') +
+  facet_wrap(~sim_id) +
+  theme(aspect.ratio = 1,
+        strip.background = element_blank(),
+        strip.text.x = element_blank())
+p_high_sse = Neurocodify_plot(p_high_sse) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        panel.border = element_rect(color = 'black',
+                                    fill = 'transparent',
+                                    linewidth = 0.1),
+        legend.position = 'bottom')
+
+p_low_sse = ggplot(data = data_lr_func_recov_sse[SSE_tier == '1'],
+           aes(x = pe,
+               y = alpha_star,
+               color = variable,
+               linewidth = variable)) +
+  geom_line() +
+  scale_linewidth_manual(values = c(0.5, 0.3)) +
+  scale_color_manual(values = c('blue', 'black')) +
+  labs(title = 'Low SSE') +
+  facet_wrap(~sim_id) +
+  theme(aspect.ratio = 1,
+        strip.background = element_blank(),
+        strip.text.x = element_blank())
+p_low_sse = Neurocodify_plot(p_low_sse) +
+  theme(panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        panel.border = element_rect(color = 'black',
+                                    fill = 'transparent',
+                                    linewidth = 0.1),
+        legend.position = 'bottom')
+
+# Combine plots of LR function recovery for low SSE (good recovery) and high
+# SSE (bad recovery)
+p = cowplot::plot_grid(p_low_sse, p_high_sse,
+                       nrow = 1,
+                       rel_widths = c(1,1),
+                       align = 'h',
+                       axis = 'bt')
+p
+
+```
+
+## Look at estimated LR functions for flat input LR functions
+
+```{r}
+# Get flatness of input LR function and recovered LR function
+data_lr_func_recov_flat = data_lr_func_recov_comp %>%
+  .[, .(in_u_m_l = unique(u_in - l_in),
+        est_u_m_l = unique(u_est - l_est)),
+    by = 'sim_id'] %>%
+  # Define "flat" LR function input
+  .[data.table::between(in_u_m_l, lower = -0.1, upper = 0.1), flat_in_lr := TRUE] %>%
+  .[!data.table::between(in_u_m_l, lower = -0.1, upper = 0.1), flat_in_lr := FALSE]
+
+p = ggplot(data = data_lr_func_recov_flat,
+           aes(x = in_u_m_l,
+               y = est_u_m_l)) +
+  geom_point() +
+  theme(aspect.ratio = 1)
+Neurocodify_plot(p)
+```
+
+```{r}
+
+```
+
+
+## See if mismatch relates to values of `l` or `u` or `s`
+
+```{r}
+data_lr_func_sse_lsu = data.table::merge.data.table(data_lr_func_recov_comp,
+                                                    data_lr_func_sse) %>%
+  .[, .(l_in_m_est = unique(l_in - l_est),
+        s_in_m_est = unique(s_in - s_est),
+        u_in_m_est = unique(u_in - u_est)),
+    by = c('sim_id', 'participant_id', 'model', 'AIC', 'AICc', 'iter', 'SSE_alpha_star')] %>%
+  data.table::melt(measure.vars = c('l_in_m_est', 's_in_m_est', 'u_in_m_est'),
+                   variable.name = 'variable',
+                   value.name = 'value')
+
+p = ggplot(data = data_lr_func_sse_lsu,
+           aes(x = abs(value),
+               y = SSE_alpha_star)) +
+  geom_point(alpha = 0.5,
+             size = 0.5) +
+  geom_smooth(method = 'lm',
+              formula = y ~ x) +
+  facet_wrap(~variable,
+             scales = 'free_x')
+p
+
+```
+
+- High difference between input `u` and recovered `u` seems to lead to greater LR function mismatch/SSE
+
+## Differences between rising and falling functions in recovery?
+
+```{r}
+data_lr_func_sse_rise = data.table::merge.data.table(data_lr_func_recov_comp,
+                                                    data_lr_func_sse) %>%
+    # get single value for each LR function
+  .[pe == 1,] %>%
+  # Label rising and falling data generating functions
+  .[u_in > l_in, rising_in := TRUE] %>%
+  .[u_in < l_in, rising_in := FALSE] %>%
+  .[u_in == l_in, rising_in := NA] %>%
+  .[u_est > l_est, rising_est := TRUE] %>%
+  .[u_est < l_est, rising_est := FALSE] %>%
+  .[u_est == l_est, rising_est := NA]
+
+# Plot SSE by rising and falling data-generating LR FUNCTION
+p = ggplot(data = data_lr_func_sse_rise[!is.na(rising_in)],
+           aes(x = rising_in,
+               y = SSE_alpha_star,
+               color = rising_in,
+               fill = rising_in)) +
+  geom_point(size = 0.5,
+             alpha = 0.5,
+             position = position_jitter(width = 0.03,
+                                        height = 0,
+                                        seed = 666)) +
+  geom_boxplot(outlier.shape = NA,
+               width = 0.1,
+               color = 'black',
+               position = position_nudge(x = -0.1,
+                                         y = 0)) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               shape = 23,
+               size = 3,
+               stroke = 1,
+               fill = 'white',
+               color = 'black',
+               position = position_nudge(x = -0.1,
+                                         y = 0)) +
+  gghalves::geom_half_violin(side = 'r',
+                             color = 'transparent',
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.1,
+                                                       y = 0))
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none')
+p
+```
+
+## Look at mismatch in rising/falling between generating LR function and estimated LR function
+
+```{r}
+data_lr_func_sse_rise = data_lr_func_sse_rise %>%
+  # Get all combinations of rising/faling LR functions in data generation or recovery
+  .[rising_in == TRUE & rising_est == TRUE, dir_relation := 'in_pos_est_pos'] %>%
+  .[rising_in == FALSE & rising_est == FALSE, dir_relation := 'in_neg_est_neg'] %>%
+  .[rising_in == TRUE & rising_est == FALSE, dir_relation := 'in_pos_est_neg'] %>%
+  .[rising_in == FALSE & rising_est == TRUE, dir_relation := 'in_neg_est_pos'] %>%
+  .[rising_in == rising_est, dir_match := TRUE] %>%
+  .[rising_in != rising_est, dir_match := FALSE] %>%
+  # Mark all cases where l=u with NA
+  .[is.na(rising_in) | is.na(rising_est), ':='(dir_relation = NA,
+                                               dir_match = NA)]
+data_lr_func_sse_rise$dir_relation = as.factor(data_lr_func_sse_rise$dir_relation)
+
+p = ggplot(data = data_lr_func_sse_rise,
+           aes(x = dir_relation,
+               fill = dir_relation)) +
+  geom_bar(stat = 'count') +
+  theme(legend.position = 'none')
+p = Neurocodify_plot(p)
+p
+
+```
+
+### Does anything stand out in cases in which estimated function direction is flipped?
+
+```{r}
+data_flip_diag = data_lr_func_sse_rise %>%
+  .[, ':='(u_m_l_in = u_in - l_in,
+           u_m_l_est = u_est - l_est)] %>%
+  data.table::melt(measure.vars = c('l_est', 'l_in', 'u_est', 'u_in', 's_est', 's_in', 'u_m_l_est', 'u_m_l_in')) %>%
+  .[, n := seq(.N)] %>%
+  # est/in %in% string_split(variable)
+  .[variable %in% c('l_est', 'u_est', 's_est', 'u_m_l_est'), type := 'estimate'] %>%
+  .[variable %in% c('l_in', 'u_in', 's_in', 'u_m_l_in'), type := 'input'] %>%
+  .[!variable %in% c('u_m_l_est', 'u_m_l_in'), parameter := unlist(strsplit(as.character(variable), split = '_'))[1],
+    by = 'n'] %>%
+  .[variable %in% c('u_m_l_est', 'u_m_l_in'), parameter := 'u_m_l'] %>%
+  data.table::dcast(sim_id + model + AIC + AICc + iter + alpha_star_est +
+                      alpha_star_in + SE_alpha_star + SSE_alpha_star +
+                      dir_relation + dir_match + parameter ~ paste0('value_', type),
+                    value.var = 'value') %>%
+  .[, parameter := as.factor(parameter)]
+
+# Plot input parameters to recovery by integrity of LR function recovery
+p_in = ggplot(data = data_flip_diag[!is.na(dir_relation),],
+           aes(x = dir_relation,
+               y = value_input)) +
+  labs(title = 'Input parameters to simulation') +
+  geom_point(alpha = 0.3) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               shape = 23,
+               color = 'black',
+               fill = 'white',
+               stroke = 1) +
+  facet_wrap(~ parameter,
+             nrow = 1,
+             scales = 'free_y') +
+  theme(axis.text.x = element_text(angle = 45,
+                                 vjust = 1,
+                                 hjust = 1))
+p_in = Neurocodify_plot(p_in)
+
+# Plot recovered parameters by integrity of LR function recovery
+p_est = ggplot(data = data_flip_diag[!is.na(dir_relation),],
+           aes(x = dir_relation,
+               y = value_estimate)) +
+  labs(title = 'Recovered parameters') +
+  geom_point(alpha = 0.3) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               shape = 23,
+               color = 'black',
+               fill = 'white',
+               stroke = 1) +
+  facet_wrap(~ parameter,
+             nrow = 1,
+             scales = 'free_y') +
+  theme(axis.text.x = element_text(angle = 45,
+                                 vjust = 1,
+                                 hjust = 1))
+p_est = Neurocodify_plot(p_est)
+
+p_in
+p_est
+```
+
 
 ## See if flat input LR curves come from unrealistic `s` values
+
+## A lot of flat input LR functions when SSE is high?

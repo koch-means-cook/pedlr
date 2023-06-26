@@ -61,8 +61,8 @@ MEM_MB=1000
 # Set fitting parameters
 # ===
 #MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
-#MODEL_LIST='surprise'
-MODEL_LIST='rw'
+MODEL_LIST='surprise'
+#MODEL_LIST='rw'
 TEMPERATURE=7
 TAU=0.2
 
@@ -118,7 +118,7 @@ for DATA in ${DATA_LIST}; do
 			X2_LOW=0.1
 			X2_HIGH=0.7
 			X2_N=5
-			X3_LOW=-10
+			X3_LOW=0
 			X3_HIGH=10
 			X3_N=5
 			X4_LOW=0
@@ -132,7 +132,7 @@ for DATA in ${DATA_LIST}; do
 			X2_LOW=0.1
 			X2_HIGH=0.7
 			X2_N=5
-			X3_LOW=-10
+			X3_LOW=0
 			X3_HIGH=10
 			X3_N=5
 			X4_LOW=0.1

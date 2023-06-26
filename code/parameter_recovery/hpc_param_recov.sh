@@ -107,13 +107,13 @@ for DATA in ${DATA_LIST}; do
 			IPS='0.2,0.7,NA,NA'
 			SVS='0.5,0.5,NA,NA'
 		elif [[ ${MODEL} == 'surprise' ]]; then
-			LB='0.01,0.01,-20,NA'
-			UB='1,1,20,NA'
+			LB='0.01,0.01,0,NA'
+			UB='1,1,10,NA'
 			IPS='0.2,0.7,5,NA'
 			SVS='0.5,0.5,0,NA'
 		elif [[ ${MODEL} == 'uncertainty_surprise' ]]; then
-			LB='0.01,0.01,-20,0.01'
-			UB='1,1,20,1'
+			LB='0.01,0.01,0,0.01'
+			UB='1,1,10,1'
 			IPS='0.2,0.7,5,0.7'
 			SVS='0.5,0.5,0,0.5'
 		fi
