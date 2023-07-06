@@ -62,7 +62,8 @@ MEM_MB=1000
 # ===
 # Set list of models to recover
 # ===
-MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
+#MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
+MODEL_LIST='uncertainty'
 
 # ===
 # Set recov parameters
@@ -102,10 +103,16 @@ for DATA in ${DATA_LIST}; do
 			SVS='0.5,NA,NA,NA'
 			# UNCERTAINTY
 		elif [[ ${MODEL} == 'uncertainty' ]]; then
-			LB='0.01,0.01,NA,NA'
-			UB='1,1,NA,NA'
+			# To test recovery of only pi (fix alpha to 0.2)
+			LB='0.2,0.01,NA,NA'
+			UB='0.2,1,NA,NA'
 			IPS='0.2,0.7,NA,NA'
-			SVS='0.5,0.5,NA,NA'
+			SVS='0.2,0.5,NA,NA'
+			# Full recovery
+			# LB='0.01,0.01,NA,NA'
+			# UB='1,1,NA,NA'
+			# IPS='0.2,0.7,NA,NA'
+			# SVS='0.5,0.5,NA,NA'
 		elif [[ ${MODEL} == 'surprise' ]]; then
 			LB='0.01,0.01,0,NA'
 			UB='1,1,10,NA'

@@ -5,6 +5,9 @@ format:
     theme:
       light: yeti
       dark: superhero
+    fontsize: small
+    grid:
+      sidebar-width: 15em
     code-fold: true
     toc: true
     toc-location: left
@@ -152,18 +155,23 @@ p_1 = ggplot2::ggplot(data = data_effect,
                     y = mean_effect_post_m_pre,
                     ymin = mean_effect_post_m_pre - sem_effect_post_m_pre,
                     ymax = mean_effect_post_m_pre + sem_effect_post_m_pre,
-                    color = lmu_dicho)) +
-  scale_color_manual(values = c('red', 'blue', 'black')) +
+                    fill = u)) +
+  scale_fill_viridis(option = 'D', discrete = TRUE) +
   geom_hline(yintercept = 0,
              color = 'black') +
-  geom_point(shape = 18,
-             size = 2) +
-  geom_errorbar(width = 0.3) +
+  geom_errorbar(width = 0.3,
+                color = 'black',
+                linewidth = 0.5) +
+  geom_point(shape = 23,
+             size = 1.5) +
   facet_grid(l~s, labeller = label_both) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+  theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1),
         axis.text = element_text(size = 6),
         legend.position = 'bottom',
-        aspect.ratio = 1)
+        aspect.ratio = 1,
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank())
+p_1 = Neurocodify_plot(p_1)
 ```
 
 ```{r}
@@ -202,11 +210,16 @@ p_2 = ggplot(data = lr_func,
   facet_grid(l~s, labeller = label_both) +
   theme(legend.position = 'bottom',
         aspect.ratio = 1,
-        axis.text = element_text(size = 6))
+        axis.text = element_text(size = 6),
+        axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank())
+p_2 = Neurocodify_plot(p_2)
 ```
 
 ```{r}
 #| out-width: 100%
+#| panel: fill
 p = cowplot::plot_grid(p_1, p_2,
                        nrow = 1,
                        align = 'hv',
@@ -217,9 +230,12 @@ p
 - **low `l`:**
    - stronger `u` creates desired effect when `s < 5`
    - higher `s` causes no increasing behavioral effect as `u` increases
+      - LR function changes too late to affect choices (most PEs are not high enough to have learning influenced by `u`)
 - **mid `l`:**
    - Similar pattern to low `l`
 - **high `l`:**
-   - Effects get stronger with higher `u`, even though it does not represent a rising LR function
+   - Effects might get stronger with higher `u`, even though it does not represent a rising LR function
+      - mostly noise?
    - Also stronger effects with stronger `u` for `s >= 5`
+      - Interpretation: high `s` means that `l` controls the effect of rare outcomes (because LR changes very late)
 - Weird variance in `s == 10`

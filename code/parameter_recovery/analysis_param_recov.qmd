@@ -5,6 +5,9 @@ format:
     theme:
       light: yeti
       dark: superhero
+    fontsize: x-small
+    grid:
+      sidebar-width: 15em
     code-fold: true
     toc: true
     toc-location: left
