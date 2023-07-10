@@ -197,9 +197,9 @@ p = Neurocodify_plot(p)
 p
 ```
 
-`u` seems to recover slightly better than `l`. `s` cannot be recovered.
+Recovery of `s` works okay-ish when bound between 0-10.
+`l` seems to recover slightly better than `u`.
 
-- Recovery (almost) never goes to values `s < 0` or `s > 10`, although `-20 < s < 20` in simulations.
 
 ```{r}
 #| message: false
@@ -249,7 +249,6 @@ p = GGally::ggpairs(data = data_corrplot,
                     title = 'All parameters')
 p
 ```
-
 
 ## Uncertainty+Surprise
 
@@ -496,11 +495,20 @@ p
 # Get flatness of input LR function and recovered LR function
 data_lr_func_recov_flat = data_lr_func_recov_comp %>%
   .[, .(in_u_m_l = unique(u_in - l_in),
-        est_u_m_l = unique(u_est - l_est)),
+        est_u_m_l = unique(u_est - l_est),
+        s_in = unique(s_in),
+        s_est = unique(s_est)),
     by = 'sim_id'] %>%
   # Define "flat" LR function input
   .[data.table::between(in_u_m_l, lower = -0.1, upper = 0.1), flat_in_lr := TRUE] %>%
-  .[!data.table::between(in_u_m_l, lower = -0.1, upper = 0.1), flat_in_lr := FALSE]
+  .[!data.table::between(in_u_m_l, lower = -0.1, upper = 0.1), flat_in_lr := FALSE] %>%
+  # Give quantile of in_u_m_l as label variable
+  .[,quantile_abs_in_u_m_l := DescTools::CutQ(abs(in_u_m_l),
+                                              breaks = quantile(abs(in_u_m_l),
+                                                                seq(0,1,by = 0.25),
+                                                                na.rm = FALSE),
+                                              labels = NULL,
+                                              na.rm = FALSE)]
 
 p = ggplot(data = data_lr_func_recov_flat,
            aes(x = in_u_m_l,
@@ -510,8 +518,25 @@ p = ggplot(data = data_lr_func_recov_flat,
 Neurocodify_plot(p)
 ```
 
-```{r}
+### Can `s` be recovered if `l` and `u` are almost identical?
 
+```{r}
+p = ggplot(data = data_lr_func_recov_flat,
+       aes(x = s_in,
+           y = s_est,
+           color = abs(in_u_m_l))) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y~x,
+              color = 'blue') +
+  labs(title = 'Recovery of s depending on difference between u and l') +
+  scale_color_gradient(low = 'black', high = 'white', ) +
+  facet_wrap(~quantile_abs_in_u_m_l, nrow = 1) +
+  theme(aspect.ratio = 1,
+        legend.position = 'bottom',
+        plot.title = element_text(hjust = 0.5,
+                                  face = 'bold'))
+Neurocodify_plot(p)
 ```
 
 
