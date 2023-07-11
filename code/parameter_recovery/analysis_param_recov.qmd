@@ -5,7 +5,7 @@ format:
     theme:
       light: yeti
       dark: superhero
-    fontsize: x-small
+    fontsize: small
     grid:
       sidebar-width: 15em
     code-fold: true

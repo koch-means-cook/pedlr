@@ -18,19 +18,19 @@ Param_recov_wrapper = function(participant_id,
                                svs){
   
   # participant_id = '09RI1ZH'
-  # model = 'surprise'
-  # random_input_params = TRUE
+  # model = 'uncertainty'
+  # random_input_params = FALSE
   # random_starting_values = TRUE
-  # lb = c(0.01, 0.01, -20, NA)
-  # ub = c(1, 1, 20, NA)
+  # lb = c(0.01, 0.01, NA, NA)
+  # ub = c(1, 1, NA, NA)
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
   # maxeval = 10
   # iterations = 3
   # temperature = 7
   # tau = 0.2
-  # ips = c(0.1, 0.7, 2, NA)
-  # svs = c(0.5, 0.5, 5, NA)
+  # ips = c(0.2, 0.1, NA, NA)
+  # svs = c(0.5, 0.5, NA, NA)
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)

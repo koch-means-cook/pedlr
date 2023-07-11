@@ -9,6 +9,42 @@
     ]
   },
   "Packages": {
+    "BH": {
+      "Package": "BH",
+      "Version": "1.81.0-1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "68122010f01c4dcfbe58ce7112f2433d"
+    },
+    "DescTools": {
+      "Package": "DescTools",
+      "Version": "0.99.49",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "BH",
+        "Exact",
+        "MASS",
+        "R",
+        "Rcpp",
+        "base",
+        "boot",
+        "data.table",
+        "expm",
+        "gld",
+        "grDevices",
+        "graphics",
+        "httr",
+        "methods",
+        "mvtnorm",
+        "readxl",
+        "rstudioapi",
+        "stats",
+        "utils",
+        "withr"
+      ],
+      "Hash": "5b8c32722dadfb21a851e099444ba0ac"
+    },
     "EbayesThresh": {
       "Package": "EbayesThresh",
       "Version": "1.4-12",
@@ -19,6 +55,20 @@
         "wavethresh"
       ],
       "Hash": "e389502d4b5ef2928b73bb187504e01b"
+    },
+    "Exact": {
+      "Package": "Exact",
+      "Version": "3.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "graphics",
+        "rootSolve",
+        "stats",
+        "utils"
+      ],
+      "Hash": "1a43175d291899a4b2965b5d8db260e0"
     },
     "GGally": {
       "Package": "GGally",
@@ -355,6 +405,31 @@
       ],
       "Hash": "ac6cdb8552c61bd36b0e54d07cf2aab7"
     },
+    "cellranger": {
+      "Package": "cellranger",
+      "Version": "1.1.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "rematch",
+        "tibble"
+      ],
+      "Hash": "f61dbaec772ccd2e17705c1e872e9e7c"
+    },
+    "class": {
+      "Package": "class",
+      "Version": "7.3-21",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "MASS",
+        "R",
+        "stats",
+        "utils"
+      ],
+      "Hash": "8ae0d4328e2eb3a582dfd5391a3663b7"
+    },
     "cli": {
       "Package": "cli",
       "Version": "3.4.1",
@@ -516,6 +591,22 @@
       ],
       "Hash": "539412282059f7f0c07295723d23f987"
     },
+    "e1071": {
+      "Package": "e1071",
+      "Version": "1.7-13",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "class",
+        "grDevices",
+        "graphics",
+        "methods",
+        "proxy",
+        "stats",
+        "utils"
+      ],
+      "Hash": "1046cb48d06cb40c2900d8878f03a0fe"
+    },
     "ellipsis": {
       "Package": "ellipsis",
       "Version": "0.3.2",
@@ -580,6 +671,17 @@
         "methods"
       ],
       "Hash": "699a7a93d08c962d9f8950b2d7a227f1"
+    },
+    "expm": {
+      "Package": "expm",
+      "Version": "0.999-7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "Matrix",
+        "methods"
+      ],
+      "Hash": "af0c5d9f9ece61d4723904c7b2b49b4d"
     },
     "fabricatr": {
       "Package": "fabricatr",
@@ -817,6 +919,19 @@
         "scales"
       ],
       "Hash": "c5ba8f5056487403a299b91984be86ca"
+    },
+    "gld": {
+      "Package": "gld",
+      "Version": "2.6.6",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "e1071",
+        "graphics",
+        "lmom",
+        "stats"
+      ],
+      "Hash": "71173258033324618dc8a09b3e27269e"
     },
     "glue": {
       "Package": "glue",
@@ -1151,6 +1266,18 @@
         "utils"
       ],
       "Hash": "4f55df530bfb9fe95fc42738fa55f183"
+    },
+    "lmom": {
+      "Package": "lmom",
+      "Version": "2.9",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "graphics",
+        "stats"
+      ],
+      "Hash": "10c35f3f52a2b375a770c7c45e474816"
     },
     "magick": {
       "Package": "magick",
@@ -1574,6 +1701,18 @@
       "Repository": "CRAN",
       "Hash": "5cb1623df69ee6102d011c7f78f5791d"
     },
+    "proxy": {
+      "Package": "proxy",
+      "Version": "0.4-27",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "stats",
+        "utils"
+      ],
+      "Hash": "e0ef355c12942cf7a6b91a6cfaea8b3e"
+    },
     "ps": {
       "Package": "ps",
       "Version": "1.7.0",
@@ -1662,6 +1801,28 @@
         "R"
       ],
       "Hash": "5e3c5dc0b071b21fa128676560dbe94d"
+    },
+    "readxl": {
+      "Package": "readxl",
+      "Version": "1.4.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "cellranger",
+        "cpp11",
+        "progress",
+        "tibble",
+        "utils"
+      ],
+      "Hash": "8cf9c239b96df1bbb133b74aef77ad0a"
+    },
+    "rematch": {
+      "Package": "rematch",
+      "Version": "1.0.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "c66b930d20bb6d858cd18e1cebcfae5c"
     },
     "rematch2": {
       "Package": "rematch2",
@@ -1769,6 +1930,19 @@
         "yaml"
       ],
       "Hash": "31b60a882fabfabf6785b8599ffeb8ba"
+    },
+    "rootSolve": {
+      "Package": "rootSolve",
+      "Version": "1.8.2.3",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "grDevices",
+        "graphics",
+        "stats"
+      ],
+      "Hash": "b8fbe639ed0e0e4f4c80498f4411ec5f"
     },
     "rprojroot": {
       "Package": "rprojroot",
