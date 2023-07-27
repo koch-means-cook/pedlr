@@ -68,19 +68,19 @@ Fit_models_new_wrapper = function(participant_id,
               # uncertainty (alpha, pi)
               c(0.01, 0.01),
               # surprise (l,u,s)
-              c(exp(-5), exp(-5), -20),
+              c(exp(-5), exp(-5), 0),
               # uncertainty+surprise (l,u,s,pi)
-              c(exp(-5), exp(-5), -20, 0.01))
+              c(exp(-5), exp(-5), 0, 0.01))
     ub = list(1,
               c(1, 1),
-              c(1, 1, 20),
-              c(1, 1, 20, 1))
+              c(1, 1, 7),
+              c(1, 1, 7, 1))
     # Set starting values either fixed or random, depending on function input
     if(starting_values == 'fixed'){
       x0 = list(0.2,
                 c(0.2, 0.2),
                 c(0.2, 0.5, 1),
-                c(0.2, 0.5, 1,0.2))
+                c(0.2, 0.5, 1, 0.2))
     } else if(starting_values == 'random'){
       # Use same random starting value for similar models
       rand_alpha = runif(1, min = lb[[1]], max = ub[[1]])

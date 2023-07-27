@@ -3,7 +3,7 @@ title: "Results 02"
 output:
   html_document:
     toc: yes
-    self_contained: true
+    embed-resources: true
     toc_float:
       collapsed: true
       smooth_scroll: false
@@ -47,6 +47,7 @@ library(papeR)
 library(ggridges)
 library(bmsR)
 library(fabricatr)
+library(mlisi)
 ```
 
 ```{r, message=FALSE}

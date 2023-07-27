@@ -3,7 +3,7 @@ title: "Results 01"
 output:
   html_document:
     toc: yes
-    self_contained: true
+    embed-resources: true
     toc_float:
       collapsed: true
       smooth_scroll: false
