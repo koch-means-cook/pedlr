@@ -4,6 +4,7 @@ data/
 # Ignore all derivative files
 derivatives/
 derivatives_old/
+derivatives_*/
 
 # Ignore logs
 logs/simulation/*
