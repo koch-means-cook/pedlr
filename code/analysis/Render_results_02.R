@@ -7,13 +7,6 @@ source(file.path(here::here(),
                  'Render_to_derivatives.R',
                  fsep = .Platform$file.sep))
 
-# Unlock data set to allow to make changes (see datalad)
-derivatives_dir = file.path(here::here(),
-                            'derivatives',
-                            fsep = .Platform$file.sep)
-system(paste0("datalad unlock ", derivatives_dir),
-       intern = TRUE)
-
 book_path = file.path(here::here(),
                       'code',
                       'analysis',
