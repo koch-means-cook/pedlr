@@ -38,7 +38,7 @@ fi
 PARTICIPANTS=$1
 # Get data to work on
 cd ${PATH_DATA}
-DATA_LIST=$(ls *.tsv)
+DATA_LIST=$(ls *_exp_data.tsv)
 cd ${PATH_RETURN}
 # Only overwrite data with provided input if not empty
 if [ ! -z "${PARTICIPANTS}" ]; then
