@@ -68,9 +68,9 @@ Fit_models_new_wrapper = function(participant_id,
               # uncertainty (alpha, pi)
               c(0.01, 0.01),
               # surprise (l,u,s)
-              c(exp(-5), exp(-5), 0),
+              c(exp(-5), exp(-5), 1),
               # uncertainty+surprise (l,u,s,pi)
-              c(exp(-5), exp(-5), 0, 0.01))
+              c(exp(-5), exp(-5), 1, 0.01))
     ub = list(1,
               c(1, 1),
               c(1, 1, 7),
@@ -156,7 +156,7 @@ Fit_models_new_wrapper = function(participant_id,
   out_pes = setcolorder(out_pes, neworder = c('participant_id', 'group', 'age', 'sex',
                                               'starting_values', 'algorithm', 'xtol_rel',
                                               'maxeval', 'n_iterations', 'iter'))
-  
+
   # Save outputs
   # Fit
   file_name = paste('fit', '-', participant_id, '_', 'sv', '-', starting_values, '.tsv', sep = '')
