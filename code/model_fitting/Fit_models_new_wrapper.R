@@ -10,6 +10,7 @@ Fit_models_new_wrapper = function(participant_id,
                                   iterations){
   
   # participant_id = '09RI1ZH'
+  # participant_id = '0IUKYRW'
   # starting_values = 'fixed'
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
@@ -27,10 +28,19 @@ Fit_models_new_wrapper = function(participant_id,
   
   # Load participant data
   data = Load_data()
+  # Apply exclusion criteria to dataset (exclude participants based on choice performance, ignoring estimation performance)
   data = Apply_exclusion_criteria(data, choice_based_exclusion = TRUE)
+  
   # Get participant
   pid = participant_id
-  data = data[participant_id == pid]
+  # Stop model fitting in case participant was excluded based on choice performance
+  # and is not present in data set anymore
+  if(!pid %in% unique(data$participant_id)){
+    stop('Participant was excluded based on choice performance. No model fitting possible.')
+  } else{
+    # In case participant was not excluded, select only data of specified participant
+    data = data[participant_id == pid]
+  }
   
   # Get correct choices
   # Find correct choice
