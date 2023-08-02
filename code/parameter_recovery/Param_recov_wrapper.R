@@ -225,10 +225,10 @@ Param_recov_wrapper = function(participant_id,
                       ub = ub,
                       temperature = temperature,
                       tau = tau)
-      
-      # Fuse output over iterations
-      res$iter = n_iter
-      out = rbind(out, res)
+    
+    # Fuse output over iterations
+    res$iter = n_iter
+    out = rbind(out, res)
     
   }
   

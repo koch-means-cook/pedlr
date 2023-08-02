@@ -10,7 +10,6 @@ Fit_models_new_wrapper = function(participant_id,
                                   iterations){
   
   # participant_id = '09RI1ZH'
-  # participant_id = '0IUKYRW'
   # starting_values = 'fixed'
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
@@ -63,7 +62,7 @@ Fit_models_new_wrapper = function(participant_id,
   # Model Fit
   out_fit = data.table::data.table()
   # PE
-  out_pes = data.table::data.table()
+  out_model_data = data.table::data.table()
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)
@@ -119,14 +118,14 @@ Fit_models_new_wrapper = function(participant_id,
     # Get model fit output
     fit = res$fitting_out
     # Get PEs
-    pes = res$pes_out
+    model_data = res$model_data
     # Add iteration
     fit$iter = n_iter
-    pes$iter = n_iter
+    model_data$iter = n_iter
     
     # Concatenate data
     out_fit = rbind(out_fit, fit)
-    out_pes = rbind(out_pes, pes)
+    out_model_data = rbind(out_model_data, model_data)
    
     # Send message to user
     message(paste('done!\n', sep = ''), appendLF = FALSE)
@@ -140,30 +139,30 @@ Fit_models_new_wrapper = function(participant_id,
   out_fit$xtol_rel = xtol_rel
   out_fit$maxeval = maxeval
   out_fit$n_iterations = iterations
-  # PEs
-  out_pes$starting_values = starting_values
-  out_pes$algorithm = algorithm
-  out_pes$xtol_rel = xtol_rel
-  out_pes$maxeval = maxeval
-  out_pes$n_iterations = iterations
+  # model_data
+  out_model_data$starting_values = starting_values
+  out_model_data$algorithm = algorithm
+  out_model_data$xtol_rel = xtol_rel
+  out_model_data$maxeval = maxeval
+  out_model_data$n_iterations = iterations
   
   # Add demographic variable to output
   # Fit
   out_fit$age = unique(data$age)
   out_fit$sex = unique(data$sex)
   out_fit$group = unique(data$group)
-  # PEs
-  out_pes$age = unique(data$age)
-  out_pes$sex = unique(data$sex)
-  out_pes$group = unique(data$group)
+  # model_data
+  out_model_data$age = unique(data$age)
+  out_model_data$sex = unique(data$sex)
+  out_model_data$group = unique(data$group)
   
   # Change column order
   # Fit
   out_fit = setcolorder(out_fit, neworder = c('participant_id', 'group', 'age', 'sex',
                                               'starting_values', 'algorithm', 'xtol_rel',
                                               'maxeval', 'n_iterations', 'iter'))
-  # PEs
-  out_pes = setcolorder(out_pes, neworder = c('participant_id', 'group', 'age', 'sex',
+  # model_data
+  out_model_data = setcolorder(out_model_data, neworder = c('participant_id', 'group', 'age', 'sex',
                                               'starting_values', 'algorithm', 'xtol_rel',
                                               'maxeval', 'n_iterations', 'iter'))
 
@@ -174,11 +173,11 @@ Fit_models_new_wrapper = function(participant_id,
                        fsep = .Platform$file.sep)
   data.table::fwrite(out_fit, file = save_dir, sep = '\t', na = 'n/a',
                      col.names = TRUE, row.names = FALSE)
-  # PEs
-  file_name = paste('pes', '-', participant_id, '_', 'sv', '-', starting_values, '.tsv', sep = '')
+  # model_data
+  file_name = paste('modeldata', '-', participant_id, '_', 'sv', '-', starting_values, '.tsv', sep = '')
   save_dir = file.path(base_path, 'derivatives', 'model_fitting', file_name,
                        fsep = .Platform$file.sep)
-  data.table::fwrite(out_pes, file = save_dir, sep = '\t', na = 'n/a',
+  data.table::fwrite(out_model_data, file = save_dir, sep = '\t', na = 'n/a',
                      col.names = TRUE, row.names = FALSE)
   
 }

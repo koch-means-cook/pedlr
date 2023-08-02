@@ -109,5 +109,6 @@ Regression_model = function(x,
   return(list(cglm,
               cdf,
               updates,
-              alphas))
+              alphas,
+              values))
 }

@@ -146,6 +146,11 @@ Fit_models_new = function(data,
     lr = lr[-which(is.na(lr))]
     # PE on each trial
     pe = cres[[3]][2,which(!is.na(cres[[4]][2,]))]
+    # Values for each bandit on each trial
+    vals = data.table::data.table(t(cres[[5]]))
+    colnames(vals) = c('value_low', 'value_mid', 'value_high')
+    # Get behavioral data
+    cdf = cres[[2]]
     
     
     # Enter variables into output array
@@ -204,9 +209,9 @@ Fit_models_new = function(data,
     out = rbind(out, temp)
     
     # Output of updates/PEs at each trial
-    temp_pes = data.table::data.table(t(cres[[3]]))
-    colnames(temp_pes) = c('low', 'mid', 'high')
-    temp_pes = temp_pes %>%
+    temp_model_data = data.table::data.table(t(cres[[3]]))
+    colnames(temp_model_data) = c('low', 'mid', 'high')
+    temp_model_data = temp_model_data %>%
       .[, ':='(update_low = as.logical(c(0, diff(low)) != 0),
                update_mid = as.logical(c(0, diff(mid)) != 0),
                update_high = as.logical(c(0, diff(high) != 0)),
@@ -221,23 +226,28 @@ Fit_models_new = function(data,
       # Get PE for bandit that was updated
       .[, pe := c(low,mid,high)[updated_bandit],
         by = 'trial'] %>%
+      # Add current value of each bandit for every trial
+      cbind(., vals) %>%
       # Select only neccessary columns
-      .[, c('trial', 'updated_bandit', 'pe')]
+      .[, c('trial', 'updated_bandit', 'pe', 'value_low', 'value_mid', 'value_high')]
     # Add relevant information for output
-    temp_pes$participant_id = participant_id
-    temp_pes$model = model_name
-    temp_pes$b2_ll = b2_logLik
-    temp_pes$AIC = AICs
-    temp_pes$AICc = AICc
-    temp_pes = setcolorder(temp_pes, c('participant_id', 'model', 'b2_ll', 'AIC', 'AICc'))
+    temp_model_data$model = model_name
+    temp_model_data$b2_ll = b2_logLik
+    temp_model_data$AIC = AICs
+    temp_model_data$AICc = AICc
+    temp_model_data = setcolorder(temp_model_data, c('model', 'b2_ll', 'AIC', 'AICc'))
+    
+    # Add behavioral data to modeling output
+    temp_model_data = cbind(data, temp_model_data)
+    
     # Fuse PE output
-    pes = rbind(pes, temp_pes)
+    model_data = rbind(pes, temp_model_data)
 
   }
   
   # Return fitting and PE output for all models
   output = list(fitting_out = out,
-                pes_out = pes)
+                model_data = model_data)
   return(output)
 }
 
