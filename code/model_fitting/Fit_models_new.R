@@ -67,7 +67,7 @@ Fit_models_new = function(data,
   
   # Set empty data.table
   out = data.table::data.table()
-  pes = data.table::data.table()
+  model_data = data.table::data.table()
   
   # Normal fitting:
   # Fit all 4 models
@@ -241,7 +241,7 @@ Fit_models_new = function(data,
     temp_model_data = cbind(data, temp_model_data)
     
     # Fuse PE output
-    model_data = rbind(pes, temp_model_data)
+    model_data = rbind(model_data, temp_model_data)
 
   }
   
