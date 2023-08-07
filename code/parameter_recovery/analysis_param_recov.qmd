@@ -178,6 +178,10 @@ data_surprise_recov = data_surprise %>%
                     value.var = 'value') %>%
   data.table::setorder(., 'participant_id', 'iter', 'params')
 
+cutoffs = data.table::data.table(cbind(rep('s', 2),
+                                       c(1,7)))
+colnames(cutoffs) = c('params', 'x')
+
 # Plot correlation between true parameter and recovered parameter
 p = ggplot2::ggplot(data = data_surprise_recov,
                     ggplot2::aes(x = input_params,
@@ -185,6 +189,9 @@ p = ggplot2::ggplot(data = data_surprise_recov,
   ggplot2::geom_point(alpha = 0.3) +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
+  ggplot2::geom_vline(data = cutoffs,
+                      aes(xintercept = as.numeric(x)),
+                      linetype = 'dashed') +
   ggplot2::facet_wrap(~ params,
                       scales = 'free',
                       nrow = 1) +

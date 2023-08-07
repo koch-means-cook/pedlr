@@ -552,7 +552,34 @@ p = ggplot(data = data_surprise_param,
                                              y = 0),
                    width = 0.5,
                    alpha = 0.8,
-                   color = NA)
+                   color = NA) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+
+# log space
+p = ggplot(data = data_surprise_param,
+       aes(x = group,
+           y = log(param_u),
+           fill = group,
+           color = group)) +
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0,
+                                        seed = 666)) +
+  geom_half_violin(data = data_surprise_param[group == 'younger'],
+                   side = 'r',
+                   position = position_nudge(x=-0.49,
+                                             y = 0),
+                   width = 0.5,
+                   alpha = 0.8,
+                   color = NA) +
+  geom_half_violin(data = data_surprise_param[group == 'older'],
+                   side = 'l',
+                   position = position_nudge(x=0.49,
+                                             y = 0),
+                   width = 0.5,
+                   alpha = 0.8,
+                   color = NA) +
+  theme(legend.position = 'none')
 Neurocodify_plot(p)
 ```
 
@@ -725,7 +752,7 @@ summary(m1)
 
 ```{r}
 p = ggplot(data = data_cbe_fit,
-       aes(x = log(param_u),
+       aes(x = param_u,
            y = cbe,
            color = group)) +
   geom_point() +
@@ -749,6 +776,13 @@ data_cbe_fit_surprise = data.table::merge.data.table(data_cbe_fit,
 ```{r}
 p = ggplot(data = data_cbe_fit_surprise,
        aes(x = param_u,
+           y = cbe,
+           color = group)) +
+  geom_point()
+Neurocodify_plot(p)
+
+p = ggplot(data = data_cbe_fit_surprise,
+       aes(x = log(param_u),
            y = cbe,
            color = group)) +
   geom_point()
