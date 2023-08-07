@@ -9,7 +9,8 @@ Fit_models_new = function(data,
                           maxeval,
                           x0,
                           lb,
-                          ub){
+                          ub,
+                          param_recov = FALSE){
 
   # data = Load_data() %>%
   #   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
@@ -18,17 +19,18 @@ Fit_models_new = function(data,
   # xtol_rel = 1.0e-5
   # maxeval = 10
   # x0 = list(0.2,
-  #           0.2,
+  #           c(0.2, 0.2),
   #           c(0.2, 0.5, 1),
-  #           c(0.2, 0.5, 1))
+  #           c(0.2, 0.5, 1,0.2))
   # lb = list(0.01,
-  #           0.01,
-  #           c(exp(-5), exp(-5), -20),
-  #           c(exp(-5), exp(-5), -20))
+  #           c(0.01, 0.01),
+  #           c(0.01, 0.01, -1),
+  #           c(0.01, 0.01, -1, 0.01))
   # ub = list(1,
-  #           1,
-  #           c(1, 1, 20),
-  #           c(1, 1, 20))
+  #           c(1, 1),
+  #           c(1, 1, 7),
+  #           c(1, 1, 7, 1))
+    
   
   # Set base_path
   base_path = here::here()
@@ -65,9 +67,33 @@ Fit_models_new = function(data,
   
   # Set empty data.table
   out = data.table::data.table()
+  model_data = data.table::data.table()
+  
+  # Normal fitting:
+  # Fit all 4 models
+  if(param_recov == FALSE){
+    model_pool = 1:n_models
+  } else if(param_recov == TRUE){
+    # For parameter recovery:
+    # Fit only model that was used for simulation of data (based on number of parameters)
+    if(is.na(unique(data$x2))){
+      # RW model
+      model_pool = 1
+    } else if(is.na(unique(data$x3))){
+      # Uncertainty model
+      model_pool = 2
+    } else if(is.na(unique(data$x4))){
+      # Surprise model
+      model_pool = 3
+    } else{
+      # Surprise+Uncertainty model
+      model_pool = 4
+    }
+  }
+  
   
   # Loop over models
-  for (model_count in 1:n_models) {
+  for (model_count in model_pool) {
     
     # Get model name
     model_name = names(glmods)[model_count]
@@ -83,11 +109,23 @@ Fit_models_new = function(data,
       para_names = c('l', 'u', 's', 'pi')
     }
     
+    if(param_recov == FALSE){
+      x0_model = x0[[model_count]]
+      lb_model = lb[[model_count]]
+      ub_model = ub[[model_count]]
+      
+    # Only allow specified parameters for single model for parameter recovery
+    } else if(param_recov == TRUE){
+      x0_model = x0
+      lb_model = lb
+      ub_model = ub
+    }
+    
     # Fit model
-    cmod = nloptr::nloptr(x0 = x0[[model_count]],
+    cmod = nloptr::nloptr(x0 = x0_model,
                           eval_f = LL_reg,
-                          lb = lb[[model_count]],
-                          ub = ub[[model_count]],
+                          lb = lb_model,
+                          ub = ub_model,
                           opts = copts,
                           data = data,
                           glmods = glmods,
@@ -108,6 +146,11 @@ Fit_models_new = function(data,
     lr = lr[-which(is.na(lr))]
     # PE on each trial
     pe = cres[[3]][2,which(!is.na(cres[[4]][2,]))]
+    # Values for each bandit on each trial
+    vals = data.table::data.table(t(cres[[5]]))
+    colnames(vals) = c('value_low', 'value_mid', 'value_high')
+    # Get behavioral data
+    cdf = cres[[2]]
     
     
     # Enter variables into output array
@@ -137,15 +180,15 @@ Fit_models_new = function(data,
     cidx_my = cidx
     b2_logLik = sum(probs[cidx])
     b2_logLik_my = b2_logLik
-    #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0[[model_count]])) + 2*b2_logLik
+    #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0_model)) + 2*b2_logLik
     # number of parameters
-    k = (length(coef(cglm)) + length(x0[[model_count]]))
+    k = (length(coef(cglm)) + length(x0_model))
     # Number of samples
     n = length(cidx)
     AICs = 2*k - 2*b2_logLik
     AICc = AICs + ((2*(k^2) + 2*k) / (n - k - 1))
     # x0
-    x0_vals = as.data.table(cbind(para_names, x0[[model_count]]))
+    x0_vals = as.data.table(cbind(para_names, x0_model))
     colnames(x0_vals) = c('x', 'value')
     x0_vals$variable = 'x0'
     
@@ -162,12 +205,49 @@ Fit_models_new = function(data,
     # sort colums
     temp = setcolorder(temp, c('participant_id', 'model', 'AIC', 'p_V1', 'p_V2',
                                'variable', 'x', 'value'))
-    
+    # Fuse fitting output
     out = rbind(out, temp)
+    
+    # Output of updates/PEs at each trial
+    temp_model_data = data.table::data.table(t(cres[[3]]))
+    colnames(temp_model_data) = c('low', 'mid', 'high')
+    temp_model_data = temp_model_data %>%
+      .[, ':='(update_low = as.logical(c(0, diff(low)) != 0),
+               update_mid = as.logical(c(0, diff(mid)) != 0),
+               update_high = as.logical(c(0, diff(high) != 0)),
+               trial = seq(.N))] %>%
+      # Mark first trials of runs with NA (since no PE)
+      .[trial %in% c(1, 241), ':='(update_low = NA,
+                                   update_mid = NA,
+                                   update_high = NA)] %>%
+      # Put bandit that was updated in a trial into column
+      .[, updated_bandit := which(c(update_low, update_mid, update_high) == TRUE),
+        by = 'trial'] %>%
+      # Get PE for bandit that was updated
+      .[, pe := c(low,mid,high)[updated_bandit],
+        by = 'trial'] %>%
+      # Add current value of each bandit for every trial
+      cbind(., vals) %>%
+      # Select only neccessary columns
+      .[, c('trial', 'updated_bandit', 'pe', 'value_low', 'value_mid', 'value_high')]
+    # Add relevant information for output
+    temp_model_data$model = model_name
+    temp_model_data$b2_ll = b2_logLik
+    temp_model_data$AIC = AICs
+    temp_model_data$AICc = AICc
+    temp_model_data = setcolorder(temp_model_data, c('model', 'b2_ll', 'AIC', 'AICc'))
+    
+    # Add behavioral data to modeling output
+    temp_model_data = cbind(data, temp_model_data)
+    
+    # Fuse PE output
+    model_data = rbind(model_data, temp_model_data)
 
   }
   
-  # Return fitting for all models
-  return(out)
+  # Return fitting and PE output for all models
+  output = list(fitting_out = out,
+                model_data = model_data)
+  return(output)
 }
 

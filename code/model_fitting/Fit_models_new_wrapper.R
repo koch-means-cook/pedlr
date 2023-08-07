@@ -13,9 +13,9 @@ Fit_models_new_wrapper = function(participant_id,
   # starting_values = 'fixed'
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
-  # maxeval = 1000
+  # maxeval = 10
   # iterations = 1
-  
+
   # Set base_path
   base_path = here::here()
   
@@ -27,10 +27,19 @@ Fit_models_new_wrapper = function(participant_id,
   
   # Load participant data
   data = Load_data()
+  # Apply exclusion criteria to dataset (exclude participants based on choice performance, ignoring estimation performance)
   data = Apply_exclusion_criteria(data, choice_based_exclusion = TRUE)
+  
   # Get participant
   pid = participant_id
-  data = data[participant_id == pid]
+  # Stop model fitting in case participant was excluded based on choice performance
+  # and is not present in data set anymore
+  if(!pid %in% unique(data$participant_id)){
+    stop('Participant was excluded based on choice performance. No model fitting possible.')
+  } else{
+    # In case participant was not excluded, select only data of specified participant
+    data = data[participant_id == pid]
+  }
   
   # Get correct choices
   # Find correct choice
@@ -50,7 +59,10 @@ Fit_models_new_wrapper = function(participant_id,
   
   
   # Allocate data frame for storage of all iterations
-  out = data.table()
+  # Model Fit
+  out_fit = data.table::data.table()
+  # PE
+  out_model_data = data.table::data.table()
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)
@@ -65,19 +77,19 @@ Fit_models_new_wrapper = function(participant_id,
               # uncertainty (alpha, pi)
               c(0.01, 0.01),
               # surprise (l,u,s)
-              c(exp(-5), exp(-5), -20),
+              c(exp(-5), exp(-5), 1),
               # uncertainty+surprise (l,u,s,pi)
-              c(exp(-5), exp(-5), -20, 0.01))
+              c(exp(-5), exp(-5), 1, 0.01))
     ub = list(1,
               c(1, 1),
-              c(1, 1, 20),
-              c(1, 1, 20, 1))
+              c(1, 1, 7),
+              c(1, 1, 7, 1))
     # Set starting values either fixed or random, depending on function input
     if(starting_values == 'fixed'){
       x0 = list(0.2,
                 c(0.2, 0.2),
                 c(0.2, 0.5, 1),
-                c(0.2, 0.5, 1,0.2))
+                c(0.2, 0.5, 1, 0.2))
     } else if(starting_values == 'random'){
       # Use same random starting value for similar models
       rand_alpha = runif(1, min = lb[[1]], max = ub[[1]])
@@ -95,7 +107,7 @@ Fit_models_new_wrapper = function(participant_id,
     message(paste('   Iteration:   ', n_iter, '...', sep = ''), appendLF = FALSE)
     
     # Fit model
-    fit = Fit_models_new(data = data,
+    res = Fit_models_new(data = data,
                          algorithm = algorithm,
                          xtol_rel = xtol_rel,
                          maxeval = maxeval,
@@ -103,11 +115,17 @@ Fit_models_new_wrapper = function(participant_id,
                          lb = lb,
                          ub = ub)
     
-    # Add iteration to data
+    # Get model fit output
+    fit = res$fitting_out
+    # Get PEs
+    model_data = res$model_data
+    # Add iteration
     fit$iter = n_iter
+    model_data$iter = n_iter
     
     # Concatenate data
-    out = rbind(out, fit)
+    out_fit = rbind(out_fit, fit)
+    out_model_data = rbind(out_model_data, model_data)
    
     # Send message to user
     message(paste('done!\n', sep = ''), appendLF = FALSE)
@@ -115,27 +133,51 @@ Fit_models_new_wrapper = function(participant_id,
   }
   
   # Add fitting variables to output
-  out$starting_values = starting_values
-  out$algorithm = algorithm
-  out$xtol_rel = xtol_rel
-  out$maxeval = maxeval
-  out$n_iterations = iterations
+  # Fit
+  out_fit$starting_values = starting_values
+  out_fit$algorithm = algorithm
+  out_fit$xtol_rel = xtol_rel
+  out_fit$maxeval = maxeval
+  out_fit$n_iterations = iterations
+  # model_data
+  out_model_data$starting_values = starting_values
+  out_model_data$algorithm = algorithm
+  out_model_data$xtol_rel = xtol_rel
+  out_model_data$maxeval = maxeval
+  out_model_data$n_iterations = iterations
   
   # Add demographic variable to output
-  out$age = unique(data$age)
-  out$sex = unique(data$sex)
-  out$group = unique(data$group)
+  # Fit
+  out_fit$age = unique(data$age)
+  out_fit$sex = unique(data$sex)
+  out_fit$group = unique(data$group)
+  # model_data
+  out_model_data$age = unique(data$age)
+  out_model_data$sex = unique(data$sex)
+  out_model_data$group = unique(data$group)
   
   # Change column order
-  out = setcolorder(out, neworder = c('participant_id', 'group', 'age', 'sex',
-                                      'starting_values', 'algorithm', 'xtol_rel',
-                                      'maxeval', 'n_iterations', 'iter'))
-  
+  # Fit
+  out_fit = setcolorder(out_fit, neworder = c('participant_id', 'group', 'age', 'sex',
+                                              'starting_values', 'algorithm', 'xtol_rel',
+                                              'maxeval', 'n_iterations', 'iter'))
+  # model_data
+  out_model_data = setcolorder(out_model_data, neworder = c('participant_id', 'group', 'age', 'sex',
+                                              'starting_values', 'algorithm', 'xtol_rel',
+                                              'maxeval', 'n_iterations', 'iter'))
+
   # Save outputs
+  # Fit
   file_name = paste('fit', '-', participant_id, '_', 'sv', '-', starting_values, '.tsv', sep = '')
   save_dir = file.path(base_path, 'derivatives', 'model_fitting', file_name,
                        fsep = .Platform$file.sep)
-  data.table::fwrite(out, file = save_dir, sep = '\t', na = 'n/a',
+  data.table::fwrite(out_fit, file = save_dir, sep = '\t', na = 'n/a',
+                     col.names = TRUE, row.names = FALSE)
+  # model_data
+  file_name = paste('modeldata', '-', participant_id, '_', 'sv', '-', starting_values, '.tsv', sep = '')
+  save_dir = file.path(base_path, 'derivatives', 'model_fitting', file_name,
+                       fsep = .Platform$file.sep)
+  data.table::fwrite(out_model_data, file = save_dir, sep = '\t', na = 'n/a',
                      col.names = TRUE, row.names = FALSE)
   
 }

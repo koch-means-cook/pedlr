@@ -2,7 +2,7 @@ LRfunction = function(low,
                       up,
                       slope,
                       PE,
-                      tau = 0.1) {
+                      tau = 0.2) {
   
   
   PEscaled = 2/(1 + exp(-tau*abs(PE))) -1

@@ -38,7 +38,7 @@ fi
 PARTICIPANTS=$1
 # Get data to work on
 cd ${PATH_DATA}
-DATA_LIST=$(ls *.tsv)
+DATA_LIST=$(ls *_exp_data.tsv)
 cd ${PATH_RETURN}
 # Only overwrite data with provided input if not empty
 if [ ! -z "${PARTICIPANTS}" ]; then
@@ -55,15 +55,15 @@ N_CPUS=1
 # maximum number of threads per process:
 N_THREADS=1
 # memory demand in *GB*
-MEM_MB=10000
+MEM_MB=1000
 # memory demand in *MB*
 #MEM_MB="$((${MEM_GB} * 1000))"
 
 # ===
 # Set fitting parameters
 # ===
-STARTING_VALUES="fixed"
-#STARTING_VALUES="random"
+#STARTING_VALUES="fixed"
+STARTING_VALUES="random"
 ALGORITHM="NLOPT_GN_DIRECT_L"
 XTOL_REL=0.00001
 MAXEVAL=10000

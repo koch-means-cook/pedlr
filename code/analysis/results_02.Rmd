@@ -3,7 +3,7 @@ title: "Results 02"
 output:
   html_document:
     toc: yes
-    self_contained: true
+    embed-resources: true
     toc_float:
       collapsed: true
       smooth_scroll: false
@@ -47,6 +47,7 @@ library(papeR)
 library(ggridges)
 library(bmsR)
 library(fabricatr)
+library(mlisi)
 ```
 
 ```{r, message=FALSE}
@@ -447,7 +448,7 @@ p = ggplot(data = data_lrs,
 p
 ```
 
-**$\chi^2$-test of dichotomized $u-l$-values**
+**$\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions**
 
 ```{r}
 # Chi-Sq with rising and falling
@@ -519,6 +520,69 @@ p = ggplot(data = data_surprise_param,
                    color = NA)
 Neurocodify_plot(p)
 ```
+
+**Parametric $u$ analysis between age groups**
+
+```{r}
+# t-test between groups
+t.test(data_surprise_param[group == 'younger']$param_u,
+       data_surprise_param[group == 'older']$param_u)
+```
+
+```{r}
+# Continuous comparison
+p = ggplot(data = data_surprise_param,
+       aes(x = group,
+           y = param_u,
+           fill = group,
+           color = group)) +
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0,
+                                        seed = 666)) +
+  geom_half_violin(data = data_surprise_param[group == 'younger'],
+                   side = 'r',
+                   position = position_nudge(x=-0.49,
+                                             y = 0),
+                   width = 0.5,
+                   alpha = 0.8,
+                   color = NA) +
+  geom_half_violin(data = data_surprise_param[group == 'older'],
+                   side = 'l',
+                   position = position_nudge(x=0.49,
+                                             y = 0),
+                   width = 0.5,
+                   alpha = 0.8,
+                   color = NA) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+
+# log space
+p = ggplot(data = data_surprise_param,
+       aes(x = group,
+           y = log(param_u),
+           fill = group,
+           color = group)) +
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0,
+                                        seed = 666)) +
+  geom_half_violin(data = data_surprise_param[group == 'younger'],
+                   side = 'r',
+                   position = position_nudge(x=-0.49,
+                                             y = 0),
+                   width = 0.5,
+                   alpha = 0.8,
+                   color = NA) +
+  geom_half_violin(data = data_surprise_param[group == 'older'],
+                   side = 'l',
+                   position = position_nudge(x=0.49,
+                                             y = 0),
+                   width = 0.5,
+                   alpha = 0.8,
+                   color = NA) +
+  theme(legend.position = 'none')
+Neurocodify_plot(p)
+```
+
 
 **Slope parameter $s$ between age groups**
 
@@ -676,3 +740,52 @@ m1 = lm(cbe ~ param_uml * group,
         data = data_cbe_fit)
 summary(m1)
 ```
+
+**$u$ vs. immediate influence of surprising outcomes**
+
+```{r}
+# model u (continuous) and group
+m1 = lm(cbe ~ param_u * group,
+        data = data_cbe_fit)
+summary(m1)
+```
+
+```{r}
+p = ggplot(data = data_cbe_fit,
+       aes(x = param_u,
+           y = cbe,
+           color = group)) +
+  geom_point() +
+  facet_wrap(~group)
+Neurocodify_plot(p)
+```
+
+## Focus on participants in which suprise model fits best
+
+```{r}
+data_winning_AICc = data_counts %>%
+  .[, c('participant_id', 'group', 'winning_model')]
+
+# Add winning model to critical behavioral effect data
+data_cbe_fit_surprise = data.table::merge.data.table(data_cbe_fit,
+                                                     data_winning_AICc) %>%
+  # Only look at participants in which surprise model won
+  .[winning_model == 'surprise',]
+```
+
+```{r}
+p = ggplot(data = data_cbe_fit_surprise,
+       aes(x = param_u,
+           y = cbe,
+           color = group)) +
+  geom_point()
+Neurocodify_plot(p)
+
+p = ggplot(data = data_cbe_fit_surprise,
+       aes(x = log(param_u),
+           y = cbe,
+           color = group)) +
+  geom_point()
+Neurocodify_plot(p)
+```
+
