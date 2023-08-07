@@ -100,6 +100,10 @@ Regression_model = function(x,
   # Exclude forced choices and missing responses (e.g. time-outs)
   cdf = subset(cdf, is.na(cdf$forced) & !is.na(cdf$choice))
   
+  # z-score input to regression model to aid interpretability of betas
+  cols = c('V1', 'V2', 'V1u', 'V2u')
+  cdf = cdf[, (cols) := lapply(.SD, scale), .SDcols = cols]
+  
   # Run binomial regression with logit-link (due to probability for left choice vs. right choice)
   cglm = glm(glmods[[model]],
              family = binomial(link = 'logit'),
