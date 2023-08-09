@@ -10,29 +10,34 @@ Param_recov = function(data,
                        lb,
                        ub,
                        temperature,
-                       tau){
+                       tau,
+                       model){
   
-    # data = data.table::fread(file.path(here::here(), 'data', '09RI1ZH_exp_data.tsv'),
-    #                          sep = '\t', na.strings = 'n/a')
-    # input_params = c(0.1, 0.5, 0.7, NA)
-    # tau = 0.2
-    # temperature = 7
+  # data = data.table::fread(file.path(here::here(), 'data', '09RI1ZH_exp_data.tsv'),
+  #                          sep = '\t', na.strings = 'n/a')
+  # model = 'uncertainty_seplr'
+  # input_params = c(0.1, 0.5, 0.7, NA)
+  # tau = 0.2
+  # temperature = 7
   
   # Source self-written functions
   source(file.path(here::here(), 'code', 'simulation', 'Simulate.R'))
   source(file.path(here::here(), 'code', 'model_fitting', 'Fit_models_new.R'))
   source(file.path(here::here(), 'code', 'utils', 'Add_comp.R'))
   
-  # Simulate behavior given model parameters
-  # NUMBER OF PARAMETERS sets which model to use
-  #   input_params = c(0.1, NA, NA, NA) ==> RW model ==> alpha = 0.1
-  #   input_params = c(0.1, 0.5, NA, NA) ==> Uncertainty model ==> alpha = 0.1, pi = 0.5
-  #   input_params = c(0.1, 0.5, 0.7, NA) ==> Surprise model ==> l = 0.1, u = 0.5, s = 0.7 
-  #   input_params = c(0.1, 0.5, 0.7, 0.5) ==> Suprise + uncertainty model ==> l = 0.1, u = 0.5, s = 0.7, pi = 0.5
+  # Simulate behavior given model and parameters
+  # Examples:
+  #   model = 'rw', input_params = c(0.1, NA, NA, NA) => RW model => alpha = 0.1
+  #   model = 'uncertainty', input_params = c(0.1, 0.5, NA, NA) => Uncertainty model => alpha = 0.1, pi = 0.5
+  #   model = 'seplr', input_params = c(0.2, 0.4, NA, NA) => SEPLR model => alpha_pos = 0.2, alpha_neg = 0.4
+  #   model = 'uncertainty_seplr', input_params = c(0.2, 0.4, 0.9, NA) => Uncertainty+SEPLR model => alpha_pos = 0.2, alpha_neg = 0.4, pi = 0.9
+  #   model = 'surprise', input_params = c(0.1, 0.5, 0.7, NA) => Surprise model => l = 0.1, u = 0.5, s = 0.7 
+  #   model = 'uncertainty_surprise', input_params = c(0.1, 0.5, 0.7, 0.5) => Uncertainty+Surprise model => l = 0.1, u = 0.5, s = 0.7, pi = 0.5
   sim = Simulate(data = data,
                  x = input_params,
                  temperature = temperature,
-                 tau = tau)
+                 tau = tau,
+                 model)
   
   # Replace participants choices with choices of model
   # Choices
@@ -71,7 +76,8 @@ Param_recov = function(data,
                          x0 = x0,
                          lb = lb,
                          ub = ub,
-                         param_recov = TRUE)
+                         param_recov = TRUE,
+                         recov_model = model)
     
   # Get fitting result
   res = recov$fitting_out %>%
