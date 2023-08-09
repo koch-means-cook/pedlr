@@ -89,10 +89,10 @@ Compute_value = function(V,
       alpha_star = res[[1]]
       
       # In case of seplr model, use different LR depending on pos or neg PE
-    } else if(model == 'seplr'){
+    } else if(model %in% c('seplr', 'uncertainty_seplr')){
       
       # Positive PEs
-      if(PE >= 0){
+      if(PE[idx[i]] >= 0){
         alpha_star = alpha_pos
         
       # Negative PEs
@@ -103,7 +103,7 @@ Compute_value = function(V,
       
       # In case of RW and uncertainty model: use single, static LR (but updating
       # process works identical)
-    } else if(model %in% c('rw', 'ununcertainty')){
+    } else if(model %in% c('rw', 'uncertainty')){
       
       # Set constant LR
       alpha_star = alpha

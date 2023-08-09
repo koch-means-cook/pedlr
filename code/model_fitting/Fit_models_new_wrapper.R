@@ -76,18 +76,26 @@ Fit_models_new_wrapper = function(participant_id,
     lb = list(0.01,
               # uncertainty (alpha, pi)
               c(0.01, 0.01),
+              # seplr (alpha_pos, alpha_neg)
+              c(0.01, 0.01),
+              # uncertainty+seplr (alpha_pos, alpha_neg, pi)
+              c(0.01, 0.01, 0.01),
               # surprise (l,u,s)
               c(exp(-5), exp(-5), 1),
               # uncertainty+surprise (l,u,s,pi)
               c(exp(-5), exp(-5), 1, 0.01))
     ub = list(1,
               c(1, 1),
+              c(1, 1),
+              c(1, 1, 1),
               c(1, 1, 7),
               c(1, 1, 7, 1))
     # Set starting values either fixed or random, depending on function input
     if(starting_values == 'fixed'){
       x0 = list(0.2,
                 c(0.2, 0.2),
+                c(0.2, 0.2),
+                c(0.2, 0.2, 0.2),
                 c(0.2, 0.5, 1),
                 c(0.2, 0.5, 1, 0.2))
     } else if(starting_values == 'random'){
@@ -97,9 +105,17 @@ Fit_models_new_wrapper = function(participant_id,
       rand_u = runif(1, min = lb[[3]][2], max = ub[[3]][2])
       rand_s = runif(1, min = lb[[3]][3], max = ub[[3]][3])
       rand_pi = runif(1, min = lb[[2]][2], max = ub[[2]][2])
+                # rw (alpha)
       x0 = list(rand_alpha,
+                # uncertainty (alpha, pi)
                 c(rand_alpha, rand_pi),
+                # seplr (alpha_pos, alpha_neg)
+                c(rand_alpha, rand_alpha),
+                # uncertainty+seplr (alpha_pos, alpha_neg, pi)
+                c(rand_alpha, rand_alpha, rand_pi),
+                # surprise (l,u,s)
                 c(rand_l, rand_u, rand_s),
+                # uncertainty+surprise (l,u,s,pi)
                 c(rand_l, rand_u, rand_s, rand_pi))
     }
     
