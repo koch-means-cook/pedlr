@@ -60,9 +60,11 @@ MEM_MB=1000
 # ===
 # Set fitting parameters
 # ===
-#MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
+#MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
 MODEL_LIST='surprise'
 #MODEL_LIST='rw'
+#MODEL_LIST='seplr'
+#MODEL_LIST='uncertainty_seplr'
 TEMPERATURE=7
 TAU=0.2
 

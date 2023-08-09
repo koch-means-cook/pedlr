@@ -62,7 +62,7 @@ MEM_MB=1000
 # ===
 # Set list of models to recover
 # ===
-#MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
+#MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
 MODEL_LIST='uncertainty'
 
 # ===
