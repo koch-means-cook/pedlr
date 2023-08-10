@@ -10,7 +10,7 @@ Fit_models_new_wrapper = function(participant_id,
                                   iterations){
   
   # participant_id = '09RI1ZH'
-  # starting_values = 'fixed'
+  # starting_values = 'random'
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
   # maxeval = 10
@@ -101,10 +101,10 @@ Fit_models_new_wrapper = function(participant_id,
     } else if(starting_values == 'random'){
       # Use same random starting value for similar models
       rand_alpha = runif(1, min = lb[[1]], max = ub[[1]])
-      rand_l = runif(1, min = lb[[3]][1], max = ub[[3]][1])
-      rand_u = runif(1, min = lb[[3]][2], max = ub[[3]][2])
-      rand_s = runif(1, min = lb[[3]][3], max = ub[[3]][3])
       rand_pi = runif(1, min = lb[[2]][2], max = ub[[2]][2])
+      rand_l = runif(1, min = lb[[5]][1], max = ub[[5]][1])
+      rand_u = runif(1, min = lb[[5]][2], max = ub[[5]][2])
+      rand_s = runif(1, min = lb[[5]][3], max = ub[[5]][3])
                 # rw (alpha)
       x0 = list(rand_alpha,
                 # uncertainty (alpha, pi)
