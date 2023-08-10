@@ -83,6 +83,8 @@ data = Load_model_fits_new() %>%
 # Sort model levels by number of parameters
 data$model = factor(data$model, levels = c('rw',
                                            'uncertainty',
+                                           'seplr',
+                                           'uncertainty_seplr',
                                            'surprise',
                                            'uncertainty_surprise'))
 
@@ -169,8 +171,7 @@ p_3betas = ggplot(data = data_plot[model %in% c('rw', 'surprise', 'seplr')],
                outlier.shape = NA) +
   gghalves::geom_half_violin(side = 'r',
                              color = NA,
-                             fill = 'grey',
-                             alpha = 0.5,
+                             alpha = 0.8,
                              position = position_nudge(x = 0.1,
                                                        y = 0)) +
   facet_wrap(~model, ncol = 1) +
@@ -197,8 +198,7 @@ p_5betas = ggplot(data = data_plot[model %in% c('uncertainty', 'uncertainty_surp
                outlier.shape = NA) +
   gghalves::geom_half_violin(side = 'r',
                              color = NA,
-                             fill = 'grey',
-                             alpha = 0.5,
+                             alpha = 0.8,
                              position = position_nudge(x = 0.1,
                                                        y = 0)) +
   facet_wrap(~model, ncol = 1) +
@@ -221,51 +221,52 @@ p
 
 ```{r}
 # Get statistics of beta 1 and 2 
-data_rw_beta = data[model == 'rw' & variable == 'coefs'] %>%
+data_rw_beta = data_betas %>%
+  .[model == 'rw',] %>%
   data.table::dcast(participant_id + group + model + AICc ~ x, value.var = 'value') %>%
   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
 ```
 
-**Left bandit**
+## Left bandit (beta_2)
 
 ```{r}
 # Left bandit
 # Younger
-b_left_ya = t.test(data_rw_beta[group == 'younger']$V2,
+b_left_ya = t.test(data_rw_beta[group == 'younger']$b_2,
        mu = 0)
 # Older
-b_left_oa = t.test(data_rw_beta[group == 'older']$V2,
+b_left_oa = t.test(data_rw_beta[group == 'older']$b_2,
        mu = 0)
 
 b_left_ya
 b_left_oa
 ```
 
-**Right bandit**
+## Right bandit (beta_1)
 
 ```{r}
 # Right bandit
 # Younger
-b_right_ya = t.test(data_rw_beta[group == 'younger']$V1,
+b_right_ya = t.test(data_rw_beta[group == 'younger']$b_1,
        mu = 0)
 # Older
-b_right_oa = t.test(data_rw_beta[group == 'older']$V1,
+b_right_oa = t.test(data_rw_beta[group == 'older']$b_1,
        mu = 0)
 
 b_right_ya
 b_right_oa
 ```
 
-**Correlation of betas with correct choice in low-mid**
+## Correlation of betas with correct choice in low-mid
 
 ```{r}
 # Get correlation of betas with percentage correct (high betas mean less random behavior)
 # Left bandit
-c_b_left = cor.test(data_rw_beta$V2,
+c_b_left = cor.test(data_rw_beta$b_2,
                     data_rw_beta$perc_correct_1v2)
 
 # Right bandit
-c_b_right = cor.test(data_rw_beta$V1,
+c_b_right = cor.test(data_rw_beta$b_1,
                      data_rw_beta$perc_correct_1v2)
 
 # Adjust for multiple testing
@@ -324,7 +325,10 @@ data_counts_all = data_counts %>%
   .[, .(n_winning = .N),
     by = c('variable', 'model')]
 
-knitr::kable(data_counts_all) %>%
+table_counts_all = Collapse_repeated_rows(data_counts_all,
+                                          columns = 1,
+                                          replace = '')
+knitr::kable(table_counts_all) %>%
   kableExtra::kable_styling()
 ```
 
@@ -348,7 +352,11 @@ data_counts_age = data_counts %>%
     by = c('variable', 'group', 'model')] %>%
   .[order(group, -rank(model))]
 
-knitr::kable(data_counts_age) %>%
+table_counts_age = Collapse_repeated_rows(data_counts_age,
+                                          columns = c(1,2),
+                                          replace = '')
+
+knitr::kable(table_counts_age) %>%
   kableExtra::kable_styling()
 ```
 
@@ -389,6 +397,8 @@ data_ep = data_model_comp %>%
 # Calculate exceedance probs using Bayes Model Selection in R
 bmsR::VB_bms(cbind(data_ep$rw,
                    data_ep$uncertainty,
+                   data_ep$seplr,
+                   data_ep$uncertainty_seplr,
                    data_ep$surprise,
                    data_ep$uncertainty_surprise),
              n_samples = 100000)
@@ -404,12 +414,16 @@ data_model_comp_rw = data_model_comp %>%
   data.table::dcast(participant_id + group ~ paste0('AICc_', model),
                     value.var = 'AICc') %>%
   .[, ':='(AICc_SmRW = AICc_surprise - AICc_rw,
+           AICc_SEPLRmRW = AICc_seplr - AICc_rw,
            AICc_UmRW = AICc_uncertainty - AICc_rw,
+           AICc_USEPLRmRW = AICc_uncertainty_seplr - AICc_rw,
            AICc_USmRW = AICc_uncertainty_surprise - AICc_rw),
     by = c('participant_id', 'group')] %>%
   data.table::melt(id.vars = c('participant_id', 'group'),
                    measure.vars = c('AICc_SmRW',
+                                    'AICc_SEPLRmRW',
                                     'AICc_UmRW',
+                                    'AICc_USEPLRmRW',
                                     'AICc_USmRW'))
 
 # Groups
@@ -422,7 +436,11 @@ test_model_comp_rw = data_model_comp_rw %>%
   .[order(group, variable)] %>%
   Prepare_data_for_plot(.)
 
-knitr::kable(test_model_comp_rw) %>%
+table_test_model_comp_rw = test_model_comp_rw %>%
+  Collapse_repeated_rows(.,
+                         columns = 1,
+                         replace = '')
+knitr::kable(table_test_model_comp_rw) %>%
   kableExtra::kable_styling()
 ```
 
