@@ -147,6 +147,8 @@ p = ggplot(data = data_plot[pe_abs_rounded >= 10],
                fill = bandits_first_ten_updates)) +
   geom_col(color = 'black',
            linewidth = 0.1) +
-  scale_fill_manual(values = c('transparent', 'red'))
+  scale_fill_manual(values = c('transparent', 'red')) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
 Neurocodify_plot(p)
 ```
