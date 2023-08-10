@@ -111,6 +111,112 @@ check_noc = data_behav %>%
 data = data[starting_values == 'random']
 ```
 
+# Descriptives
+
+## Betas
+
+```{r}
+data_betas = data %>%
+  .[variable == 'coefs',] %>%
+  .[x %in% c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'), ] %>%
+  .[, ('x') := lapply(.SD,
+                      factor,
+                      levels = c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'),
+                      labels= c('b_0', 'b_1', 'b_2', 'b_3', 'b_4')),
+    .SDcols = 'x']
+
+table_betas_all = data_betas %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'x')] %>%
+  .[, group := 'all']
+table_betas_group = data_betas %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'group', 'x')]
+table_betas = rbind(table_betas_all,table_betas_group) %>%
+  data.table::setcolorder(c('model', 'x', 'group')) %>%
+  data.table::setorder(model, x, group)
+
+table_betas = Collapse_repeated_rows(x = table_betas,
+                                     columns = c(1,2),
+                                     replace = '')
+knitr::kable(table_betas, "html", align = 'l') %>%
+  kableExtra::kable_paper(full_width = FALSE) %>%
+  column_spec(1,
+              bold = TRUE) %>%
+  kableExtra::kable_styling()
+```
+
+```{r}
+data_plot = data_betas
+
+p_3betas = ggplot(data = data_plot[model %in% c('rw', 'surprise', 'seplr')],
+           aes(x = x,
+               y = value,
+               fill = model)) +
+  geom_hline(yintercept = 0,
+             linewidth = 0.1) +
+  geom_point(alpha = 0.3,
+             size = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.05,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.1,
+                                                    nudge.y = 0)) +
+  geom_boxplot(width = 0.1,
+               outlier.shape = NA) +
+  gghalves::geom_half_violin(side = 'r',
+                             color = NA,
+                             fill = 'grey',
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.1,
+                                                       y = 0)) +
+  facet_wrap(~model, ncol = 1) +
+  scale_y_continuous(limits = c(min(data_plot$value), max(data_plot$value))) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = 'none')
+p_3betas = Neurocodify_plot(p_3betas)
+
+p_5betas = ggplot(data = data_plot[model %in% c('uncertainty', 'uncertainty_surprise', 'uncertainty_seplr')],
+           aes(x = x,
+               y = value,
+               fill = model)) +
+  geom_hline(yintercept = 0,
+             linewidth = 0.1) +
+  geom_point(alpha = 0.3,
+             size = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.05,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.1,
+                                                    nudge.y = 0)) +
+  geom_boxplot(width = 0.1,
+               outlier.shape = NA) +
+  gghalves::geom_half_violin(side = 'r',
+                             color = NA,
+                             fill = 'grey',
+                             alpha = 0.5,
+                             position = position_nudge(x = 0.1,
+                                                       y = 0)) +
+  facet_wrap(~model, ncol = 1) +
+  scale_y_continuous(limits = c(min(data_plot$value), max(data_plot$value))) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = 'none')
+p_5betas = Neurocodify_plot(p_5betas)
+
+p = cowplot::plot_grid(p_3betas, p_5betas,
+                       ncol = 2,
+                       rel_widths = c(3,5),
+                       axis = 'tb',
+                       align = 'h')
+p
+```
+
 # RW model: RL-like behavior
 
 ```{r}
@@ -170,7 +276,7 @@ c_b_right
 p_adjusted
 ```
 
----
+------------------------------------------------------------------------
 
 # Winning model
 
@@ -257,7 +363,7 @@ p = ggplot(data = data_counts_age,
 Neurocodify_plot(p)
 ```
 
-**$\chi^2$-test of winning frequencies**
+$\chi^2$-test of winning frequencies
 
 ```{r}
 # Isolate winning model counts
@@ -270,7 +376,7 @@ cs_test = chisq.test(cbind(count_win_oa,
 cs_test
 ```
 
----
+------------------------------------------------------------------------
 
 # Protected exceedance probability
 
@@ -288,8 +394,7 @@ bmsR::VB_bms(cbind(data_ep$rw,
              n_samples = 100000)
 ```
 
-
----
+------------------------------------------------------------------------
 
 # Parametric AICc comparison
 
@@ -342,11 +447,10 @@ p = ggplot(data = data_model_comp_rw,
 Neurocodify_plot(p)
 ```
 
-
----
+------------------------------------------------------------------------
 
 # Surprise model
-            
+
 ```{r}
 # Data for correlation between RW betas and performance
 data_corr = data %>%
@@ -373,7 +477,7 @@ p.adjust(c(m_right$p.value,
 ```
 
 **Parameter details**
-         
+
 ```{r}
 # get coefficients of winning model
 data_surprise = data[model == 'surprise' & variable == 'coefs']
@@ -448,7 +552,7 @@ p = ggplot(data = data_lrs,
 p
 ```
 
-**$\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions**
+$\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions
 
 ```{r}
 # Chi-Sq with rising and falling
@@ -466,7 +570,7 @@ c_sq = chisq.test(cbind(data_rising[group == 'younger']$value,
 c_sq
 ```
 
-**Parametric $u-l$ analysis against 0**
+**Parametric** $u-l$ analysis against 0
 
 ```{r}
 # t-test vs. 0
@@ -483,7 +587,7 @@ p.adjust(c(ty$p.value, to$p.value),
          method = 'holm')
 ```
 
-**Parametric $u-l$ analysis between age groups**
+**Parametric** $u-l$ analysis between age groups
 
 ```{r}
 # t-test between groups
@@ -521,7 +625,7 @@ p = ggplot(data = data_surprise_param,
 Neurocodify_plot(p)
 ```
 
-**Parametric $u$ analysis between age groups**
+**Parametric** $u$ analysis between age groups
 
 ```{r}
 # t-test between groups
@@ -583,8 +687,7 @@ p = ggplot(data = data_surprise_param,
 Neurocodify_plot(p)
 ```
 
-
-**Slope parameter $s$ between age groups**
+**Slope parameter** $s$ between age groups
 
 ```{r}
 # Slope parameter
@@ -619,8 +722,7 @@ p = ggplot(data = data_surprise_param,
 Neurocodify_plot(p)
 ```
 
-
-**$u-l$ vs. immediate influence of surprising outcomes**
+$u-l$ vs. immediate influence of surprising outcomes
 
 ```{r}
 # Load data
@@ -741,7 +843,7 @@ m1 = lm(cbe ~ param_uml * group,
 summary(m1)
 ```
 
-**$u$ vs. immediate influence of surprising outcomes**
+$u$ vs. immediate influence of surprising outcomes
 
 ```{r}
 # model u (continuous) and group
@@ -788,4 +890,3 @@ p = ggplot(data = data_cbe_fit_surprise,
   geom_point()
 Neurocodify_plot(p)
 ```
-
