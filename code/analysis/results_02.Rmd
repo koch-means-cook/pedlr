@@ -610,6 +610,54 @@ p = ggplot(data = data_seplr,
 Neurocodify_plot(p)
 ```
 
+## Relationship between LRs within-person
+
+```{r}
+# Compare LRs within-person
+data_seplr_pos_neg = data_seplr %>%
+  # Long format for parameter comparison
+  data.table::dcast(participant_id + group + age + starting_values + iter + model + AIC + AICc ~ x,
+                    value.var = 'value') %>%
+  # Difference between alpha_pos and alpha_neg
+  .[, pos_m_neg := alpha_pos - alpha_neg] %>%
+  Prepare_data_for_plot(.)
+
+# Plot
+p = ggplot(data = data_seplr_pos_neg,
+           aes(x = group,
+               y = pos_m_neg,
+               fill = group)) +
+  geom_hline(yintercept = 0,
+             linewidth = 0.2) +
+  geom_point(size = 0.5,
+             alpha = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.1,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.15,
+                                                    nudge.y = 0)) +
+  gghalves::geom_half_violin(side = 'r',
+                             alpha = 0.8,
+                             width = 0.5,
+                             color = NA,
+                             position = position_nudge(x = 0.15,
+                                                       y = 0)) +
+  geom_boxplot(outlier.shape = NA,
+               width = 0.1,
+               alpha = 0.8) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               shape = 23,
+               fill = 'white',
+               size = 2,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  facet_grid(. ~ model) +
+  theme(legend.position = 'none',
+        axis.title.x = element_blank())
+Neurocodify_plot(p)
+```
+
+
 ---
 
 # Surprise model
