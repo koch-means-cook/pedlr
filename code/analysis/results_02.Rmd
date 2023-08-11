@@ -117,6 +117,10 @@ data = data[starting_values == 'random']
 
 ## Betas
 
+$$p(k|V_{.,t}) = \sigma(\boldsymbol{\beta_0} + \overbrace{\boldsymbol{\beta_1} V_{l,t}, + \boldsymbol{\beta_2} V_{k,t}}^{\textrm{Influence of Bandit Values}} + \overbrace{\boldsymbol{\beta_3} U_{l,t} + \boldsymbol{\beta_4} U_{k,t}}^{\textrm{Influence of Bandit Uncertainty}})$$
+
+$\boldsymbol{\beta_3}$ and $\boldsymbol{\beta_4}$ are not included in the logistic regression in case the model did not take uncertainty into account.
+
 ```{r}
 # Get data for betas
 data_betas = data %>%
@@ -127,36 +131,6 @@ data_betas = data %>%
                       levels = c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'),
                       labels= c('b_0', 'b_1', 'b_2', 'b_3', 'b_4')),
     .SDcols = 'x']
-
-# Prepare table
-table_betas_all = data_betas %>%
-  .[, .(mean = mean(value),
-        sd = sd(value),
-        n = .N),
-    by = c('model', 'x')] %>%
-  .[, group := 'all']
-table_betas_group = data_betas %>%
-  .[, .(mean = mean(value),
-        sd = sd(value),
-        n = .N),
-    by = c('model', 'group', 'x')]
-
-# Display table
-table_betas = rbind(table_betas_all,
-                    table_betas_group) %>%
-  data.table::setcolorder(c('group', 'model', 'x')) %>%
-  data.table::setorder(group, model, x) %>%
-  .[, c('mean', 'sd') := lapply(.SD, round, 4), .SDcols = c('mean', 'sd')] %>%
-  Collapse_repeated_rows(x = .,
-                         columns = c(1,2),
-                         replace = '') %>%
-  kableExtra::kbl("html", align = 'l') %>%
-  kableExtra::kable_classic(full_width = FALSE) %>%
-  kableExtra::column_spec(1,
-              bold = TRUE) %>%
-  kableExtra::row_spec(row = 0,
-                       bold = TRUE)
-table_betas
 ```
 
 ```{r}
@@ -224,6 +198,62 @@ p = cowplot::plot_grid(p_3betas, p_5betas,
 p
 ```
 
+## Across groups
+
+```{r}
+# Prepare table
+table_betas_all = data_betas %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'x')]
+
+# Display table
+table_betas_all = table_betas_all %>%
+  data.table::setcolorder(c('model', 'x')) %>%
+  data.table::setorder(model, x) %>%
+  .[, c('mean', 'sd') := lapply(.SD, round, 4), .SDcols = c('mean', 'sd')] %>%
+  Collapse_repeated_rows(x = .,
+                         columns = 1,
+                         replace = '') %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::column_spec(1,
+              bold = TRUE) %>%
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE)
+table_betas_all
+```
+
+## Within groups
+
+```{r}
+table_betas_group = data_betas %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'group', 'x')]
+
+# Display table
+table_betas_group = table_betas_group %>%
+  data.table::setcolorder(c('group', 'model', 'x')) %>%
+  data.table::setorder(group, model, x) %>%
+  .[, c('mean', 'sd') := lapply(.SD, round, 4), .SDcols = c('mean', 'sd')] %>%
+  Collapse_repeated_rows(x = .,
+                         columns = c(1,2),
+                         replace = '') %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::column_spec(1,
+              bold = TRUE) %>%
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE)
+table_betas_group
+```
+
+
+---
+
 # RW model: RL-like behavior
 
 ```{r}
@@ -284,7 +314,7 @@ c_b_right
 p_adjusted
 ```
 
-------------------------------------------------------------------------
+---
 
 # Winning model
 
@@ -330,7 +360,9 @@ data_counts = data_model_comp %>%
 # Count winning models across groups
 data_counts_all = data_counts %>%
   .[, .(n_winning = .N),
-    by = c('variable', 'model')]
+    by = c('variable', 'model')] %>%
+  # Sort by winning counts
+  .[order(-n_winning),]
 
 # Display table
 table_counts_all = Collapse_repeated_rows(data_counts_all,
@@ -363,7 +395,7 @@ Neurocodify_plot(p)
 data_counts_age = data_counts %>%
   .[, .(n_winning = .N),
     by = c('variable', 'group', 'model')] %>%
-  .[order(group, -rank(model))]
+  .[order(group, -n_winning)]
 
 # Display table
 table_counts_age = Collapse_repeated_rows(data_counts_age,
@@ -521,7 +553,7 @@ p = ggplot(data = data_model_comp_rw,
 Neurocodify_plot(p)
 ```
 
----
+------------------------------------------------------------------------
 
 # SEPLR model
 
@@ -571,7 +603,6 @@ table_seplr = rbind(data_seplr_all,
                        extra_css = "border-bottom: 2px solid;")
 table_seplr
 ```
-
 
 ```{r}
 # Plot
@@ -657,8 +688,7 @@ p = ggplot(data = data_seplr_pos_neg,
 Neurocodify_plot(p)
 ```
 
-
----
+------------------------------------------------------------------------
 
 # Surprise model
 
