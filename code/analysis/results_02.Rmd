@@ -431,18 +431,18 @@ bmsR::VB_bms(cbind(data_ep$rw,
 data_model_comp_rw = data_model_comp %>%
   data.table::dcast(participant_id + group ~ paste0('AICc_', model),
                     value.var = 'AICc') %>%
-  .[, ':='(AICc_SmRW = AICc_surprise - AICc_rw,
-           AICc_SEPLRmRW = AICc_seplr - AICc_rw,
-           AICc_UmRW = AICc_uncertainty - AICc_rw,
-           AICc_USEPLRmRW = AICc_uncertainty_seplr - AICc_rw,
-           AICc_USmRW = AICc_uncertainty_surprise - AICc_rw),
+  .[, ':='(SmRW = AICc_surprise - AICc_rw,
+           SEPLRmRW = AICc_seplr - AICc_rw,
+           UmRW = AICc_uncertainty - AICc_rw,
+           USEPLRmRW = AICc_uncertainty_seplr - AICc_rw,
+           USmRW = AICc_uncertainty_surprise - AICc_rw),
     by = c('participant_id', 'group')] %>%
   data.table::melt(id.vars = c('participant_id', 'group'),
-                   measure.vars = c('AICc_SmRW',
-                                    'AICc_SEPLRmRW',
-                                    'AICc_UmRW',
-                                    'AICc_USEPLRmRW',
-                                    'AICc_USmRW'))
+                   measure.vars = c('UmRW',
+                                    'SEPLRmRW',
+                                    'USEPLRmRW',
+                                    'SmRW',
+                                    'USmRW'))
 
 # All
 rel_model_comp_all = data_model_comp_rw %>%
@@ -487,12 +487,28 @@ table_rel_model_comp
 ```
 
 ```{r}
-data_model_comp_rw_mean = data_model_comp_rw %>%
+data_plot = data_model_comp_rw %>%
+  .[, variable := factor(variable,
+                         levels = c('UmRW',
+                                    'SEPLRmRW',
+                                    'USEPLRmRW',
+                                    'SmRW',
+                                    'USmRW'))] %>%
+  .[order(variable),]
+
+data_plot_mean = data_model_comp_rw %>%
   .[, .(value = mean(value),
         sd_value = sd(value),
         n = .N,
         sem_value = sd(value)/sqrt(.N)),
-    by = 'variable']
+    by = 'variable'] %>%
+  .[, variable := factor(variable,
+                         levels = c('UmRW',
+                                    'SEPLRmRW',
+                                    'USEPLRmRW',
+                                    'SmRW',
+                                    'USmRW'))] %>%
+  .[order(variable),]
 
 p = ggplot(data = data_model_comp_rw,
            aes(x = variable,
@@ -501,7 +517,7 @@ p = ggplot(data = data_model_comp_rw,
   geom_point(position = position_jitter(width = 0.1,
                                         height = 0,
                                         seed = 666)) +
-  geom_col(data = data_model_comp_rw_mean)
+  geom_col(data = data_plot_mean)
 Neurocodify_plot(p)
 ```
 
@@ -510,7 +526,7 @@ Neurocodify_plot(p)
 # SEPLR model
 
 ```{r}
-
+data_seplr = data[model %in% c('seplr', 'uncertainty_seplr')]
 ```
 
 

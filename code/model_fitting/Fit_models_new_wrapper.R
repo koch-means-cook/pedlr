@@ -100,7 +100,8 @@ Fit_models_new_wrapper = function(participant_id,
                 c(0.2, 0.5, 1, 0.2))
     } else if(starting_values == 'random'){
       # Use same random starting value for similar models
-      rand_alpha = runif(1, min = lb[[1]], max = ub[[1]])
+      rand_alpha_1 = runif(1, min = lb[[1]], max = ub[[1]])
+      rand_alpha_2 = runif(1, min = lb[[1]], max = ub[[1]])
       rand_pi = runif(1, min = lb[[2]][2], max = ub[[2]][2])
       rand_l = runif(1, min = lb[[5]][1], max = ub[[5]][1])
       rand_u = runif(1, min = lb[[5]][2], max = ub[[5]][2])
@@ -108,11 +109,11 @@ Fit_models_new_wrapper = function(participant_id,
                 # rw (alpha)
       x0 = list(rand_alpha,
                 # uncertainty (alpha, pi)
-                c(rand_alpha, rand_pi),
+                c(rand_alpha_1, rand_pi),
                 # seplr (alpha_pos, alpha_neg)
-                c(rand_alpha, rand_alpha),
+                c(rand_alpha_1, rand_alpha_2),
                 # uncertainty+seplr (alpha_pos, alpha_neg, pi)
-                c(rand_alpha, rand_alpha, rand_pi),
+                c(rand_alpha_1, rand_alpha_2, rand_pi),
                 # surprise (l,u,s)
                 c(rand_l, rand_u, rand_s),
                 # uncertainty+surprise (l,u,s,pi)
