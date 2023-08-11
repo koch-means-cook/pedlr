@@ -118,6 +118,7 @@ data = data[starting_values == 'random']
 ## Betas
 
 ```{r}
+# Get data for betas
 data_betas = data %>%
   .[variable == 'coefs',] %>%
   .[x %in% c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'), ] %>%
@@ -127,6 +128,7 @@ data_betas = data %>%
                       labels= c('b_0', 'b_1', 'b_2', 'b_3', 'b_4')),
     .SDcols = 'x']
 
+# Prepare table
 table_betas_all = data_betas %>%
   .[, .(mean = mean(value),
         sd = sd(value),
@@ -138,18 +140,23 @@ table_betas_group = data_betas %>%
         sd = sd(value),
         n = .N),
     by = c('model', 'group', 'x')]
-table_betas = rbind(table_betas_all,table_betas_group) %>%
-  data.table::setcolorder(c('model', 'x', 'group')) %>%
-  data.table::setorder(model, x, group)
 
-table_betas = Collapse_repeated_rows(x = table_betas,
-                                     columns = c(1,2),
-                                     replace = '')
-knitr::kable(table_betas, "html", align = 'l') %>%
-  kableExtra::kable_paper(full_width = FALSE) %>%
-  column_spec(1,
+# Display table
+table_betas = rbind(table_betas_all,
+                    table_betas_group) %>%
+  data.table::setcolorder(c('group', 'model', 'x')) %>%
+  data.table::setorder(group, model, x) %>%
+  .[, c('mean', 'sd') := lapply(.SD, round, 4), .SDcols = c('mean', 'sd')] %>%
+  Collapse_repeated_rows(x = .,
+                         columns = c(1,2),
+                         replace = '') %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::column_spec(1,
               bold = TRUE) %>%
-  kableExtra::kable_styling()
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE)
+table_betas
 ```
 
 ```{r}
@@ -317,7 +324,7 @@ data_counts = data_model_comp %>%
   .[loc_winning == TRUE]
 ```
 
-**Across groups**
+## Across groups
 
 ```{r}
 # Count winning models across groups
@@ -325,11 +332,17 @@ data_counts_all = data_counts %>%
   .[, .(n_winning = .N),
     by = c('variable', 'model')]
 
+# Display table
 table_counts_all = Collapse_repeated_rows(data_counts_all,
                                           columns = 1,
-                                          replace = '')
-knitr::kable(table_counts_all) %>%
-  kableExtra::kable_styling()
+                                          replace = '') %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  column_spec(1,
+              bold = TRUE) %>%
+  row_spec(row = 0,
+           bold = TRUE)
+table_counts_all
 ```
 
 ```{r}
@@ -343,7 +356,7 @@ p = ggplot(data = data_counts_all,
 Neurocodify_plot(p)
 ```
 
-**Within groups**
+## Within groups
 
 ```{r}
 # Count winning models within age-groups
@@ -352,12 +365,17 @@ data_counts_age = data_counts %>%
     by = c('variable', 'group', 'model')] %>%
   .[order(group, -rank(model))]
 
+# Display table
 table_counts_age = Collapse_repeated_rows(data_counts_age,
                                           columns = c(1,2),
-                                          replace = '')
-
-knitr::kable(table_counts_age) %>%
-  kableExtra::kable_styling()
+                                          replace = '') %>%
+kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  column_spec(1,
+              bold = TRUE) %>%
+  row_spec(row = 0,
+           bold = TRUE)
+table_counts_age
 ```
 
 ```{r}
@@ -371,7 +389,7 @@ p = ggplot(data = data_counts_age,
 Neurocodify_plot(p)
 ```
 
-$\chi^2$-test of winning frequencies
+## $\chi^2$-test of winning frequencies
 
 ```{r}
 # Isolate winning model counts
@@ -426,25 +444,47 @@ data_model_comp_rw = data_model_comp %>%
                                     'AICc_USEPLRmRW',
                                     'AICc_USmRW'))
 
+# All
+rel_model_comp_all = data_model_comp_rw %>%
+  .[, .(t = t.test(value, mu = 0)$statistic,
+        df = t.test(value, mu = 0)$parameter,
+        p = t.test(value, mu = 0)$p.value),
+    by = c('variable')] %>%
+  .[, p_adj := p.adjust(p, method = 'holm')] %>%
+  Prepare_data_for_plot(.) %>%
+  .[, group := 'all'] %>%
+  .[order(variable)] %>%
+  data.table::setcolorder(c('group', 'variable'))
+
 # Groups
-test_model_comp_rw = data_model_comp_rw %>%
+rel_model_comp_group = data_model_comp_rw %>%
   .[, .(t = t.test(value, mu = 0)$statistic,
         df = t.test(value, mu = 0)$parameter,
         p = t.test(value, mu = 0)$p.value),
     by = c('group', 'variable')] %>%
   .[, p_adj := p.adjust(p, method = 'holm')] %>%
   .[order(group, variable)] %>%
-  Prepare_data_for_plot(.)
+  Prepare_data_for_plot(.) %>%
+  data.table::setcolorder(c('group', 'variable'))
 
-table_test_model_comp_rw = test_model_comp_rw %>%
+# Display table
+table_rel_model_comp = rbind(rel_model_comp_all,
+                             rel_model_comp_group) %>%
+  .[, t := round(t, 2)] %>%
+  .[, c('p', 'p_adj') := lapply(.SD, round, 3), .SDcols = c('p', 'p_adj')] %>%
   Collapse_repeated_rows(.,
                          columns = 1,
-                         replace = '')
-knitr::kable(table_test_model_comp_rw) %>%
-  kableExtra::kable_styling()
+                         replace = '') %>%
+  kableExtra::kbl(align = 'l', booktabs = TRUE) %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::column_spec(1,
+                          bold = TRUE) %>%
+  kableExtra::row_spec(row = length(unique(rel_model_comp_all$variable)),
+                       extra_css = "border-bottom: 2px solid;") %>%
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE)
+table_rel_model_comp
 ```
-
-**Plot**
 
 ```{r}
 data_model_comp_rw_mean = data_model_comp_rw %>%
@@ -465,7 +505,16 @@ p = ggplot(data = data_model_comp_rw,
 Neurocodify_plot(p)
 ```
 
-------------------------------------------------------------------------
+---
+
+# SEPLR model
+
+```{r}
+
+```
+
+
+---
 
 # Surprise model
 
@@ -785,7 +834,7 @@ Windowrize = function(data,
   result$window_relative = seq(max(index_rare - window_size + 1, 1),
                                index_rare + window_size) - index_rare
   result[window_relative == 0]$correct_choice = NA
-  
+
   result$window_center = as.factor(result$window_center)
   result$window_relative = as.factor(result$window_relative)
   return(result)
@@ -797,11 +846,11 @@ window_data = data.table()
 # For each participant & run
 for(i_id in unique(data_ii$participant_id)){
   for(i_run in unique(data_ii$run)){
-    
+
     # Select data
     temp_data = data_ii[participant_id == i_id &
                       run == i_run]
-    
+
     # Get all trials where rare outcomes were obtained
     idx_chosen_rare_outcome = which(temp_data$is_rare == 1 &
                                       # CHANGE: I also allow rare outcomes that came from forced choices
