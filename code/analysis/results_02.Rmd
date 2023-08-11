@@ -525,10 +525,90 @@ Neurocodify_plot(p)
 
 # SEPLR model
 
+## Parameter details
+
 ```{r}
-data_seplr = data[model %in% c('seplr', 'uncertainty_seplr')]
+data_seplr = data[model %in% c('seplr', 'uncertainty_seplr')] %>%
+  # Only focus on fitted params
+  .[variable == 'coefs' & x %in% c('alpha_pos', 'alpha_neg', 'pi')] %>%
+  # Sort order of parameters for better plot display
+  .[, x := factor(x, levels = c('alpha_pos',
+                                              'alpha_neg',
+                                              'pi'))] %>%
+  .[order(x),]
 ```
 
+```{r}
+# Across all participants
+data_seplr_all = data_seplr %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'x')] %>%
+  .[, group := 'all']
+
+# Within groups
+data_seplr_group = data_seplr %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'group', 'x')]
+
+# Display table
+table_seplr = rbind(data_seplr_all,
+                    data_seplr_group) %>%
+  .[, c('mean', 'sd') := lapply(.SD, round, 3), .SDcols = c('mean', 'sd')] %>%
+  .[order(model, group, x)] %>%
+  data.table::setcolorder(c('model', 'group', 'x')) %>%
+  Collapse_repeated_rows(x = .,
+                         columns = c(1,2),
+                         replace = '') %>%
+  kableExtra::kbl() %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE) %>%
+  kableExtra::row_spec(row = 6,
+                       extra_css = "border-bottom: 2px solid;")
+table_seplr
+```
+
+
+```{r}
+# Plot
+p = ggplot(data = data_seplr,
+           aes(x = x,
+               y = value,
+               fill = x)) +
+  geom_point(size = 0.5,
+             alpha = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.1,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.15,
+                                                    nudge.y = 0)) +
+  gghalves::geom_half_violin(side = 'r',
+                             alpha = 0.8,
+                             width = 0.5,
+                             color = NA,
+                             position = position_nudge(x = 0.15,
+                                                       y = 0)) +
+  geom_boxplot(outlier.shape = NA,
+               width = 0.1,
+               alpha = 0.8) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               shape = 23,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5) +
+  facet_grid(. ~ model,
+             scales = 'free_x',
+             space = 'free_x') +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = 'none')
+Neurocodify_plot(p)
+```
 
 ---
 
