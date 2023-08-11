@@ -107,7 +107,7 @@ Fit_models_new_wrapper = function(participant_id,
       rand_u = runif(1, min = lb[[5]][2], max = ub[[5]][2])
       rand_s = runif(1, min = lb[[5]][3], max = ub[[5]][3])
                 # rw (alpha)
-      x0 = list(rand_alpha,
+      x0 = list(rand_alpha_1,
                 # uncertainty (alpha, pi)
                 c(rand_alpha_1, rand_pi),
                 # seplr (alpha_pos, alpha_neg)
