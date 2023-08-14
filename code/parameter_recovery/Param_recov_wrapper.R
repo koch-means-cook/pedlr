@@ -18,14 +18,14 @@ Param_recov_wrapper = function(participant_id,
                                svs){
   
   # participant_id = '09RI1ZH'
-  # model = 'uncertainty'
+  # model = 'seplr'
   # random_input_params = FALSE
   # random_starting_values = TRUE
   # lb = c(0.01, 0.01, NA, NA)
   # ub = c(1, 1, NA, NA)
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
-  # maxeval = 10
+  # maxeval = 1000
   # iterations = 3
   # temperature = 7
   # tau = 0.2
@@ -154,8 +154,55 @@ Param_recov_wrapper = function(participant_id,
                      ips = ips,
                      svs = svs)
       
-    # Suprise
-    } else if(model == 'surprise'){
+
+    # Seplr
+  } else if(model == 'seplr'){
+    if(random_input_params == TRUE){
+      ips = c(runif(n = 1, min = lb[1], max = ub[1]),
+              runif(n = 1, min = lb[2], max = ub[2]),
+              NA,
+              NA)
+    }
+    if(random_starting_values == TRUE){
+      svs = c(runif(n = 1, min = lb[1], max = ub[1]),
+              runif(n = 1, min = lb[2], max = ub[2]),
+              NA,
+              NA)
+    }
+    
+    # Check if number of parameters is correct for model
+    Check_n_params(model = model,
+                   corr_n_params = 2,
+                   lb = lb,
+                   ub = ub,
+                   ips = ips,
+                   svs = svs)
+    
+    # Uncertainty+Seplr
+  } else if(model == 'uncertainty_seplr'){
+    if(random_input_params == TRUE){
+      ips = c(runif(n = 1, min = lb[1], max = ub[1]),
+              runif(n = 1, min = lb[2], max = ub[2]),
+              runif(n = 1, min = lb[3], max = ub[3]),
+              NA)
+    }
+    if(random_starting_values == TRUE){
+      svs = c(runif(n = 1, min = lb[1], max = ub[1]),
+              runif(n = 1, min = lb[2], max = ub[2]),
+              runif(n = 1, min = lb[3], max = ub[3]),
+              NA)
+    }
+    
+    # Check if number of parameters is correct for model
+    Check_n_params(model = model,
+                   corr_n_params = 3,
+                   lb = lb,
+                   ub = ub,
+                   ips = ips,
+                   svs = svs)
+    
+    # Surprise
+  } else if(model == 'surprise'){
       if(random_input_params == TRUE){
         ips = c(runif(n = 1, min = lb[1], max = ub[1]),
                 runif(n = 1, min = lb[2], max = ub[2]),
@@ -224,7 +271,8 @@ Param_recov_wrapper = function(participant_id,
                       lb = lb,
                       ub = ub,
                       temperature = temperature,
-                      tau = tau)
+                      tau = tau,
+                      model = model)
     
     # Fuse output over iterations
     res$iter = n_iter
@@ -240,7 +288,7 @@ Param_recov_wrapper = function(participant_id,
   out$temperature = temperature
   out$tau = tau
   
-  # Savefile name giing base of simulation for recovery
+  # Savefile name giving base of simulation for recovery
   file_name = paste('paramrecov_base-',
                     participant_id,
                     '_model-',
@@ -299,7 +347,7 @@ option_list = list(
   make_option(c('-M', '--model'),
               type='character',
               default = NULL,
-              help = 'Name of model. Options are `rw`, `uncertainty`, `surprise`, and `uncertainty_surprise`',
+              help = 'Name of model. Options are `rw`, `uncertainty`, `seplr`, `uncertainty_seplr`, `surprise`, & `uncertainty_surprise`',
               metavar = 'MODEL'),
   make_option(c('-R', '--random_input_params'),
               type='character',

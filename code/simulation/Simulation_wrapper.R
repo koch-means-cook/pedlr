@@ -20,16 +20,16 @@ Simulation_wrapper = function(participant_id,
                               tau){
   
   # participant_id = '09RI1ZH'
-  # model = 'surprise'
+  # model = 'seplr'
   # x1_low = 0.1
   # x1_high = 0.7
-  # x1_n = 5
+  # x1_n = 2
   # x2_low = 0.1
   # x2_high = 0.7
-  # x2_n = 5
-  # x3_low = -10
-  # x3_high = 10
-  # x3_n = 5
+  # x2_n = 2
+  # x3_low = NA
+  # x3_high = NA
+  # x3_n = NA
   # x4_low = NA
   # x4_high = NA
   # x4_n = NA
@@ -52,28 +52,55 @@ Simulation_wrapper = function(participant_id,
     para_combs$x4 = NA
     # Specify parameter names
     para_names = 'alpha'
+    
   } else if(model == 'uncertainty'){
     # Fixed learning rate with pi parameter (trailing surprise)
     x1 = seq(x1_low, x1_high, length.out = x1_n)
     x2 = seq(x2_low, x2_high, length.out = x2_n)
     # Get all combinations of specified parameters
-    para_combs = data.table::data.table(expand.grid(x1,x2))
+    para_combs = data.table::data.table(expand.grid(x1, x2))
     colnames(para_combs) = c('x1', 'x2')
     para_combs$x3 = NA
     para_combs$x4 = NA
     # Specify parameter names
     para_names = c('alpha', 'pi')
+    
+  } else if(model == 'seplr'){
+    # Separate learning rate for pos and neg PEs
+    x1 = seq(x1_low, x1_high, length.out = x1_n)
+    x2 = seq(x2_low, x2_high, length.out = x2_n)
+    # Get all combinations of specified parameters
+    para_combs = data.table::data.table(expand.grid(x1, x2))
+    colnames(para_combs) = c('x1', 'x2')
+    para_combs$x3 = NA
+    para_combs$x4 = NA
+    # Specify parameter names
+    para_names = c('alpha_pos', 'alpha_neg')
+    
+  } else if(model == 'uncertainty_seplr'){
+    # Separate learning rate for pos and neg PEs with pi parameter (trailing surprise)
+    x1 = seq(x1_low, x1_high, length.out = x1_n)
+    x2 = seq(x2_low, x2_high, length.out = x2_n)
+    x3 = seq(x3_low, x3_high, length.out = x3_n)
+    # Get all combinations of specified parameters
+    para_combs = data.table::data.table(expand.grid(x1, x2, x3))
+    colnames(para_combs) = c('x1', 'x2', 'x3')
+    para_combs$x4 = NA
+    # Specify parameter names
+    para_names = c('alpha_pos', 'alpha_neg', 'pi')
+    
   } else if(model == 'surprise'){
     # Three parameters identifying LRfunction (l,u,s)
     x1 = seq(x1_low, x1_high, length.out = x1_n)
     x2 = seq(x2_low, x2_high, length.out = x2_n)
     x3 = seq(x3_low, x3_high, length.out = x3_n)
     # Get all combinations of specified parameters
-    para_combs = data.table::data.table(expand.grid(x1,x2, x3))
+    para_combs = data.table::data.table(expand.grid(x1, x2, x3))
     colnames(para_combs) = c('x1', 'x2', 'x3')
     para_combs$x4 = NA
     # Specify parameter names
     para_names = c('l', 'u', 's')
+    
   } else if(model == 'uncertainty_surprise'){
     # 3 LRfunction parameters + pi (trailing surprise)
     x1 = seq(x1_low, x1_high, length.out = x1_n)
@@ -84,6 +111,7 @@ Simulation_wrapper = function(participant_id,
     colnames(para_combs) = c('x1', 'x2', 'x3', 'x4')
     # Specify parameter names
     para_names = c('l', 'u', 's', 'pi')
+    
   } else{
     # Throw error if specified model is not in list
     stop('Specified model not found')
@@ -110,7 +138,8 @@ Simulation_wrapper = function(participant_id,
     temp = Simulate(data = data,
                     x = paras,
                     temperature = temperature,
-                    tau = tau)
+                    tau = tau,
+                    model = model)
     # fuse data  
     out = rbind(out, temp)
   }
@@ -153,7 +182,7 @@ option_list = list(
   optparse::make_option(c('-m', '--model'),
                         type='character',
                         default = NULL,
-                        help = 'Specify model to use for simulation. "rw": x = c(alpha, NA, NA, NA); "uncertainty": x = c(alpha, pi, NA, NA); "surprise": x = c(l, u, s, NA); "uncertainty_surprise": x = c(l, u, s, NA)',
+                        help = 'Specify model to use for simulation. "rw": x = c(alpha, NA, NA, NA); "uncertainty": x = c(alpha, pi, NA, NA); "seplr": x = c(alpha_pos, alpha_neg, NA, NA); "uncertainty_seplr": x = c(alpha_pos, alpha_neg, pi, NA); "surprise": x = c(l, u, s, NA); "uncertainty_surprise": x = c(l, u, s, NA)',
                         metavar = 'MODEL'),
   optparse::make_option(c('--x1_low'),
                         type='numeric',

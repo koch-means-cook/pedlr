@@ -4,17 +4,20 @@ library(magrittr)
 Simulate = function(data,
                     x,
                     temperature,
-                    tau){
+                    tau,
+                    model){
   
   source(file.path(here::here(), 'code', 'simulation', 'Make_choice.R'))
   source(file.path(here::here(), 'code', 'simulation', 'Compute_value_per_trial.R'))
   source(file.path(here::here(), 'code', 'model_fitting', 'LRfunction.R'))
 
-#   data = data.table::fread(file.path(here::here(), 'data', '09RI1ZH_exp_data.tsv'),
-#                            sep = '\t', na.strings = 'n/a')
-#   x = c(0.1, 0.5, 0.7, NA)
-#   tau = 0.2
-#   temperature = 7
+  # data = data.table::fread(file.path(here::here(), 'data', '09RI1ZH_exp_data.tsv'),
+  #                          sep = '\t', na.strings = 'n/a')
+  # x = c(0.175, 0.505, NA, NA)
+  # temperature = 7
+  # tau = 0.2
+  # model = 'seplr'
+
   
   # Select relevant columns
   cols = c('option_left', 'option_right', 'pic_left', 'pic_right', 'reward_stim_1',
@@ -110,13 +113,12 @@ Simulate = function(data,
                  trial_data$s_b_3)[model_choice_option]
     
     # Use current value and reward to update values for coming trials
-    # DETERMINES WHICH MODEL to use based on number of parameters (different
-    # updating for different models)
     update = Compute_value_per_trial(V = value,
                                      R = reward,
                                      S = surprise,
                                      x = x,
-                                     tau = 0.2)
+                                     tau = 0.2,
+                                     model = model)
     # Record PE of current trial
     pe_bandit = paste0('pe_b_', model_choice_option)
     data[t, pe_bandit] = update$pe
@@ -141,12 +143,6 @@ Simulate = function(data,
     model_information_temp$model_choice_prob = model_choice_prob
     model_information_temp$model_choice_option = model_choice_option
     model_information_temp$model_outcome = reward
-    model_information_temp$x1 = x[1]
-    model_information_temp$x2 = x[2]
-    model_information_temp$x3 = x[3]
-    model_information_temp$x4 = x[4]
-    model_information_temp$tau = tau
-    model_information_temp$temperature = temperature
     
     # Fuse for each trial
     model_information = rbind(model_information,
@@ -155,11 +151,20 @@ Simulate = function(data,
     
   }
 
+  # Add constant types of information to output
+  model_information$model = model
+  model_information$x1 = x[1]
+  model_information$x2 = x[2]
+  model_information$x3 = x[3]
+  model_information$x4 = x[4]
+  model_information$tau = tau
+  model_information$temperature = temperature
+  
   # Fuse data with model behavior
   simulated_data = cbind(data, model_information)
   
-  # Set surprise to NA if uncertainty not relevant for model (RW and Pedlr)
-  if(is.na(unique(simulated_data$x2)) | is.na(unique(simulated_data$x4))){
+  # Set surprise to NA if uncertainty not relevant for model (RW, surprise, & seplr)
+  if(model %in% c('rw', 'surprise', 'seplr')){
     simulated_data$s_b_1 = NA
     simulated_data$s_b_2 = NA
     simulated_data$s_b_3 = NA

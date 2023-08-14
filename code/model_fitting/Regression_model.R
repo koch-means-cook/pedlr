@@ -48,7 +48,8 @@ Regression_model = function(x,
       cVPE = Compute_value(V = cvals,
                            x = x,
                            bandit = cbandit,
-                           tau = tau)
+                           tau = tau,
+                           model = model)
       
       # Enter values, LR, and PE into allocated matrices
       values[cbandit,ccidx] = cVPE$V
@@ -105,7 +106,7 @@ Regression_model = function(x,
   cdf = cdf[, (cols) := lapply(.SD, scale), .SDcols = cols]
   
   # Run binomial regression with logit-link (due to probability for left choice vs. right choice)
-  cglm = glm(glmods[[model]],
+  cglm = glm(glmods[[which(names(glmods) == model)]],
              family = binomial(link = 'logit'),
              data = cdf)
   
