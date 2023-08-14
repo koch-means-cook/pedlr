@@ -12,7 +12,7 @@ Param_recov_wrapper = function(participant_id,
                                xtol_rel,
                                maxeval,
                                iterations,
-                               temperature,
+                               beta_weights,
                                tau,
                                ips,
                                svs){
@@ -27,7 +27,7 @@ Param_recov_wrapper = function(participant_id,
   # xtol_rel = 1.0e-5
   # maxeval = 1000
   # iterations = 3
-  # temperature = 7
+  # beta_weights = c(1, -0.5, 0.5, NA, NA)
   # tau = 0.2
   # ips = c(0.2, 0.1, NA, NA)
   # svs = c(0.5, 0.5, NA, NA)
@@ -48,7 +48,7 @@ Param_recov_wrapper = function(participant_id,
   message(paste('   xtol_rel:\t\t\t', xtol_rel, '\n', sep = ''), appendLF = FALSE)
   message(paste('   maxeval:\t\t\t', maxeval, '\n', sep = ''), appendLF = FALSE)
   message(paste('   iterations:\t\t\t', iterations, '\n', sep = ''), appendLF = FALSE)
-  message(paste('   temperature:\t\t\t', temperature, '\n', sep = ''), appendLF = FALSE)
+  message(paste('   beta_weights:\t\t\t', beta_weights, '\n', sep = ''), appendLF = FALSE)
   message(paste('   tau:\t\t\t\t', tau, '\n', sep = ''), appendLF = FALSE)
   if(random_input_params == FALSE){
     message(paste('   ips:\t\t\t', sep = ''), appendLF = FALSE)
@@ -62,7 +62,8 @@ Param_recov_wrapper = function(participant_id,
   }
 
   # Load own functions
-  source(file.path(here::here(), 'code', 'parameter_recovery', 'Param_recov.R', fsep = .Platform$file.sep))
+  source(file.path(here::here(), 'code', 'parameter_recovery', 'Param_recov.R',
+                   fsep = .Platform$file.sep))
   
   # Function to check number of parameters for models
   Check_n_params = function(model,

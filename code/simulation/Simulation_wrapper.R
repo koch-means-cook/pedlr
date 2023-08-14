@@ -16,8 +16,8 @@ Simulation_wrapper = function(participant_id,
                               x4_low,
                               x4_high,
                               x4_n,
-                              temperature,
-                              tau){
+                              tau,
+                              beta_weights){
   
   # participant_id = '09RI1ZH'
   # model = 'seplr'
@@ -34,7 +34,7 @@ Simulation_wrapper = function(participant_id,
   # x4_high = NA
   # x4_n = NA
   # tau = 0.2
-  # temperature = 7
+  # beta_weights = c(1, -0.2, 0.2, NA, NA)
   
   # Load own functions
   source(file.path(here::here(), 'code', 'simulation', 'Simulate.R', fsep = .Platform$file.sep))
@@ -117,6 +117,11 @@ Simulation_wrapper = function(participant_id,
     stop('Specified model not found')
   }
   
+  # Give message to user about supplied betas used for regression
+  message('---- Fixed betas for regression-based choice ----')
+  message(paste(c('b0: ', 'b1: ', 'b2: ', 'b3: ', 'b4: '), beta_weights, '\n', sep = ''))
+  message('--------------------------')
+  
   # Load specified participant (we are not using participant choices, only the
   # specific design a participant was assigned to)
   file = file.path(here::here(), 'data', paste(participant_id, '_exp_data.tsv', sep = ''),
@@ -137,9 +142,9 @@ Simulation_wrapper = function(participant_id,
     # Simulate data based on parameter combination
     temp = Simulate(data = data,
                     x = paras,
-                    temperature = temperature,
                     tau = tau,
-                    model = model)
+                    model = model,
+                    beta_weights = beta_weights)
     # fuse data  
     out = rbind(out, temp)
   }
@@ -244,11 +249,11 @@ option_list = list(
                         default = NULL,
                         help = 'Number of equally spaced steps to form grid between lower and upper bound of parameter 4',
                         metavar = 'X4_N'),
-  optparse::make_option(c('--temperature'),
+  optparse::make_option(c('--beta_weights'),
                         type='numeric',
                         default = NULL,
-                        help = 'Temperature parameter for softmax function used in probabilistic choice during simulation',
-                        metavar = 'TEMPERATURE'),
+                        help = 'List of beta weights supplied to regression model to simulate choices in the form of c(b0,b1,b2,b3,b4); e.g. `1,-0.4,0.4,-0.1,0.1',
+                        metavar = 'BETA_WEIGHTS'),
   optparse::make_option(c('--tau'),
                         type='numeric',
                         default = NULL,
@@ -274,10 +279,10 @@ Simulation_wrapper(participant_id = opt$participant_id,
                    x4_low = opt$x4_low,
                    x4_high = opt$x4_high,
                    x4_n = opt$x4_n,
-                   temperature = opt$temperature,
-                   tau = opt$tau)
+                   tau = opt$tau,
+                   beta_weights = opt$beta_weights)
 
-# Rscript Simulation_wrapper.R --participant_id '1SLA8RA' --model 'rw' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0 --x2_high 0 --x2_n 0 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --temperature 7 --tau 0.2
-# Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --temperature 7 --tau 0.2
-# Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low -10 --x3_high 10 --x3_n 5 --x4_low 0 --x4_high 0 --x4_n 0 --temperature 7 --tau 0.2
-# Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty_surprise' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low -10 --x3_high 10 --x3_n 5 --x4_low 0.1 --x4_high 0.7 --x4_n 5 --temperature 7 --tau 0.2
+# Rscript Simulation_wrapper.R --participant_id '1SLA8RA' --model 'rw' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0 --x2_high 0 --x2_n 0 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --tau 0.2 --beta_weights 1,-0.5,0.5,NA,NA
+# Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --tau 0.2 --beta_weights 1,-0.5,0.5,-0.1,0.1
+# Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low -10 --x3_high 10 --x3_n 5 --x4_low 0 --x4_high 0 --x4_n 0 --tau 0.2 --beta_weights 1,-0.5,0.5,NA,NA
+# Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty_surprise' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low -10 --x3_high 10 --x3_n 5 --x4_low 0.1 --x4_high 0.7 --x4_n 5 --tau 0.2 --beta_weights 1,-0.5,0.5,-0.1,0.1

@@ -9,16 +9,16 @@ Param_recov = function(data,
                        x0,
                        lb,
                        ub,
-                       temperature,
                        tau,
-                       model){
+                       model,
+                       beta_weights){
   
   # data = data.table::fread(file.path(here::here(), 'data', '09RI1ZH_exp_data.tsv'),
   #                          sep = '\t', na.strings = 'n/a')
   # model = 'uncertainty_seplr'
   # input_params = c(0.1, 0.5, 0.7, NA)
   # tau = 0.2
-  # temperature = 7
+  # beta_weights = c(1, -0.5, 0.5, -0.01, 0.01)
   
   # Source self-written functions
   source(file.path(here::here(), 'code', 'simulation', 'Simulate.R'))
@@ -35,9 +35,9 @@ Param_recov = function(data,
   #   model = 'uncertainty_surprise', input_params = c(0.1, 0.5, 0.7, 0.5) => Uncertainty+Surprise model => l = 0.1, u = 0.5, s = 0.7, pi = 0.5
   sim = Simulate(data = data,
                  x = input_params,
-                 temperature = temperature,
                  tau = tau,
-                 model)
+                 model,
+                 beta_weights = beta_weights)
   
   # Replace participants choices with choices of model
   # Choices
