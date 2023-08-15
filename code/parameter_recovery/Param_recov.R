@@ -83,13 +83,55 @@ Param_recov = function(data,
   res = recov$fitting_out %>%
     .[variable != 'LRs',]
   # Create data frame filled with values of input parameters that were used for simulation
-  add = res[variable == 'x0']
+  # (regression model betas based on non-normalized predictors + learning model parameters)
+  add = res[variable == 'coefs']
   add$variable = 'input_params'
-  add$value = input_params[!is.na(input_params)]
+  # The simulation makes trial-by-trial predictions based on the regression
+  # models beta values. We can therefore not simulate data using the beta
+  # weights based on z-scored predictors (e.g. "z_V1") because z-scoring requires
+  # all values encountered in the entire experiment (full distribution).
+  # Recovery therefore needs to be evaluated based on beta weights stemming from
+  # non-nirmalized predictors
+  add$value = c(rep(NA, length(beta_weights[!is.na(beta_weights)])),
+                beta_weights[!is.na(beta_weights)],
+                input_params[!is.na(input_params)])
   # Fuse input_params to results
   res = rbind(res, add)
   
+  # Add recovered parameters to model data, with NA padding to max of 4 parameters
+  recov_params = res[variable == 'coefs'] %>%
+    # ADD c(x1,x2,x3,x4) and c(b0,b1,b2,b3,b4)
+    # Get values of recovered parameters
+    .[!x %in% c('z_(Intercept)', 'z_V1', 'z_V2', 'z_V1u', 'z_V2u',
+                '(Intercept)', 'V1', 'V2', 'V1u', 'V2u'), ]
+  add_params = rep(NA, 4)
+  add_params[1:nrow(recov_params)] = recov_params$value
+  add_params = as.numeric(add_params)
+  # Add recovered beta weights, with NA padding to max of 5 betas
+  recov_betas = res[variable == 'coefs'] %>%
+    # Get values of recovered betas
+    .[x %in% c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'), ]
+  add_betas = rep(NA, 5)
+  add_betas[1:nrow(recov_betas)] = recov_betas$value
+  add_betas = as.numeric(add_betas)
+  
+  # Get experiment data of model with recovered parameters & recovered beta weights
+  model_data = recov$model_data %>%
+    .[, ':='(recov_x1 = add_params[1],
+             recov_x2 = add_params[2],
+             recov_x3 = add_params[3],
+             recov_x4 = add_params[4],
+             recov_b0 = add_betas[1],
+             recov_b1 = add_betas[2],
+             recov_b2 = add_betas[3],
+             recov_b3 = add_betas[4],
+             recov_b4 = add_betas[5])]
+  
+  # Form named list of outputs
+  out = list(recovery = res,
+             recovery_data = model_data)
+  
   # Return results table
-  return(res)
+  return(out)
   
 }

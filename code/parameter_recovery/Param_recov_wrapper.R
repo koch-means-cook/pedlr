@@ -18,19 +18,19 @@ Param_recov_wrapper = function(participant_id,
                                svs){
   
   # participant_id = '09RI1ZH'
-  # model = 'seplr'
+  # model = 'uncertainty_seplr'
   # random_input_params = FALSE
   # random_starting_values = TRUE
-  # lb = c(0.01, 0.01, NA, NA)
-  # ub = c(1, 1, NA, NA)
+  # lb = c(0.01, 0.01, 0.01, NA)
+  # ub = c(1, 1, 1, NA)
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
   # maxeval = 1000
   # iterations = 3
-  # beta_weights = c(1, -0.5, 0.5, NA, NA)
+  # beta_weights = c(1, -0.5, 0.5, -0.1, 0.1)
   # tau = 0.2
-  # ips = c(0.2, 0.1, NA, NA)
-  # svs = c(0.5, 0.5, NA, NA)
+  # ips = c(0.2, 0.1, 0.6, NA)
+  # svs = c(0.5, 0.5, 0.5, NA)
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)
@@ -106,7 +106,9 @@ Param_recov_wrapper = function(participant_id,
                            sep = '\t',
                            na.strings = 'n/a')
   
+  # Allocate output table
   out = data.table()
+  out_data = data.table()
   
   # Loop over simulation iterations
   for(n_iter in seq(iterations)){
@@ -293,26 +295,36 @@ Param_recov_wrapper = function(participant_id,
                       x0 = svs,
                       lb = lb,
                       ub = ub,
-                      temperature = temperature,
                       tau = tau,
-                      model = model)
+                      model = model,
+                      beta_weights = beta_weights)
+    
+    # Get recovery output and model data of recovered parameters/betas
+    recovery = res$recovery
+    recovery_data = res$recovery_data
     
     # Fuse output over iterations
-    res$iter = n_iter
-    out = rbind(out, res)
+    # Recovery
+    recovery$iter = n_iter
+    out = rbind(out, recovery)
+    # Data
+    recovery_data$iter = n_iter
+    out_data = rbind(out_data, recovery_data)
     
   }
   
   # Add identifiers to output
   out$model = model
   out$algorithm = algorithm
+  out_data$algorithm = algorithm
   out$xtol_rel = xtol_rel
+  out_data$xtol_rel = xtol_rel
   out$maxeval = maxeval
-  out$temperature = temperature
+  out_data$maxeval = maxeval
   out$tau = tau
   
   # Savefile name giving base of simulation for recovery
-  file_name = paste('paramrecov_base-',
+  file_name_out = paste('paramrecov_base-',
                     participant_id,
                     '_model-',
                     model,
@@ -322,6 +334,18 @@ Param_recov_wrapper = function(participant_id,
                     random_starting_values,
                     '.tsv',
                     sep = '')
+  
+  # Savefile name giving base of simulation for recovery
+  file_name_outdata = paste('recovdata_base-',
+                        participant_id,
+                        '_model-',
+                        model,
+                        '_randips-',
+                        random_input_params,
+                        '_randsvs-',
+                        random_starting_values,
+                        '.tsv',
+                        sep = '')
   
   # Create save directory in case it does not exist yet
   save_dir = file.path(here::here(),
@@ -333,8 +357,17 @@ Param_recov_wrapper = function(participant_id,
   }
   
   # Save output
+  # Recovery
   file = file.path(save_dir,
-                   file_name,
+                   file_name_out,
+                   fsep = .Platform$file.sep)
+  data.table::fwrite(x = out,
+                     file = file,
+                     na = 'n/a',
+                     sep = '\t')
+  # Data
+  file = file.path(save_dir,
+                   file_name_outdata,
                    fsep = .Platform$file.sep)
   data.table::fwrite(x = out,
                      file = file,
@@ -416,11 +449,13 @@ option_list = list(
               default = NULL,
               help = 'Int giving number of iterations of simulating data and fitting model. Random starting values will be different each iteration.',
               metavar = 'ITERATIONS'),
-  make_option(c('-T', '--temperature'),
-              type='numeric',
+  make_option(c('-B', '--beta_weights'),
+              action = 'callback',
+              callback = split_list,
+              type='character',
               default = NULL,
-              help = 'Value for temperature parameter of softmax choice used during simulation of data. E.g. `7`',
-              metavar = 'TEMPERATURE'),
+              help = 'Values for beta weights used in regression to create trial-by-trial choices in simulation. E.g. `0,-0.2,0.2,NA,NA`',
+              metavar = 'BETA_WEIGHTS'),
   make_option(c('-t', '--tau'),
               type='numeric',
               default = NULL,
@@ -456,9 +491,9 @@ Param_recov_wrapper(participant_id = opt$participant_id,
                     xtol_rel = opt$xtol_rel,
                     maxeval = opt$maxeval,
                     iterations = opt$iterations,
-                    temperature = opt$temperature,
+                    beta_weights = opt$beta_weights,
                     tau = opt$tau,
                     ips = opt$ips,
                     svs = opt$svs)
 
-# Rscript Param_recov_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --random_input_params 'TRUE' --random_starting_values 'TRUE' --lb 0.01,0.01,-20,NA --ub 1,1,20,NA --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.0001 --maxeval 10 --iterations 3 --temperature 7 --tau 0.2 --ips 0.1,0.7,2,NA --svs 0.5,0.5,0,NA
+# Rscript Param_recov_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --random_input_params 'TRUE' --random_starting_values 'TRUE' --lb 0.01,0.01,-20,NA --ub 1,1,20,NA --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.0001 --maxeval 10 --iterations 3 --beta_weights 0,-0.1,0.1,NA,NA --tau 0.2 --ips 0.1,0.7,2,NA --svs 0.5,0.5,0,NA
