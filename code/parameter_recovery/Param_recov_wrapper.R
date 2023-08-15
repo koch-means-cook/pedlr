@@ -68,10 +68,12 @@ Param_recov_wrapper = function(participant_id,
   # Function to check number of parameters for models
   Check_n_params = function(model,
                             corr_n_params,
+                            corr_n_betas,
                             lb,
                             ub,
                             ips,
-                            svs){
+                            svs,
+                            beta_weights){
     
     # Check if number of parameters is correct for model
     if(any(length(lb[!is.na(lb)]) != corr_n_params,
@@ -82,6 +84,14 @@ Param_recov_wrapper = function(participant_id,
                  model,
                  ') does not fit number of specified parameters in lb/ub/ips/svs (',
                  corr_n_params,
+                 ').',
+                 sep = ''))
+      # Check if number of beta weights fits model
+    } else if(length(beta_weights[!is.na(beta_weights)]) != corr_n_betas){
+      stop(paste('Specified model (',
+                 model,
+                 ') does not fit number of specified beta weights (',
+                 corr_n_betas,
                  ').',
                  sep = ''))
     }
@@ -127,10 +137,12 @@ Param_recov_wrapper = function(participant_id,
       # Check if number of parameters is correct for model
       Check_n_params(model = model,
                      corr_n_params = 1,
+                     corr_n_betas = 3,
                      lb = lb,
                      ub = ub,
                      ips = ips,
-                     svs = svs)
+                     svs = svs,
+                     beta_weights = beta_weights)
       
     # Uncertainty
     } else if(model == 'uncertainty'){
@@ -150,10 +162,12 @@ Param_recov_wrapper = function(participant_id,
       # Check if number of parameters is correct for model
       Check_n_params(model = model,
                      corr_n_params = 2,
+                     corr_n_betas = 5,
                      lb = lb,
                      ub = ub,
                      ips = ips,
-                     svs = svs)
+                     svs = svs,
+                     beta_weights = beta_weights)
       
 
     # Seplr
@@ -174,10 +188,12 @@ Param_recov_wrapper = function(participant_id,
     # Check if number of parameters is correct for model
     Check_n_params(model = model,
                    corr_n_params = 2,
+                   corr_n_betas = 3,
                    lb = lb,
                    ub = ub,
                    ips = ips,
-                   svs = svs)
+                   svs = svs,
+                   beta_weights = beta_weights)
     
     # Uncertainty+Seplr
   } else if(model == 'uncertainty_seplr'){
@@ -197,10 +213,12 @@ Param_recov_wrapper = function(participant_id,
     # Check if number of parameters is correct for model
     Check_n_params(model = model,
                    corr_n_params = 3,
+                   corr_n_betas = 5,
                    lb = lb,
                    ub = ub,
                    ips = ips,
-                   svs = svs)
+                   svs = svs,
+                   beta_weights = beta_weights)
     
     # Surprise
   } else if(model == 'surprise'){
@@ -220,10 +238,12 @@ Param_recov_wrapper = function(participant_id,
       # Check if number of parameters is correct for model
       Check_n_params(model = model,
                      corr_n_params = 3,
+                     corr_n_betas = 3,
                      lb = lb,
                      ub = ub,
                      ips = ips,
-                     svs = svs)
+                     svs = svs,
+                     beta_weights = beta_weights)
       
     # Uncertainty+Surprise
     } else if(model == 'uncertainty_surprise'){
@@ -243,10 +263,12 @@ Param_recov_wrapper = function(participant_id,
       # Check if number of parameters is correct for model
       Check_n_params(model = model,
                      corr_n_params = 4,
+                     corr_n_betas = 5,
                      lb = lb,
                      ub = ub,
                      ips = ips,
-                     svs = svs)
+                     svs = svs,
+                     beta_weights = beta_weights)
     }
     
     # Round inputs
