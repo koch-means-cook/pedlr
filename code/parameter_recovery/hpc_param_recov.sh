@@ -62,8 +62,8 @@ MEM_MB=1000
 # ===
 # Set list of models to recover
 # ===
-MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
-#MODEL_LIST='uncertainty'
+#MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
+MODEL_LIST='seplr'
 
 # ===
 # Set recov parameters
@@ -172,23 +172,23 @@ for DATA in ${DATA_LIST}; do
 
 		# Send command
 		echo "Rscript ${PATH_CODE}/Param_recov_wrapper.R" \
-		--participant_id ${PARTICIPANT_ID} \
-		--model ${MODEL} \
-		--random_input_params ${RANDOM_INPUT_PARAMS} \
-		--random_input_betas ${RANDOM_INPUT_BETAS} \
-		--random_starting_values ${RANDOM_STARTING_VALUES} \
-		--param_lb ${PARAM_LB} \
-		--param_ub ${PARAM_UB} \
-		--betas_lb ${BETAS_LB} \
-		--betas_ub ${BETAS_UB} \
-		--algorithm ${ALGORITHM} \
-		--xtol_rel ${XTOL_REL} \
-		--maxeval ${MAXEVAL} \
-		--iterations ${ITERATIONS} \
-		--tau ${TAU} \
-		--ips ${IPS} \
-		--beta_weights ${BETA_WEIGHTS} \
-		--svs ${SVS} >> job.slurm
+		--participant_id=${PARTICIPANT_ID} \
+		--model=${MODEL} \
+		--random_input_params=${RANDOM_INPUT_PARAMS} \
+		--random_input_betas=${RANDOM_INPUT_BETAS} \
+		--random_starting_values=${RANDOM_STARTING_VALUES} \
+		--param_lb=${PARAM_LB} \
+		--param_ub=${PARAM_UB} \
+		--betas_lb=${BETAS_LB} \
+		--betas_ub=${BETAS_UB} \
+		--algorithm=${ALGORITHM} \
+		--xtol_rel=${XTOL_REL} \
+		--maxeval=${MAXEVAL} \
+		--iterations=${ITERATIONS} \
+		--tau=${TAU} \
+		--ips=${IPS} \
+		--beta_weights=${BETA_WEIGHTS} \
+		--svs=${SVS} >> job.slurm
 
 		# submit job to cluster queue and remove it to avoid confusion:
 		sbatch job.slurm
