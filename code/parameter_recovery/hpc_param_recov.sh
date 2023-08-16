@@ -62,8 +62,8 @@ MEM_MB=1000
 # ===
 # Set list of models to recover
 # ===
-#MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
-MODEL_LIST='uncertainty'
+MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
+#MODEL_LIST='uncertainty'
 
 # ===
 # Set recov parameters
@@ -151,7 +151,7 @@ for DATA in ${DATA_LIST}; do
 		fi
 
 		# Get job name
-		JOB_NAME="recov-${PARTICIPANT_ID}_model-${MODEL}_randips-${RANDOM_INPUT_PARAMS}_randsvs-${RANDOM_STARTING_VALUES}"
+		JOB_NAME="recov-${PARTICIPANT_ID}_model-${MODEL}_randips-${RANDOM_INPUT_PARAMS}_randbetas-${RANDOM_INPUT_BETAS}_randsvs-${RANDOM_STARTING_VALUES}"
 
 		# Create job file
 		echo "#!/bin/bash" > job.slurm

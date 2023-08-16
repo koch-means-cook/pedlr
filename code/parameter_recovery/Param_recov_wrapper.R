@@ -19,7 +19,7 @@ Param_recov_wrapper = function(participant_id,
                                ips,
                                beta_weights,
                                svs){
-  
+
   # participant_id = '09RI1ZH'
   # model = 'uncertainty_seplr'
   # random_input_params = FALSE
@@ -392,14 +392,16 @@ Param_recov_wrapper = function(participant_id,
   }
   
   # Add identifiers to output
+  # Recovery
   out$model = model
   out$algorithm = algorithm
-  out_data$algorithm = algorithm
   out$xtol_rel = xtol_rel
-  out_data$xtol_rel = xtol_rel
   out$maxeval = maxeval
-  out_data$maxeval = maxeval
   out$tau = tau
+  # Data
+  out_data$algorithm = algorithm
+  out_data$xtol_rel = xtol_rel
+  out_data$maxeval = maxeval
   
   # Savefile name giving base of simulation for recovery
   file_name_out = paste('paramrecov_base-',
@@ -408,6 +410,8 @@ Param_recov_wrapper = function(participant_id,
                     model,
                     '_randips-',
                     random_input_params,
+                    '_randbetas-',
+                    random_input_betas,
                     '_randsvs-',
                     random_starting_values,
                     '.tsv',
@@ -420,6 +424,8 @@ Param_recov_wrapper = function(participant_id,
                         model,
                         '_randips-',
                         random_input_params,
+                        '_randbetas-',
+                        random_input_betas,
                         '_randsvs-',
                         random_starting_values,
                         '.tsv',
