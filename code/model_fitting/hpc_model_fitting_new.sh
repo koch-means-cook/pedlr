@@ -101,12 +101,12 @@ for DATA in ${DATA_LIST}; do
 	echo "module unload R" >> job.slurm
 	echo "module load R/4.0" >> job.slurm
 	echo "Rscript ${PATH_CODE}/Fit_models_new_wrapper.R" \
-	--participant_id ${PARTICIPANT_ID} \
-	--starting_values ${STARTING_VALUES} \
-	--algorithm ${ALGORITHM} \
-	--xtol_rel ${XTOL_REL} \
-	--maxeval ${MAXEVAL} \
-	--iterations ${ITERATIONS} >> job.slurm
+	--participant_id=${PARTICIPANT_ID} \
+	--starting_values=${STARTING_VALUES} \
+	--algorithm=${ALGORITHM} \
+	--xtol_rel=${XTOL_REL} \
+	--maxeval=${MAXEVAL} \
+	--iterations=${ITERATIONS} >> job.slurm
 
 	# submit job to cluster queue and remove it to avoid confusion:
 	sbatch job.slurm

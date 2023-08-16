@@ -90,7 +90,7 @@ for DATA in ${DATA_LIST}; do
 		echo "module load R/4.0" >> job.slurm
 
 		echo "Rscript Simulation_windowrize.R \
-		--design_base ${DESIGN_BASE}" >> job.slurm
+		--design_base=${DESIGN_BASE}" >> job.slurm
 
 		# submit job to cluster queue and remove it to avoid confusion:
 		sbatch job.slurm
