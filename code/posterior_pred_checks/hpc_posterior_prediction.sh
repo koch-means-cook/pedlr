@@ -9,11 +9,11 @@ PATH_BASE="${HOME}/pedlr"
 # data directory
 PATH_DATA="${PATH_BASE}/data"
 # output directory
-PATH_OUT="${PATH_BASE}/derivatives/model_fitting"
+PATH_OUT="${PATH_BASE}/derivatives/posterior_pred_checks"
 # directory to save logs of HPC
-PATH_LOG="${PATH_BASE}/logs/model_fitting/$(date '+%Y%m%d_%H%M')"
+PATH_LOG="${PATH_BASE}/logs/posterior_pred_checks/$(date '+%Y%m%d_%H%M')"
 # Path to script to run
-PATH_CODE="${PATH_BASE}/code/model_fitting"
+PATH_CODE="${PATH_BASE}/code/posterior_pred_checks"
 # current path
 PATH_RETURN=$(pwd)
 
