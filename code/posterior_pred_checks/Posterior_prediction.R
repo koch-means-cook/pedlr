@@ -86,6 +86,10 @@ option_list = list(
               help = 'Value for fixed tau parameter used in Suprise model. E.g. `0.2`',
               metavar = 'TAU'))
 
+# provide options in list to be callable by script
+opt_parser = OptionParser(option_list = option_list)
+opt = parse_args(opt_parser)
+
 # Run function with command line arguments
 Posterior_prediction(participant_id = opt$participant_id,
                      tau = opt$tau)
