@@ -4,7 +4,7 @@ library(optparse)
 Posterior_prediction = function(participant_id,
                                 tau = 0.2){
   
-  # participant_id = '2HOJBMD'
+  # participant_id = '4BKAHC6'
   # tau = 0.2
   
   # Source own functions

@@ -62,7 +62,7 @@ MEM_MB=1000
 # ===
 # Set fitting parameters
 # ===
-TAU=0-2
+TAU=0.2
 
 # ===
 # Run model fitting
