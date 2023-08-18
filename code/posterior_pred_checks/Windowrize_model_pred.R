@@ -111,9 +111,10 @@ Windowrize_model_pred = function(participant_id){
   
   # Summarize data
   window_data_run = window_data %>%
-    # Eliminate windows which extended across trial boundaries (<1 or >240)
+    # Eliminate windows which extended across trial boundaries of run
     .[, relative_trial := as.numeric(as.character(window_center)) + as.numeric(as.character(window_relative))] %>%
-    .[!(relative_trial < 1 | relative_trial > 240),] %>%
+    .[!(run == 1 &  (relative_trial < 1 | relative_trial > 240)),] %>%
+    .[ !(run == 2 & (relative_trial < 241 | relative_trial > 480)),] %>%
     # Sort by relative window
     .[order(rank(participant_id), rank(model), rank(run), rank(window_relative)),] %>%
     # Get mean accuracy across all relative window positions (-1 to +2)
