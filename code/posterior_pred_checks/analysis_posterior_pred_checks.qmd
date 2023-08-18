@@ -143,7 +143,7 @@ modeldata_fit = data.table::rbindlist(data_list)
 
 # key columns
 cols = c('participant_id', 'model', 'run', 'trial', 'option_left', 
-         'option_right', 'reward_stim_1', 'reward_stim_2', 'trial_type',
+         'option_right', 'is_rare', 'reward_stim_1', 'reward_stim_2', 'trial_type',
          'forced', 'choice', 'option_choice', 'outcome',
          'value_low', 'value_mid', 'value_high')
 
@@ -171,26 +171,26 @@ data_ppc = rbind(data_real, data_pred) %>%
 # CBE in predictions
 
 ```{r}
-# GET CORRECT_CHOICE COLUMN ON PREDICTED DATA
-# DO WINDORIZE ANALYSIS ==> DOES IT SHOW THE SAME THINGS AS OUR PARTICIPANTS?
-
-# Make sure we only include choices in 1v2 comps when calculating prob of choosing 2
-data_ii = data_pred %>%
-  Add_comp(.) %>%
-  .[comp != '1v2' | trial_type != 'choice', correct_choice := NA,
-    by = c('participant_id', 'run')] %>%
-  # Get running averages
-  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
-                                           choice_outcome = outcome,
-                                           stim = 1),
-           avg_2_running = Get_running_avg(choice_option = option_choice,
-                                           choice_outcome = outcome,
-                                           stim = 2),
-           avg_3_running = Get_running_avg(choice_option = option_choice,
-                                           choice_outcome = outcome,
-                                           stim = 3)),
-    by = c('participant_id', 'run')]
-
+# # Make sure we only include choices in 1v2 comps when calculating prob of choosing 2
+# data_ii = data_pred %>%
+#   Add_comp(.) %>%
+#    .[, correct := if(option_left > option_right) 'left' else 'right',
+#     by = c('participant_id', 'model', 'run', 'trial')] %>%
+#   .[, correct_choice := correct == choice] %>%
+#   .[comp != '1v2' | trial_type != 'choice', correct_choice := NA,
+#     by = c('participant_id', 'model', 'run')] %>%
+#   # Get running averages
+#   .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
+#                                            choice_outcome = outcome,
+#                                            stim = 1),
+#            avg_2_running = Get_running_avg(choice_option = option_choice,
+#                                            choice_outcome = outcome,
+#                                            stim = 2),
+#            avg_3_running = Get_running_avg(choice_option = option_choice,
+#                                            choice_outcome = outcome,
+#                                            stim = 3)),
+#     by = c('participant_id', 'model', 'run')]
+# 
 # # Allocate data holding +-5 trials from rare outcome of bandit 2
 # window_data = data.table()
 # 
@@ -204,41 +204,47 @@ data_ii = data_pred %>%
 #   result$window_relative = seq(max(index_rare - window_size + 1, 1),
 #                                index_rare + window_size) - index_rare
 #   result[window_relative == 0]$correct_choice = NA
-#   
+# 
 #   result$window_center = as.factor(result$window_center)
 #   result$window_relative = as.factor(result$window_relative)
 #   return(result)
 # }
 # 
 # # i_id = '09RI1ZH'
+# # i_model = 'rw'
 # # i_run = '1'
 # 
-# # For each participant & run
+# # For each participant, model, & run
 # for(i_id in unique(data_ii$participant_id)){
-#   for(i_run in unique(data_ii$run)){
-#     
-#     # Select data
-#     temp_data = data_ii[participant_id == i_id &
-#                       run == i_run]
-#     
-#     # Get all trials where rare outcomes were obtained
-#     idx_chosen_rare_outcome = which(temp_data$is_rare == 1 &
-#                                       # CHANGE: I also allow rare outcomes that came from forced choices
-#                                       temp_data$trial_type %in% c('choice', 'forced') &
-#                                       temp_data$option_choice == 2)
-#    # For each of the rare-outcome trials
-#    for(rare_count in seq(1,length(idx_chosen_rare_outcome))){
-#     # Get data slice
-#      temp = Windowrize(data = temp_data,
-#                        index_rare = idx_chosen_rare_outcome[rare_count],
-#                        window_size = 3) %>%
-#        .[, window_relative := factor(window_relative, levels = unique(sort(window_relative)))]
-#      # Add count of the rare outcome
-#      temp$i_rare = rare_count
-#      # Fuse data for each participant & run
-#      window_data = rbind(window_data, temp)
-#    }
+#   for(i_model in unique(data_ii$model)){
+#     for(i_run in unique(data_ii$run)){
+#       
+#       # Select data
+#       temp_data = data_ii[participant_id == i_id &
+#                             model == i_model &
+#                             run == i_run]
+#       
+#       # Get all trials where rare outcomes were obtained
+#       idx_chosen_rare_outcome = which(temp_data$is_rare == 1 &
+#                                         # CHANGE: I also allow rare outcomes that came from forced choices
+#                                         temp_data$trial_type %in% c('choice', 'forced') &
+#                                         temp_data$option_choice == 2)
+#       # For each of the rare-outcome trials
+#       for(rare_count in seq(1,length(idx_chosen_rare_outcome))){
+#         # Get data slice
+#         temp = Windowrize(data = temp_data,
+#                           index_rare = idx_chosen_rare_outcome[rare_count],
+#                           window_size = 2) %>%
+#           .[, window_relative := factor(window_relative, levels = unique(sort(window_relative)))]
+#         # Add count of the rare outcome
+#         temp$i_rare = rare_count
+#         # Fuse data for each participant & run
+#         window_data = rbind(window_data, temp)
+#         
+#       }
+#     }
 #   }
+#   message(paste0(i_id, '...'))
 # }
 # 
 # # Summarize data
@@ -247,23 +253,40 @@ data_ii = data_pred %>%
 #   .[, relative_trial := as.numeric(as.character(window_center)) + as.numeric(as.character(window_relative))] %>%
 #   .[!(relative_trial < 1 | relative_trial > 240),] %>%
 #   # Sort by relative window
-#   .[order(rank(group), rank(participant_id), rank(run), rank(window_relative)),] %>%
-#   # Get mean accuracy across all relative window positions (-2 to +3)
+#   .[order(rank(participant_id), rank(model), rank(run), rank(window_relative)),] %>%
+#   # Get mean accuracy across all relative window positions (-1 to +2)
 #   .[, .(mean_accuracy = mean(correct_choice, na.rm = TRUE),
 #         n_data = sum(!is.na(correct_choice))),
-#     by = c('participant_id', 'group', 'run', 'window_relative')]
-# 
-# # Get mean across runs
-# window_data_participant = window_data_run %>%
-#   .[, .(accuracy = mean(mean_accuracy, na.rm = TRUE)),
-#     by = c('participant_id', 'group', 'window_relative')]
-#   
-# # Get age group specific mean and sd
-# window_data_group = window_data_participant %>%
-#   .[, .(mean_accuracy = mean(accuracy, na.rm = TRUE),
-#         sd_accuracy = sd(accuracy, na.rm = TRUE)),
-#     by = c('group', 'window_relative')] %>%
-#   .[order(rank(group), rank(window_relative)),]
+#     by = c('participant_id', 'model', 'run', 'window_relative')]
+
+# Load windowrize data
+file_pattern = file.path(base_path, 'derivatives', 'posterior_pred_checks', 
+                         paste0('windowrizepred-*.tsv'),
+                         fsep = .Platform$file.sep)
+files = Sys.glob(file_pattern)
+window_data_run = data.table::data.table()
+for(file in files){
+  temp = data.table::fread(file, sep = '\t', na.strings = 'n/a')
+  window_data_run = rbind(window_data_run, temp)
+}
+
+# Get mean across runs
+window_data_participant = window_data_run %>%
+  .[, .(accuracy = mean(mean_accuracy, na.rm = TRUE)),
+    by = c('participant_id', 'model', 'window_relative')]
+
+# Add group information
+groupinfo = modeldata_fit[, .(group = unique(group)),
+                          by = c('participant_id')]
+window_data_participant = data.table::merge.data.table(window_data_participant,
+                                                       groupinfo)
+
+# Get age group specific mean and sd
+window_data_group = window_data_participant %>%
+  .[, .(mean_accuracy = mean(accuracy, na.rm = TRUE),
+        sd_accuracy = sd(accuracy, na.rm = TRUE)),
+    by = c('group', 'model', 'window_relative')] %>%
+  .[order(rank(group), rank(model), rank(window_relative)),]
 ```
 
 ## Check: Average N of rare outcomes per group
