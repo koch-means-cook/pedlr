@@ -1,0 +1,345 @@
+---
+title: "Posterior Predictive Checks"
+format: 
+  html:
+    theme:
+      light: yeti
+      dark: superhero
+    fontsize: small
+    grid:
+      sidebar-width: 15em
+    code-fold: true
+    toc: true
+    toc-location: left
+    toc-title: Contents
+    toc-depth: 3
+    toc-expand: true
+    embed-resources: true
+    html-math-method: katex
+editor: source
+---
+
+# Setup
+
+```{r}
+library(here)
+library(data.table)
+library(magrittr)
+
+# Get repo path
+base_path = file.path(here::here(),
+                      fsep = .Platform$file.sep)
+
+# Source own functions
+source_path = file.path(base_path, 'code', fsep = .Platform$file.sep)
+source(file.path(source_path, 'utils', 'Load_model_fits_new.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'utils', 'Add_comp.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'utils', 'Get_running_avg.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'utils', 'Neurocodify_plot.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'utils', 'Prepare_data_for_plot.R', fsep = .Platform$file.sep))
+source(file.path(source_path, 'utils', 'Get_plot_guides.R', fsep = .Platform$file.sep))
+
+plot_guides = Get_plot_guides()
+
+
+# # Load data
+# files_pattern = file.path(base_path, 'derivatives', 'posterior_pred_checks', 'postpred-*_model-*.tsv',
+#                           fsep = .Platform$file.sep)
+# files = Sys.glob(files_pattern)
+# data = data.table::data.table()
+# for(file in files){
+#   temp = data.table::fread(file, sep = '\t', na.strings = 'n/a')
+#   data = rbind(data, temp)
+# }
+
+# Glob files based on naming pattern
+files_pattern = file.path(base_path, 'derivatives', 'posterior_pred_checks', 'postpred-*_model-*.tsv',
+                          fsep = .Platform$file.sep)
+files = Sys.glob(files_pattern)
+
+# Function to load text files (.tsv)
+Load_tsv = function(file_path){
+  tsv = data.table::fread(file_path,
+                          sep = '\t',
+                          na.strings = 'n/a')
+  return(tsv)
+}
+
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+data = data.table::rbindlist(data_list)
+```
+
+# Checks
+
+```{r}
+# Load model fitting data to check if correct parameters were used for PPC
+data_fitting = Load_model_fits_new()
+fit_params = data_fitting %>%
+  .[starting_values == 'random',] %>%
+  .[variable == 'coefs',] %>%
+  # Exclude betas weights based in z-scored predictors (could not be used in
+  # data simulation for posterior pred checks)
+  .[substr(x, 0, 2) != 'z_', ] %>%
+  # Recode beta weight names
+  .[x == '(Intercept)', names := 'b0'] %>%
+  .[x == 'V1', names := 'b1'] %>%
+  .[x == 'V2', names := 'b2'] %>%
+  .[x == 'V1u', names := 'b3'] %>%
+  .[x == 'V2u', names := 'b4'] %>%
+  .[is.na(names), names := paste0('x', seq(.N)),
+    by = c('participant_id', 'model')] %>%
+  .[, c('participant_id', 'model', 'names', 'value')] %>%
+  .[, (c('participant_id', 'model', 'names')) := lapply(.SD, factor), .SDcols = c('participant_id', 'model', 'names')] %>%
+  data.table::setnames(old = 'value', new = 'value_fit')
+
+sim_params = data %>%
+  .[,.(x1 = unique(x1),
+       x2 = unique(x2),
+       x3 = unique(x3),
+       x4 = unique(x4),
+       b0 = unique(b0),
+       b1 = unique(b1),
+       b2 = unique(b2),
+       b3 = unique(b3),
+       b4 = unique(b4)),
+    by = c('participant_id', 'model')] %>%
+  data.table::melt(id.vars = c('participant_id', 'model'),
+                   variable.name = 'names') %>%
+  .[!is.na(value),] %>%
+  data.table::setorder(participant_id, model, names) %>%
+  data.table::setnames(old = 'value', new = 'value_sim')
+
+check = data.table::merge.data.table(fit_params,
+                                     sim_params,
+                                     by = c('participant_id', 'model', 'names')) %>%
+  .[, value_fit := round(value_fit, 5)] %>%
+  .[, value_sim := round(value_sim, 5)] %>%
+  .[, check := value_fit == value_sim]
+
+fails = check[check != TRUE,]
+```
+
+# Choice comparison
+
+```{r}
+data_choicecomp = data
+```
+
+# Value comparison
+
+```{r}
+# Load modeldata (from model fitting)
+files_pattern = file.path(base_path, 'derivatives', 'model_fitting', 'modeldata-*_sv-random.tsv',
+                          fsep = .Platform$file.sep)
+files = Sys.glob(files_pattern)
+
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+modeldata_fit = data.table::rbindlist(data_list)
+
+# key columns
+cols = c('participant_id', 'model', 'run', 'trial', 'option_left', 
+         'option_right', 'is_rare', 'reward_stim_1', 'reward_stim_2', 'trial_type',
+         'forced', 'choice', 'option_choice', 'outcome',
+         'value_low', 'value_mid', 'value_high')
+
+data_real = modeldata_fit[, ..cols] %>%
+  .[, datatype := 'participant']
+
+data_pred = data %>%
+  .[, choice := 'left'] %>%
+  .[model_choice_side == 2, choice := 'right'] %>%
+  .[, ':='(option_choice = model_choice_option,
+           outcome = model_outcome,
+           value_low = val_b_1,
+           value_mid = val_b_2,
+           value_high = val_b_3)] %>%
+  .[, ..cols] %>%
+  .[, datatype := 'prediction']
+
+data_ppc = rbind(data_real, data_pred) %>%
+  .[, datatype := factor(datatype)] %>%
+  data.table::setorder(participant_id, model, trial, datatype)
+```
+
+---
+
+# CBE in predictions
+
+```{r}
+# Load windowrize data
+file_pattern = file.path(base_path, 'derivatives', 'posterior_pred_checks', 
+                         paste0('windowrizepred-*.tsv'),
+                         fsep = .Platform$file.sep)
+files = Sys.glob(file_pattern)
+window_data_run = data.table::data.table()
+for(file in files){
+  temp = data.table::fread(file, sep = '\t', na.strings = 'n/a')
+  window_data_run = rbind(window_data_run, temp)
+}
+
+# Get mean across runs
+window_data_participant = window_data_run %>%
+  .[, .(accuracy = mean(mean_accuracy, na.rm = TRUE)),
+    by = c('participant_id', 'model', 'window_relative')]
+
+# Add group information
+groupinfo = modeldata_fit[, .(group = unique(group)),
+                          by = c('participant_id')]
+window_data_participant = data.table::merge.data.table(window_data_participant,
+                                                       groupinfo)
+
+# Get age group specific mean and sd
+window_data_group = window_data_participant %>%
+  .[, .(mean_accuracy = mean(accuracy, na.rm = TRUE),
+        sem_accuracy = sd(accuracy, na.rm = TRUE)/sqrt(.N)),
+    by = c('group', 'model', 'window_relative')] %>%
+  .[order(rank(group), rank(model), rank(window_relative)),]
+```
+
+## CBE plot (all models)
+
+```{r}
+data_plot = Prepare_data_for_plot(window_data_participant[window_relative != 0,]) %>%
+  .[, group := factor(group, levels = rev(levels(group)))]
+data_plot_mean = Prepare_data_for_plot(window_data_group[window_relative != 0,]) %>%
+  .[, group := factor(group, levels = rev(levels(group)))]
+
+# Function to plot
+Plot_windowrize = function(data_plot,
+                           data_plot_mean,
+                           plot_guides){
+  
+  data_plot = Prepare_data_for_plot(data_plot)
+  data_plot_mean = Prepare_data_for_plot(data_plot_mean)
+  
+  p = ggplot(data = data_plot,
+             aes(x = window_relative,
+                 y = accuracy,
+                 color = group)) +
+    # Add data points of individual participant
+    geom_point(position = position_jitterdodge(jitter.width = 0.2,
+                                               jitter.height = 0,
+                                               dodge.width = 0.5,
+                                               seed = 666),
+               size = 0.2,
+               alpha = 0.5) +
+    # Line connecting group means
+    geom_line(data = data_plot_mean,
+              aes(y = mean_accuracy),
+              linewidth = 1,
+              position = position_dodge(width = 0.5)) +
+    # Errorbars (SEM) of group means
+    geom_errorbar(data = data_plot_mean,
+                  inherit.aes = FALSE,
+                  aes(x = window_relative,
+                      ymin = mean_accuracy - sem_accuracy,
+                      ymax = mean_accuracy + sem_accuracy,
+                      group = group),
+                  color = 'black',
+                  width = 0.2,
+                  position = position_dodge(width = 0.5)) +
+    # Group means
+    geom_point(data = data_plot_mean,
+               aes(y = mean_accuracy,
+                   fill = group),
+               shape = 21,
+               size = 1,
+               color = 'black',
+               position = position_dodge(width = 0.5)) +
+    # Scale group colors according to predefined guides
+    scale_color_manual(values = plot_guides) +
+    scale_fill_manual(values = plot_guides) +
+    facet_wrap(~model)
+  
+  p = Neurocodify_plot(p) +
+    theme(panel.spacing.x = unit(30, 'pt'),
+          legend.position = 'top',
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          legend.title = element_blank())
+  return(p)
+}
+
+# Plot
+Plot_windowrize(data_plot = data_plot,
+                data_plot_mean = data_plot_mean,
+                plot_guides = plot_guides)
+```
+
+## CBE plot (PXP-relevant models)
+
+```{r}
+# Plot only for PXP-relevant models
+Plot_windowrize(data_plot = data_plot[model %in% c('seplr', 'surprise'),],
+                data_plot_mean = data_plot_mean[model %in% c('seplr', 'surprise'),],
+                plot_guides = plot_guides)
+```
+
+## Plot simplified CBE
+
+```{r}
+# Use only data pre and post rare outcome
+data_cbe = window_data_participant[!window_relative %in% c(0,2),] %>%
+  # Relabel to pre and post (from -1 and 1)
+  .[,window_relative := factor(window_relative,
+                               labels = c('pre', 'post'))] %>%
+  # Cast into wide format to easier calculate difference between pre and post
+  data.table::dcast(participant_id + group + model ~ window_relative, value.var = 'accuracy') %>%
+  # Calculate strength of behavioral effect (larger values = stronger negative 
+  # impact of rare outcomes on choices of mid bandit)
+  .[, cbe := pre-post]
+
+# Rename groups and set order (older adults first)
+data_plot = Prepare_data_for_plot(data_cbe) %>%
+  .[, group := factor(group, levels = rev(levels(group)))]
+
+p = ggplot(data = data_plot,
+           aes(x = group,
+               y = cbe,
+               color = group,
+               fill = group)) +
+  geom_hline(yintercept = 0,
+             color = 'black',
+             linewidth = 0.5) +
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0),
+             size = 0.5) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black',
+               width = 0.3,
+               alpha = 0.5) +
+  stat_summary(fun = 'mean',
+               geom = 'line',
+               linewidth = 0.5,
+               color = 'grey',
+               group = 'group') +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               shape = 23,
+               fill = 'white',
+               color = 'black',
+               stroke = 1,
+               size = 2) +
+  scale_color_manual(values = plot_guides) +
+  scale_fill_manual(values = plot_guides) +
+  facet_wrap(~model)
+
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.spacing = unit(30, 'pt'),
+        axis.title.x = element_blank())
+p
+```
+

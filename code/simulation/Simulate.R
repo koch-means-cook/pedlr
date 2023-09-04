@@ -3,9 +3,9 @@ library(magrittr)
 
 Simulate = function(data,
                     x,
-                    temperature,
                     tau,
-                    model){
+                    model,
+                    beta_weights){
   
   source(file.path(here::here(), 'code', 'simulation', 'Make_choice.R'))
   source(file.path(here::here(), 'code', 'simulation', 'Compute_value_per_trial.R'))
@@ -14,9 +14,9 @@ Simulate = function(data,
   # data = data.table::fread(file.path(here::here(), 'data', '09RI1ZH_exp_data.tsv'),
   #                          sep = '\t', na.strings = 'n/a')
   # x = c(0.175, 0.505, NA, NA)
-  # temperature = 7
   # tau = 0.2
   # model = 'seplr'
+  # beta_weights = c(0.05, -2.5, 5, -0.6, 0.78)
 
   
   # Select relevant columns
@@ -64,7 +64,8 @@ Simulate = function(data,
     
     # Get data of trial
     trial_data = data[t,]
-    # Isolate value both bandits presented for choice
+    
+    # Isolate value of both bandits presented for choice
     left_value = c(trial_data$val_b_1,
                    trial_data$val_b_2,
                    trial_data$val_b_3)[trial_data$option_left]
@@ -72,12 +73,29 @@ Simulate = function(data,
                     trial_data$val_b_2,
                     trial_data$val_b_3)[trial_data$option_right]
     
+    # Isolate uncertainty of both bandits presented for choice
+    left_uncertainty = c(trial_data$s_b_1,
+                         trial_data$s_b_2,
+                         trial_data$s_b_3)[trial_data$option_left]
+    right_uncertainty = c(trial_data$s_b_1,
+                          trial_data$s_b_2,
+                          trial_data$s_b_3)[trial_data$option_right]
+    
+    # Use value and uncertainty of both bandits as predictors for regression
+    # model (first entry "1" because of intercept (beta_0))
+    predictors = c(1,
+                   left_value,
+                   right_value,
+                   left_uncertainty,
+                   right_uncertainty)
+    
     # If choice trial
     if(trial_data$trial_type == 'choice'){
-      # Simulate model choice for trial (based on value of left and right option, softmax-based)
-      model_choice = Make_choice(value_1 = left_value,
-                                 value_2 = right_value,
-                                 temperature = temperature)
+      # Simulate model choice for trial (based on Regression model with supplied
+      # beta weights 
+      model_choice = Make_choice(model = model,
+                                 beta_weights = beta_weights,
+                                 predictors = predictors)
       # Get model choice (left vs. right; probability of choice; and chosen bandit)
       model_choice_side = model_choice$choice
       model_choice_prob = model_choice$choice_prob
@@ -158,7 +176,11 @@ Simulate = function(data,
   model_information$x3 = x[3]
   model_information$x4 = x[4]
   model_information$tau = tau
-  model_information$temperature = temperature
+  model_information$b0 = beta_weights[1]
+  model_information$b1 = beta_weights[2]
+  model_information$b2 = beta_weights[3]
+  model_information$b3 = beta_weights[4]
+  model_information$b4 = beta_weights[5]
   
   # Fuse data with model behavior
   simulated_data = cbind(data, model_information)

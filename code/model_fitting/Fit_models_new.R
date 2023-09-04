@@ -164,20 +164,19 @@ Fit_models_new = function(data,
                             glmods = glmods,
                             model = model_name)
     
-    # Get regression report
-    cglm = cres[[1]]
+    # Get regression report (regression model using z-scored predictors)
+    z_cglm = cres$norm[[1]]
     #cres[[2]]
     # Learning rate IN SECOND BANDIT on each trial
-    lr = cres[[4]][2,] #colSums(cres[[4]], na.rm = TRUE)
+    lr = cres$norm[[4]][2,] #colSums(cres[[4]], na.rm = TRUE)
     lr = lr[-which(is.na(lr))]
     # PE IN SECOND BANDIT on each trial
-    pe = cres[[3]][2,which(!is.na(cres[[4]][2,]))]
+    pe = cres$norm[[3]][2,which(!is.na(cres$norm[[4]][2,]))]
     # Values for each bandit on each trial
-    vals = data.table::data.table(t(cres[[5]]))
+    vals = data.table::data.table(t(cres$norm[[5]]))
     colnames(vals) = c('value_low', 'value_mid', 'value_high')
     # Get behavioral data
-    cdf = cres[[2]]
-    
+    cdf = cres$norm[[2]]
     
     # Enter variables into output array
     # Average LRs IN SECOND BANDIT for each possible PE (0:99 or (-99):99)
@@ -223,29 +222,36 @@ Fit_models_new = function(data,
     LRs$value[is.nan(LRs$value)] = NA
     
     # P values for V1 and V2
-    ps = summary(cglm)$coefficients[2:3,4]
+    ps = summary(z_cglm)$coefficients[2:3,4]
+    
+    # Regression report of model NOT using z-scored predictors
+    cglm = cres$no_norm[[1]]
     
     # Betas
     # Regression betas
-    coefs = c(names(coef(cglm)), para_names)
+    coefs = c(paste0('z_', names(coef(z_cglm))),
+              names(coef(cglm)),
+              para_names)
     coefs = as.data.table(cbind(coefs,
-                                unname(c(coef(cglm), cmod$solution))))
+                                unname(c(coef(z_cglm),
+                                         coef(cglm),
+                                         cmod$solution))))
     colnames(coefs) = c('x', 'value')
     coefs$variable = 'coefs'
     # Add model prediction
-    cres[[2]]$model_p = predict(cglm, type = 'response')
-    model_p_my = cres[[2]]$model_p
+    cres$norm[[2]]$model_p = predict(z_cglm, type = 'response')
+    model_p_my = cres$norm[[2]]$model_p
     # AICs
-    probs = dbinom(cres[[2]]$choice=='right', prob=cres[[2]]$model_p, size=1, log=TRUE)
+    probs = dbinom(cres$norm[[2]]$choice=='right', prob=cres$norm[[2]]$model_p, size=1, log=TRUE)
     probs_my = probs
     # Potential bug: also includes chosen bandit = 2; cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
-    cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21'))
+    cidx = which((cres$norm[[2]]$bandit == '12' | cres$norm[[2]]$bandit == '21'))
     cidx_my = cidx
     b2_logLik = sum(probs[cidx])
     b2_logLik_my = b2_logLik
     #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0_model)) + 2*b2_logLik
     # number of parameters
-    k = (length(coef(cglm)) + length(x0_model))
+    k = (length(coef(z_cglm)) + length(x0_model))
     # Number of samples
     n = length(cidx)
     AICs = 2*k - 2*b2_logLik
@@ -272,7 +278,7 @@ Fit_models_new = function(data,
     out = rbind(out, temp)
     
     # Output of updates/PEs at each trial
-    temp_model_data = data.table::data.table(t(cres[[3]]))
+    temp_model_data = data.table::data.table(t(cres$norm[[3]]))
     colnames(temp_model_data) = c('low', 'mid', 'high')
     temp_model_data = temp_model_data %>%
       .[, ':='(update_low = as.logical(c(0, diff(low)) != 0),

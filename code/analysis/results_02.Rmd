@@ -362,7 +362,9 @@ data_counts_all = data_counts %>%
   .[, .(n_winning = .N),
     by = c('variable', 'model')] %>%
   # Sort by winning counts
-  .[order(-n_winning),]
+  .[order(-n_winning),] %>%
+  # set factor order by win counts
+  .[, model := factor(model, levels = model)]
 
 # Display table
 table_counts_all = Collapse_repeated_rows(data_counts_all,
@@ -385,7 +387,15 @@ p = ggplot(data = data_counts_all,
                fill = model)) +
   geom_col() +
   facet_wrap(~variable, ncol = 2)
-Neurocodify_plot(p)
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.x = element_blank())
+p
 ```
 
 ## Within groups
@@ -395,7 +405,9 @@ Neurocodify_plot(p)
 data_counts_age = data_counts %>%
   .[, .(n_winning = .N),
     by = c('variable', 'group', 'model')] %>%
-  .[order(group, -n_winning)]
+  .[order(group, -n_winning)] %>%
+  # set factor order by win counts
+  .[, model := factor(model, levels = data_counts_all$model)]
 
 # Display table
 table_counts_age = Collapse_repeated_rows(data_counts_age,
@@ -418,7 +430,15 @@ p = ggplot(data = data_counts_age,
                fill = model)) +
   geom_col() +
   facet_wrap(group~variable, ncol = 2)
-Neurocodify_plot(p)
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.x = element_blank())
+p
 ```
 
 ## $\chi^2$-test of winning frequencies
@@ -439,20 +459,46 @@ cs_test
 # Protected exceedance probability
 
 ```{r}
+# Set seed for sampling (for reproducibility)
+set.seed(666)
+
 # Exceedance probs
 data_ep = data_model_comp %>%
+  # Set order of models after winning models
+  .[, model := factor(model, levels = data_counts_all$model)] %>%
   .[, ':='(nAICc = -(AICc))] %>%
   data.table::dcast(participant_id + group ~ model, value.var = 'nAICc')
 
-# Calculate exceedance probs using Bayes Model Selection in R
-bmsR::VB_bms(cbind(data_ep$rw,
-                   data_ep$uncertainty,
-                   data_ep$seplr,
-                   data_ep$uncertainty_seplr,
-                   data_ep$surprise,
-                   data_ep$uncertainty_surprise),
+ep = bmsR::VB_bms(as.matrix(data_ep[, .SD, .SDcols = levels(data_counts_all$model)]),
              n_samples = 100000)
+data_pxp = data.table::data.table('model' = levels(data_counts_all$model),
+                             'pxp' = ep$pxp) %>%
+  .[, model := factor(model, levels = model)]
+
+# Re-initialize seed
+set.seed(NULL)
 ```
+
+```{r}
+# Plot
+p = ggplot(data = data_pxp,
+           aes(x = model,
+               y = pxp,
+               fill = model)) +
+  geom_col() +
+  scale_y_continuous(limits = c(0,1))
+
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.x = element_blank())
+p
+```
+
 
 ------------------------------------------------------------------------
 

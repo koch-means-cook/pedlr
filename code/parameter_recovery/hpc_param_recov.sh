@@ -62,21 +62,22 @@ MEM_MB=1000
 # ===
 # Set list of models to recover
 # ===
-#MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
-MODEL_LIST='uncertainty'
+MODEL_LIST='rw uncertainty uncertainty_seplr surprise uncertainty_surprise'
+#MODEL_LIST='seplr'
 
 # ===
 # Set recov parameters
 # ===
 RANDOM_INPUT_PARAMS="TRUE"
 #RANDOM_INPUT_PARAMS="FALSE"
+#RANDOM_INPUT_BETAS="TRUE"
+RANDOM_INPUT_BETAS="FALSE"
 RANDOM_STARTING_VALUES="TRUE"
 #RANDOM_STARTING_VALUES="FALSE"
 ALGORITHM="NLOPT_GN_DIRECT_L"
 XTOL_REL=0.00001
 MAXEVAL=10000
 ITERATIONS=5
-TEMPERATURE=7
 TAU=0.2
 
 # ===
@@ -97,36 +98,59 @@ for DATA in ${DATA_LIST}; do
 		# 	# Set parameters specifically for models
 		# RW
 		if [[ ${MODEL} == 'rw' ]]; then
-			LB='0.01,NA,NA,NA'
-			UB='1,NA,NA,NA'
+			PARAM_LB='0.01,NA,NA,NA'
+			PARAM_UB='1,NA,NA,NA'
 			IPS='0.2,NA,NA,NA'
 			SVS='0.5,NA,NA,NA'
+			BETAS_LB='-0.1,-0.5,0,NA,NA'
+			BETAS_UB='0.1,0,0.5,NA,NA'
+			BETA_WEIGHTS='0,-0.2,0.2,NA,NA'
 			# UNCERTAINTY
 		elif [[ ${MODEL} == 'uncertainty' ]]; then
-			# To test recovery of only pi (fix alpha to 0.2)
-			LB='0.2,0.01,NA,NA'
-			UB='0.2,1,NA,NA'
-			IPS='0.2,0.7,NA,NA'
-			SVS='0.2,0.5,NA,NA'
 			# Full recovery
-			# LB='0.01,0.01,NA,NA'
-			# UB='1,1,NA,NA'
-			# IPS='0.2,0.7,NA,NA'
-			# SVS='0.5,0.5,NA,NA'
+			LB='0.01,0.01,NA,NA'
+			UB='1,1,NA,NA'
+			IPS='0.2,0.7,NA,NA'
+			SVS='0.5,0.5,NA,NA'
+			BETAS_LB='-0.1,-0.5,0,-0.5,0'
+			BETAS_UB='0.1,0,0.5,0,0.5'
+			BETA_WEIGHTS='0,-0.2,0.2,-0.1,0.1'
+		elif [[ ${MODEL} == 'seplr' ]]; then
+			PARAM_LB='0.01,0.01,NA,NA'
+			PARAM_UB='1,1,NA,NA'
+			IPS='0.2,0.7,NA,NA'
+			SVS='0.5,0.5,NA,NA'
+			BETAS_LB='-0.1,-0.5,0,NA,NA'
+			BETAS_UB='0.1,0,0.5,NA,NA'
+			BETA_WEIGHTS='0,-0.2,0.2,NA,NA'
+		elif [[ ${MODEL} == 'uncertainty_seplr' ]]; then
+			PARAM_LB='0.01,0.01,0,NA'
+			PARAM_UB='1,1,1,NA'
+			IPS='0.2,0.7,0.7,NA'
+			SVS='0.5,0.5,0.5,NA'
+			BETAS_LB='-0.1,-0.5,0,-0.5,0'
+			BETAS_UB='0.1,0,0.5,0,0.5'
+			BETA_WEIGHTS='0,-0.2,0.2,-0.1,0.1'
 		elif [[ ${MODEL} == 'surprise' ]]; then
-			LB='0.01,0.01,0,NA'
-			UB='1,1,10,NA'
+			PARAM_LB='0.01,0.01,0,NA'
+			PARAM_UB='1,1,10,NA'
 			IPS='0.2,0.7,5,NA'
 			SVS='0.5,0.5,0,NA'
+			BETAS_LB='-0.1,-0.5,0,NA,NA'
+			BETAS_UB='0.1,0,0.5,NA,NA'
+			BETA_WEIGHTS='0,-0.2,0.2,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty_surprise' ]]; then
-			LB='0.01,0.01,0,0.01'
-			UB='1,1,10,1'
+			PARAM_LB='0.01,0.01,0,0.01'
+			PARAM_UB='1,1,10,1'
 			IPS='0.2,0.7,5,0.7'
 			SVS='0.5,0.5,0,0.5'
+			BETAS_LB='-0.1,-0.5,0,-0.5,0'
+			BETAS_UB='0.1,0,0.5,0,0.5'
+			BETA_WEIGHTS='0,-0.2,0.2,-0.1,0.1'
 		fi
 
 		# Get job name
-		JOB_NAME="recov-${PARTICIPANT_ID}_model-${MODEL}_randips-${RANDOM_INPUT_PARAMS}_randsvs-${RANDOM_STARTING_VALUES}"
+		JOB_NAME="recov-${PARTICIPANT_ID}_model-${MODEL}_randips-${RANDOM_INPUT_PARAMS}_randbetas-${RANDOM_INPUT_BETAS}_randsvs-${RANDOM_STARTING_VALUES}"
 
 		# Create job file
 		echo "#!/bin/bash" > job.slurm
@@ -147,20 +171,23 @@ for DATA in ${DATA_LIST}; do
 
 		# Send command
 		echo "Rscript ${PATH_CODE}/Param_recov_wrapper.R" \
-		--participant_id ${PARTICIPANT_ID} \
-		--model ${MODEL} \
-		--random_input_params ${RANDOM_INPUT_PARAMS} \
-		--random_starting_values ${RANDOM_STARTING_VALUES} \
-		--lb ${LB} \
-		--ub ${UB} \
-		--algorithm ${ALGORITHM} \
-		--xtol_rel ${XTOL_REL} \
-		--maxeval ${MAXEVAL} \
-		--iterations ${ITERATIONS} \
-		--temperature ${TEMPERATURE} \
-		--tau ${TAU} \
-		--ips ${IPS} \
-		--svs ${SVS} >> job.slurm
+		--participant_id=${PARTICIPANT_ID} \
+		--model=${MODEL} \
+		--random_input_params=${RANDOM_INPUT_PARAMS} \
+		--random_input_betas=${RANDOM_INPUT_BETAS} \
+		--random_starting_values=${RANDOM_STARTING_VALUES} \
+		--param_lb=${PARAM_LB} \
+		--param_ub=${PARAM_UB} \
+		--betas_lb=${BETAS_LB} \
+		--betas_ub=${BETAS_UB} \
+		--algorithm=${ALGORITHM} \
+		--xtol_rel=${XTOL_REL} \
+		--maxeval=${MAXEVAL} \
+		--iterations=${ITERATIONS} \
+		--tau=${TAU} \
+		--ips=${IPS} \
+		--beta_weights=${BETA_WEIGHTS} \
+		--svs=${SVS} >> job.slurm
 
 		# submit job to cluster queue and remove it to avoid confusion:
 		sbatch job.slurm
