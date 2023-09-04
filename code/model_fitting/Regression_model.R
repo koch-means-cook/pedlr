@@ -48,7 +48,8 @@ Regression_model = function(x,
       cVPE = Compute_value(V = cvals,
                            x = x,
                            bandit = cbandit,
-                           tau = tau)
+                           tau = tau,
+                           model = model)
       
       # Enter values, LR, and PE into allocated matrices
       values[cbandit,ccidx] = cVPE$V
@@ -99,20 +100,32 @@ Regression_model = function(x,
   
   # Exclude forced choices and missing responses (e.g. time-outs)
   cdf = subset(cdf, is.na(cdf$forced) & !is.na(cdf$choice))
-  
-  # z-score input to regression model to aid interpretability of betas
-  cols = c('V1', 'V2', 'V1u', 'V2u')
-  cdf = cdf[, (cols) := lapply(.SD, scale), .SDcols = cols]
-  
   # Run binomial regression with logit-link (due to probability for left choice vs. right choice)
-  cglm = glm(glmods[[model]],
+  cglm = glm(glmods[[which(names(glmods) == model)]],
              family = binomial(link = 'logit'),
              data = cdf)
   
+  # z-score input to regression model to aid interpretability of betas
+  cols = c('V1', 'V2', 'V1u', 'V2u')
+  z_cdf = cdf[, (cols) := lapply(.SD, scale), .SDcols = cols]
+  # Run binomial regression with logit-link (due to probability for left choice vs. right choice)
+  z_cglm = glm(glmods[[which(names(glmods) == model)]],
+               family = binomial(link = 'logit'),
+               data = z_cdf)
+  
+  # Form output including regression based on normalized predictors and
+  # non-normalized predictors
+  out = list(norm = list(z_cglm,
+                         z_cdf,
+                         updates,
+                         alphas,
+                         values),
+             no_norm = list(cglm,
+                            cdf,
+                            updates,
+                            alphas,
+                            values))
+  
   # Return regression results
-  return(list(cglm,
-              cdf,
-              updates,
-              alphas,
-              values))
+  return(out)
 }

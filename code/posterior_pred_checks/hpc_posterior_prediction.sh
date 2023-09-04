@@ -9,11 +9,11 @@ PATH_BASE="${HOME}/pedlr"
 # data directory
 PATH_DATA="${PATH_BASE}/data"
 # output directory
-PATH_OUT="${PATH_BASE}/derivatives/model_fitting"
+PATH_OUT="${PATH_BASE}/derivatives/posterior_pred_checks"
 # directory to save logs of HPC
-PATH_LOG="${PATH_BASE}/logs/model_fitting/$(date '+%Y%m%d_%H%M')"
+PATH_LOG="${PATH_BASE}/logs/posterior_pred_checks/$(date '+%Y%m%d_%H%M')"
 # Path to script to run
-PATH_CODE="${PATH_BASE}/code/model_fitting"
+PATH_CODE="${PATH_BASE}/code/posterior_pred_checks"
 # current path
 PATH_RETURN=$(pwd)
 
@@ -62,12 +62,7 @@ MEM_MB=1000
 # ===
 # Set fitting parameters
 # ===
-STARTING_VALUES="fixed"
-#STARTING_VALUES="random"
-ALGORITHM="NLOPT_GN_DIRECT_L"
-XTOL_REL=0.00001
-MAXEVAL=10000
-ITERATIONS=1
+TAU=0.2
 
 # ===
 # Run model fitting
@@ -82,7 +77,7 @@ for DATA in ${DATA_LIST}; do
   PARTICIPANT_ID="${SUB_LABEL}"
 
 	# Get job name
-	JOB_NAME="fit-${PARTICIPANT_ID}_sv-${STARTING_VALUES}"
+	JOB_NAME="postpred-${PARTICIPANT_ID}"
 
 	# Create job file
 	echo "#!/bin/bash" > job.slurm
@@ -100,13 +95,9 @@ for DATA in ${DATA_LIST}; do
 	# Load R module
 	echo "module unload R" >> job.slurm
 	echo "module load R/4.0" >> job.slurm
-	echo "Rscript ${PATH_CODE}/Fit_models_new_wrapper.R" \
+	echo "Rscript ${PATH_CODE}/Posterior_prediction.R" \
 	--participant_id=${PARTICIPANT_ID} \
-	--starting_values=${STARTING_VALUES} \
-	--algorithm=${ALGORITHM} \
-	--xtol_rel=${XTOL_REL} \
-	--maxeval=${MAXEVAL} \
-	--iterations=${ITERATIONS} >> job.slurm
+	--tau=${TAU} >> job.slurm
 
 	# submit job to cluster queue and remove it to avoid confusion:
 	sbatch job.slurm

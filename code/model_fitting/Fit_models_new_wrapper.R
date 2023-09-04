@@ -10,7 +10,7 @@ Fit_models_new_wrapper = function(participant_id,
                                   iterations){
   
   # participant_id = '09RI1ZH'
-  # starting_values = 'fixed'
+  # starting_values = 'random'
   # algorithm = 'NLOPT_GN_DIRECT_L'
   # xtol_rel = 1.0e-5
   # maxeval = 10
@@ -76,30 +76,47 @@ Fit_models_new_wrapper = function(participant_id,
     lb = list(0.01,
               # uncertainty (alpha, pi)
               c(0.01, 0.01),
+              # seplr (alpha_pos, alpha_neg)
+              c(0.01, 0.01),
+              # uncertainty+seplr (alpha_pos, alpha_neg, pi)
+              c(0.01, 0.01, 0.01),
               # surprise (l,u,s)
               c(exp(-5), exp(-5), 1),
               # uncertainty+surprise (l,u,s,pi)
               c(exp(-5), exp(-5), 1, 0.01))
     ub = list(1,
               c(1, 1),
+              c(1, 1),
+              c(1, 1, 1),
               c(1, 1, 7),
               c(1, 1, 7, 1))
     # Set starting values either fixed or random, depending on function input
     if(starting_values == 'fixed'){
       x0 = list(0.2,
                 c(0.2, 0.2),
+                c(0.2, 0.2),
+                c(0.2, 0.2, 0.2),
                 c(0.2, 0.5, 1),
                 c(0.2, 0.5, 1, 0.2))
     } else if(starting_values == 'random'){
       # Use same random starting value for similar models
-      rand_alpha = runif(1, min = lb[[1]], max = ub[[1]])
-      rand_l = runif(1, min = lb[[3]][1], max = ub[[3]][1])
-      rand_u = runif(1, min = lb[[3]][2], max = ub[[3]][2])
-      rand_s = runif(1, min = lb[[3]][3], max = ub[[3]][3])
+      rand_alpha_1 = runif(1, min = lb[[1]], max = ub[[1]])
+      rand_alpha_2 = runif(1, min = lb[[1]], max = ub[[1]])
       rand_pi = runif(1, min = lb[[2]][2], max = ub[[2]][2])
-      x0 = list(rand_alpha,
-                c(rand_alpha, rand_pi),
+      rand_l = runif(1, min = lb[[5]][1], max = ub[[5]][1])
+      rand_u = runif(1, min = lb[[5]][2], max = ub[[5]][2])
+      rand_s = runif(1, min = lb[[5]][3], max = ub[[5]][3])
+                # rw (alpha)
+      x0 = list(rand_alpha_1,
+                # uncertainty (alpha, pi)
+                c(rand_alpha_1, rand_pi),
+                # seplr (alpha_pos, alpha_neg)
+                c(rand_alpha_1, rand_alpha_2),
+                # uncertainty+seplr (alpha_pos, alpha_neg, pi)
+                c(rand_alpha_1, rand_alpha_2, rand_pi),
+                # surprise (l,u,s)
                 c(rand_l, rand_u, rand_s),
+                # uncertainty+surprise (l,u,s,pi)
                 c(rand_l, rand_u, rand_s, rand_pi))
     }
     

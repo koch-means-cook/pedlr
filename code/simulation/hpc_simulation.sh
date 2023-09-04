@@ -60,9 +60,11 @@ MEM_MB=1000
 # ===
 # Set fitting parameters
 # ===
-#MODEL_LIST='rw uncertainty surprise uncertainty_surprise'
+#MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
 MODEL_LIST='surprise'
 #MODEL_LIST='rw'
+#MODEL_LIST='seplr'
+#MODEL_LIST='uncertainty_seplr'
 TEMPERATURE=7
 TAU=0.2
 
@@ -178,11 +180,11 @@ for DATA in ${DATA_LIST}; do
 		echo "Rscript Simulation_wrapper.R \
 		--participant_id ${PARTICIPANT_ID} \
 		--model ${MODEL} \
-		--x1_low ${X1_LOW} --x1_high ${X1_HIGH} --x1_n ${X1_N} \
-		--x2_low ${X2_LOW} --x2_high ${X2_HIGH} --x2_n ${X2_N} \
-		--x3_low ${X3_LOW} --x3_high ${X3_HIGH} --x3_n ${X3_N} \
-		--x4_low ${X4_LOW} --x4_high ${X4_HIGH} --x4_n ${X4_N} \
-		--temperature ${TEMPERATURE} \
+		--x1_low=${X1_LOW} --x1_high=${X1_HIGH} --x1_n=${X1_N} \
+		--x2_low=${X2_LOW} --x2_high=${X2_HIGH} --x2_n=${X2_N} \
+		--x3_low=${X3_LOW} --x3_high=${X3_HIGH} --x3_n=${X3_N} \
+		--x4_low=${X4_LOW} --x4_high=${X4_HIGH} --x4_n=${X4_N} \
+		--temperature=${TEMPERATURE} \
 		--tau ${TAU}" >> job.slurm
 
 		# submit job to cluster queue and remove it to avoid confusion:

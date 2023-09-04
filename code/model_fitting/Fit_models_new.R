@@ -10,7 +10,8 @@ Fit_models_new = function(data,
                           x0,
                           lb,
                           ub,
-                          param_recov = FALSE){
+                          param_recov = FALSE,
+                          recov_model = NA){
 
   # data = Load_data() %>%
   #   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
@@ -58,6 +59,10 @@ Fit_models_new = function(data,
     rw = as.formula('choice ~ V1 + V2'),
     # Uncertainty Model
     uncertainty = as.formula('choice ~ V1 + V2 + V1u + V2u'),
+    # Seplr Model
+    seplr = as.formula('choice ~ V1 + V2'),
+    # Uncertainty+Seplr Model
+    uncertainty_seplr = as.formula('choice ~ V1 + V2 + V1u + V2u'),
     # Surprise Model
     surprise = as.formula('choice ~ V1 + V2'),
     # Uncertainty+Surprise Model
@@ -70,24 +75,41 @@ Fit_models_new = function(data,
   model_data = data.table::data.table()
   
   # Normal fitting:
-  # Fit all 4 models
+  # Fit all 6 models
   if(param_recov == FALSE){
     model_pool = 1:n_models
   } else if(param_recov == TRUE){
     # For parameter recovery:
-    # Fit only model that was used for simulation of data (based on number of parameters)
-    if(is.na(unique(data$x2))){
-      # RW model
+    # Fit only model that was used for simulation of data
+    # RW model
+    if(recov_model == 'rw'){
       model_pool = 1
-    } else if(is.na(unique(data$x3))){
+      
       # Uncertainty model
+    } else if(recov_model == 'uncertainty'){
       model_pool = 2
-    } else if(is.na(unique(data$x4))){
-      # Surprise model
+      
+      # Seplr model
+    } else if(recov_model == 'seplr'){
       model_pool = 3
-    } else{
-      # Surprise+Uncertainty model
+      
+      # Uncertainty+Seplr model
+    } else if(recov_model == 'uncertainty_seplr'){
       model_pool = 4
+      
+      # Surprise model
+    } else if(recov_model == 'surprise'){
+      model_pool = 5
+      
+      # Uncertainty+Surprise model
+    } else if(recov_model == 'uncertainty_surprise'){
+      model_pool = 6
+      
+      # Throw error in case model is not found
+    } else{
+      stop(paste0("Model specified for recovery (\'",
+                  model,
+                  "\') not found."))
     }
   }
   
@@ -103,6 +125,10 @@ Fit_models_new = function(data,
       para_names = 'alpha'
     } else if(model_name == 'uncertainty'){
       para_names = c('alpha', 'pi')
+    } else if(model_name == 'seplr'){
+      para_names = c('alpha_pos', 'alpha_neg')
+    } else if(model_name == 'uncertainty_seplr'){
+      para_names = c('alpha_pos', 'alpha_neg', 'pi')
     } else if(model_name == 'surprise'){
       para_names = c('l', 'u', 's')
     }else if(model_name == 'uncertainty_surprise'){
@@ -129,60 +155,103 @@ Fit_models_new = function(data,
                           opts = copts,
                           data = data,
                           glmods = glmods,
-                          model = model_count)
+                          model = model_name)
     
     
     # Run regression with best fitting parameters
     cres = Regression_model(x = cmod$solution,
                             cdf = data,
                             glmods = glmods,
-                            model = model_count)
+                            model = model_name)
     
-    # Get regression report
-    cglm = cres[[1]]
+    # Get regression report (regression model using z-scored predictors)
+    z_cglm = cres$norm[[1]]
     #cres[[2]]
-    # Learning rate on each trial
-    lr = cres[[4]][2,] #colSums(cres[[4]], na.rm = TRUE)
+    # Learning rate IN SECOND BANDIT on each trial
+    lr = cres$norm[[4]][2,] #colSums(cres[[4]], na.rm = TRUE)
     lr = lr[-which(is.na(lr))]
-    # PE on each trial
-    pe = cres[[3]][2,which(!is.na(cres[[4]][2,]))]
+    # PE IN SECOND BANDIT on each trial
+    pe = cres$norm[[3]][2,which(!is.na(cres$norm[[4]][2,]))]
     # Values for each bandit on each trial
-    vals = data.table::data.table(t(cres[[5]]))
+    vals = data.table::data.table(t(cres$norm[[5]]))
     colnames(vals) = c('value_low', 'value_mid', 'value_high')
     # Get behavioral data
-    cdf = cres[[2]]
-    
+    cdf = cres$norm[[2]]
     
     # Enter variables into output array
-    # Learning rates for each possible PE (0-100)
-    LRs = tapply(c(lr, rep(NA, 100)), c(round(abs(pe)), seq(0, 99)), mean, na.rm = TRUE)
-    LRs = cbind(seq(length(LRs)), LRs)
+    # Average LRs IN SECOND BANDIT for each possible PE (0:99 or (-99):99)
+    # Models using absolute PE (or don't distinguish between neg and pos PE)
+    if(model_name %in% c('rw', 'uncertainty', 'surprise', 'uncertainty_surprise')){
+      LRs = tapply(
+        # Take all seen LRs, extend with buffer of NA for every possible PE (in
+        # case a specific PE did not happen for participant)
+        c(lr, rep(NA, 100)),
+        # Take absolute and rounded value of all seen PEs, extend with buffer of
+        # all possible PEs (0-99) (in case a specific PE did not happen)
+        c(round(abs(pe)), seq(0, 99)),
+        # use 'mean' function to get LR in case a PE happened, and NA in case it
+        # did not
+        mean,
+        na.rm = TRUE)
+      
+      # Models using separate LRs for positive and negative LR
+    } else if(model_name %in% c('seplr', 'uncertainty_seplr')){
+      LRs = tapply(
+        # Take all seen LRs, extend with buffer of NA for every possible PE (in
+        # case a specific PE did not happen for participant)
+        c(lr, rep(NA, 199)),
+        # Take rounded value of all seen PEs, extend with buffer of
+        # all possible PEs (-99:99) (in case a specific PE did not happen)
+        c(round(pe), seq(-99, 99)),
+        # use 'mean' function to get LR in case a PE happened, and NA in case it
+        # did not
+        mean,
+        na.rm = TRUE)
+      # Set LR for PE == 0 to NA (because rounding of e.g.PE=-0.3 &
+      # PE=0.2 causes mixing of separate LRS for pos and neg PEs)
+      LRs[names(LRs) == "0"] = NaN
+    }
+    
+    # Bring LRs for each PE IN SECOND BANDIT into output format
+    LRs = cbind(as.numeric(names(LRs)),
+                LRs)
     LRs = as.data.table(LRs)
     colnames(LRs) = c('x', 'value')
     LRs$variable = 'LRs'
+    # Replace NaN with NA
+    LRs$value[is.nan(LRs$value)] = NA
+    
     # P values for V1 and V2
-    ps = summary(cglm)$coefficients[2:3,4]
+    ps = summary(z_cglm)$coefficients[2:3,4]
+    
+    # Regression report of model NOT using z-scored predictors
+    cglm = cres$no_norm[[1]]
+    
     # Betas
     # Regression betas
-    coefs = c(names(coef(cglm)), para_names)
+    coefs = c(paste0('z_', names(coef(z_cglm))),
+              names(coef(cglm)),
+              para_names)
     coefs = as.data.table(cbind(coefs,
-                                unname(c(coef(cglm), cmod$solution))))
+                                unname(c(coef(z_cglm),
+                                         coef(cglm),
+                                         cmod$solution))))
     colnames(coefs) = c('x', 'value')
     coefs$variable = 'coefs'
     # Add model prediction
-    cres[[2]]$model_p = predict(cglm, type = 'response')
-    model_p_my = cres[[2]]$model_p
+    cres$norm[[2]]$model_p = predict(z_cglm, type = 'response')
+    model_p_my = cres$norm[[2]]$model_p
     # AICs
-    probs = dbinom(cres[[2]]$choice=='right', prob=cres[[2]]$model_p, size=1, log=TRUE)
+    probs = dbinom(cres$norm[[2]]$choice=='right', prob=cres$norm[[2]]$model_p, size=1, log=TRUE)
     probs_my = probs
     # Potential bug: also includes chosen bandit = 2; cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
-    cidx = which((cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21'))
+    cidx = which((cres$norm[[2]]$bandit == '12' | cres$norm[[2]]$bandit == '21'))
     cidx_my = cidx
     b2_logLik = sum(probs[cidx])
     b2_logLik_my = b2_logLik
     #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0_model)) + 2*b2_logLik
     # number of parameters
-    k = (length(coef(cglm)) + length(x0_model))
+    k = (length(coef(z_cglm)) + length(x0_model))
     # Number of samples
     n = length(cidx)
     AICs = 2*k - 2*b2_logLik
@@ -209,7 +278,7 @@ Fit_models_new = function(data,
     out = rbind(out, temp)
     
     # Output of updates/PEs at each trial
-    temp_model_data = data.table::data.table(t(cres[[3]]))
+    temp_model_data = data.table::data.table(t(cres$norm[[3]]))
     colnames(temp_model_data) = c('low', 'mid', 'high')
     temp_model_data = temp_model_data %>%
       .[, ':='(update_low = as.logical(c(0, diff(low)) != 0),

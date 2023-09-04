@@ -83,6 +83,8 @@ data = Load_model_fits_new() %>%
 # Sort model levels by number of parameters
 data$model = factor(data$model, levels = c('rw',
                                            'uncertainty',
+                                           'seplr',
+                                           'uncertainty_seplr',
                                            'surprise',
                                            'uncertainty_surprise'))
 
@@ -111,55 +113,197 @@ check_noc = data_behav %>%
 data = data[starting_values == 'random']
 ```
 
+# Descriptives
+
+## Betas
+
+$$p(k|V_{.,t}) = \sigma(\boldsymbol{\beta_0} + \overbrace{\boldsymbol{\beta_1} V_{l,t}, + \boldsymbol{\beta_2} V_{k,t}}^{\textrm{Influence of Bandit Values}} + \overbrace{\boldsymbol{\beta_3} U_{l,t} + \boldsymbol{\beta_4} U_{k,t}}^{\textrm{Influence of Bandit Uncertainty}})$$
+
+$\boldsymbol{\beta_3}$ and $\boldsymbol{\beta_4}$ are not included in the logistic regression in case the model did not take uncertainty into account.
+
+```{r}
+# Get data for betas
+data_betas = data %>%
+  .[variable == 'coefs',] %>%
+  .[x %in% c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'), ] %>%
+  .[, ('x') := lapply(.SD,
+                      factor,
+                      levels = c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'),
+                      labels= c('b_0', 'b_1', 'b_2', 'b_3', 'b_4')),
+    .SDcols = 'x']
+```
+
+```{r}
+data_plot = data_betas
+
+p_3betas = ggplot(data = data_plot[model %in% c('rw', 'surprise', 'seplr')],
+           aes(x = x,
+               y = value,
+               fill = model)) +
+  geom_hline(yintercept = 0,
+             linewidth = 0.1) +
+  geom_point(alpha = 0.3,
+             size = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.05,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.1,
+                                                    nudge.y = 0)) +
+  geom_boxplot(width = 0.1,
+               outlier.shape = NA) +
+  gghalves::geom_half_violin(side = 'r',
+                             color = NA,
+                             alpha = 0.8,
+                             position = position_nudge(x = 0.1,
+                                                       y = 0)) +
+  facet_wrap(~model, ncol = 1) +
+  scale_y_continuous(limits = c(min(data_plot$value), max(data_plot$value))) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = 'none')
+p_3betas = Neurocodify_plot(p_3betas)
+
+p_5betas = ggplot(data = data_plot[model %in% c('uncertainty', 'uncertainty_surprise', 'uncertainty_seplr')],
+           aes(x = x,
+               y = value,
+               fill = model)) +
+  geom_hline(yintercept = 0,
+             linewidth = 0.1) +
+  geom_point(alpha = 0.3,
+             size = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.05,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.1,
+                                                    nudge.y = 0)) +
+  geom_boxplot(width = 0.1,
+               outlier.shape = NA) +
+  gghalves::geom_half_violin(side = 'r',
+                             color = NA,
+                             alpha = 0.8,
+                             position = position_nudge(x = 0.1,
+                                                       y = 0)) +
+  facet_wrap(~model, ncol = 1) +
+  scale_y_continuous(limits = c(min(data_plot$value), max(data_plot$value))) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = 'none')
+p_5betas = Neurocodify_plot(p_5betas)
+
+p = cowplot::plot_grid(p_3betas, p_5betas,
+                       ncol = 2,
+                       rel_widths = c(3,5),
+                       axis = 'tb',
+                       align = 'h')
+p
+```
+
+## Across groups
+
+```{r}
+# Prepare table
+table_betas_all = data_betas %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'x')]
+
+# Display table
+table_betas_all = table_betas_all %>%
+  data.table::setcolorder(c('model', 'x')) %>%
+  data.table::setorder(model, x) %>%
+  .[, c('mean', 'sd') := lapply(.SD, round, 4), .SDcols = c('mean', 'sd')] %>%
+  Collapse_repeated_rows(x = .,
+                         columns = 1,
+                         replace = '') %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::column_spec(1,
+              bold = TRUE) %>%
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE)
+table_betas_all
+```
+
+## Within groups
+
+```{r}
+table_betas_group = data_betas %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'group', 'x')]
+
+# Display table
+table_betas_group = table_betas_group %>%
+  data.table::setcolorder(c('group', 'model', 'x')) %>%
+  data.table::setorder(group, model, x) %>%
+  .[, c('mean', 'sd') := lapply(.SD, round, 4), .SDcols = c('mean', 'sd')] %>%
+  Collapse_repeated_rows(x = .,
+                         columns = c(1,2),
+                         replace = '') %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::column_spec(1,
+              bold = TRUE) %>%
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE)
+table_betas_group
+```
+
+
+---
+
 # RW model: RL-like behavior
 
 ```{r}
 # Get statistics of beta 1 and 2 
-data_rw_beta = data[model == 'rw' & variable == 'coefs'] %>%
+data_rw_beta = data_betas %>%
+  .[model == 'rw',] %>%
   data.table::dcast(participant_id + group + model + AICc ~ x, value.var = 'value') %>%
   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
 ```
 
-**Left bandit**
+## Left bandit (beta_2)
 
 ```{r}
 # Left bandit
 # Younger
-b_left_ya = t.test(data_rw_beta[group == 'younger']$V2,
+b_left_ya = t.test(data_rw_beta[group == 'younger']$b_2,
        mu = 0)
 # Older
-b_left_oa = t.test(data_rw_beta[group == 'older']$V2,
+b_left_oa = t.test(data_rw_beta[group == 'older']$b_2,
        mu = 0)
 
 b_left_ya
 b_left_oa
 ```
 
-**Right bandit**
+## Right bandit (beta_1)
 
 ```{r}
 # Right bandit
 # Younger
-b_right_ya = t.test(data_rw_beta[group == 'younger']$V1,
+b_right_ya = t.test(data_rw_beta[group == 'younger']$b_1,
        mu = 0)
 # Older
-b_right_oa = t.test(data_rw_beta[group == 'older']$V1,
+b_right_oa = t.test(data_rw_beta[group == 'older']$b_1,
        mu = 0)
 
 b_right_ya
 b_right_oa
 ```
 
-**Correlation of betas with correct choice in low-mid**
+## Correlation of betas with correct choice in low-mid
 
 ```{r}
 # Get correlation of betas with percentage correct (high betas mean less random behavior)
 # Left bandit
-c_b_left = cor.test(data_rw_beta$V2,
+c_b_left = cor.test(data_rw_beta$b_2,
                     data_rw_beta$perc_correct_1v2)
 
 # Right bandit
-c_b_right = cor.test(data_rw_beta$V1,
+c_b_right = cor.test(data_rw_beta$b_1,
                      data_rw_beta$perc_correct_1v2)
 
 # Adjust for multiple testing
@@ -210,16 +354,29 @@ data_counts = data_model_comp %>%
   .[loc_winning == TRUE]
 ```
 
-**Across groups**
+## Across groups
 
 ```{r}
 # Count winning models across groups
 data_counts_all = data_counts %>%
   .[, .(n_winning = .N),
-    by = c('variable', 'model')]
+    by = c('variable', 'model')] %>%
+  # Sort by winning counts
+  .[order(-n_winning),] %>%
+  # set factor order by win counts
+  .[, model := factor(model, levels = model)]
 
-knitr::kable(data_counts_all) %>%
-  kableExtra::kable_styling()
+# Display table
+table_counts_all = Collapse_repeated_rows(data_counts_all,
+                                          columns = 1,
+                                          replace = '') %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  column_spec(1,
+              bold = TRUE) %>%
+  row_spec(row = 0,
+           bold = TRUE)
+table_counts_all
 ```
 
 ```{r}
@@ -230,20 +387,39 @@ p = ggplot(data = data_counts_all,
                fill = model)) +
   geom_col() +
   facet_wrap(~variable, ncol = 2)
-Neurocodify_plot(p)
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.x = element_blank())
+p
 ```
 
-**Within groups**
+## Within groups
 
 ```{r}
 # Count winning models within age-groups
 data_counts_age = data_counts %>%
   .[, .(n_winning = .N),
     by = c('variable', 'group', 'model')] %>%
-  .[order(group, -rank(model))]
+  .[order(group, -n_winning)] %>%
+  # set factor order by win counts
+  .[, model := factor(model, levels = data_counts_all$model)]
 
-knitr::kable(data_counts_age) %>%
-  kableExtra::kable_styling()
+# Display table
+table_counts_age = Collapse_repeated_rows(data_counts_age,
+                                          columns = c(1,2),
+                                          replace = '') %>%
+kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  column_spec(1,
+              bold = TRUE) %>%
+  row_spec(row = 0,
+           bold = TRUE)
+table_counts_age
 ```
 
 ```{r}
@@ -254,10 +430,18 @@ p = ggplot(data = data_counts_age,
                fill = model)) +
   geom_col() +
   facet_wrap(group~variable, ncol = 2)
-Neurocodify_plot(p)
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.x = element_blank())
+p
 ```
 
-**$\chi^2$-test of winning frequencies**
+## $\chi^2$-test of winning frequencies
 
 ```{r}
 # Isolate winning model counts
@@ -270,26 +454,53 @@ cs_test = chisq.test(cbind(count_win_oa,
 cs_test
 ```
 
----
+------------------------------------------------------------------------
 
 # Protected exceedance probability
 
 ```{r}
+# Set seed for sampling (for reproducibility)
+set.seed(666)
+
 # Exceedance probs
 data_ep = data_model_comp %>%
+  # Set order of models after winning models
+  .[, model := factor(model, levels = data_counts_all$model)] %>%
   .[, ':='(nAICc = -(AICc))] %>%
   data.table::dcast(participant_id + group ~ model, value.var = 'nAICc')
 
-# Calculate exceedance probs using Bayes Model Selection in R
-bmsR::VB_bms(cbind(data_ep$rw,
-                   data_ep$uncertainty,
-                   data_ep$surprise,
-                   data_ep$uncertainty_surprise),
+ep = bmsR::VB_bms(as.matrix(data_ep[, .SD, .SDcols = levels(data_counts_all$model)]),
              n_samples = 100000)
+data_pxp = data.table::data.table('model' = levels(data_counts_all$model),
+                             'pxp' = ep$pxp) %>%
+  .[, model := factor(model, levels = model)]
+
+# Re-initialize seed
+set.seed(NULL)
+```
+
+```{r}
+# Plot
+p = ggplot(data = data_pxp,
+           aes(x = model,
+               y = pxp,
+               fill = model)) +
+  geom_col() +
+  scale_y_continuous(limits = c(0,1))
+
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.x = element_blank())
+p
 ```
 
 
----
+------------------------------------------------------------------------
 
 # Parametric AICc comparison
 
@@ -298,38 +509,84 @@ bmsR::VB_bms(cbind(data_ep$rw,
 data_model_comp_rw = data_model_comp %>%
   data.table::dcast(participant_id + group ~ paste0('AICc_', model),
                     value.var = 'AICc') %>%
-  .[, ':='(AICc_SmRW = AICc_surprise - AICc_rw,
-           AICc_UmRW = AICc_uncertainty - AICc_rw,
-           AICc_USmRW = AICc_uncertainty_surprise - AICc_rw),
+  .[, ':='(SmRW = AICc_surprise - AICc_rw,
+           SEPLRmRW = AICc_seplr - AICc_rw,
+           UmRW = AICc_uncertainty - AICc_rw,
+           USEPLRmRW = AICc_uncertainty_seplr - AICc_rw,
+           USmRW = AICc_uncertainty_surprise - AICc_rw),
     by = c('participant_id', 'group')] %>%
   data.table::melt(id.vars = c('participant_id', 'group'),
-                   measure.vars = c('AICc_SmRW',
-                                    'AICc_UmRW',
-                                    'AICc_USmRW'))
+                   measure.vars = c('UmRW',
+                                    'SEPLRmRW',
+                                    'USEPLRmRW',
+                                    'SmRW',
+                                    'USmRW'))
+
+# All
+rel_model_comp_all = data_model_comp_rw %>%
+  .[, .(t = t.test(value, mu = 0)$statistic,
+        df = t.test(value, mu = 0)$parameter,
+        p = t.test(value, mu = 0)$p.value),
+    by = c('variable')] %>%
+  .[, p_adj := p.adjust(p, method = 'holm')] %>%
+  Prepare_data_for_plot(.) %>%
+  .[, group := 'all'] %>%
+  .[order(variable)] %>%
+  data.table::setcolorder(c('group', 'variable'))
 
 # Groups
-test_model_comp_rw = data_model_comp_rw %>%
+rel_model_comp_group = data_model_comp_rw %>%
   .[, .(t = t.test(value, mu = 0)$statistic,
         df = t.test(value, mu = 0)$parameter,
         p = t.test(value, mu = 0)$p.value),
     by = c('group', 'variable')] %>%
   .[, p_adj := p.adjust(p, method = 'holm')] %>%
   .[order(group, variable)] %>%
-  Prepare_data_for_plot(.)
+  Prepare_data_for_plot(.) %>%
+  data.table::setcolorder(c('group', 'variable'))
 
-knitr::kable(test_model_comp_rw) %>%
-  kableExtra::kable_styling()
+# Display table
+table_rel_model_comp = rbind(rel_model_comp_all,
+                             rel_model_comp_group) %>%
+  .[, t := round(t, 2)] %>%
+  .[, c('p', 'p_adj') := lapply(.SD, round, 3), .SDcols = c('p', 'p_adj')] %>%
+  Collapse_repeated_rows(.,
+                         columns = 1,
+                         replace = '') %>%
+  kableExtra::kbl(align = 'l', booktabs = TRUE) %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::column_spec(1,
+                          bold = TRUE) %>%
+  kableExtra::row_spec(row = length(unique(rel_model_comp_all$variable)),
+                       extra_css = "border-bottom: 2px solid;") %>%
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE)
+table_rel_model_comp
 ```
 
-**Plot**
-
 ```{r}
-data_model_comp_rw_mean = data_model_comp_rw %>%
+data_plot = data_model_comp_rw %>%
+  .[, variable := factor(variable,
+                         levels = c('UmRW',
+                                    'SEPLRmRW',
+                                    'USEPLRmRW',
+                                    'SmRW',
+                                    'USmRW'))] %>%
+  .[order(variable),]
+
+data_plot_mean = data_model_comp_rw %>%
   .[, .(value = mean(value),
         sd_value = sd(value),
         n = .N,
         sem_value = sd(value)/sqrt(.N)),
-    by = 'variable']
+    by = 'variable'] %>%
+  .[, variable := factor(variable,
+                         levels = c('UmRW',
+                                    'SEPLRmRW',
+                                    'USEPLRmRW',
+                                    'SmRW',
+                                    'USmRW'))] %>%
+  .[order(variable),]
 
 p = ggplot(data = data_model_comp_rw,
            aes(x = variable,
@@ -338,15 +595,149 @@ p = ggplot(data = data_model_comp_rw,
   geom_point(position = position_jitter(width = 0.1,
                                         height = 0,
                                         seed = 666)) +
-  geom_col(data = data_model_comp_rw_mean)
+  geom_col(data = data_plot_mean)
 Neurocodify_plot(p)
 ```
 
+------------------------------------------------------------------------
 
----
+# SEPLR model
+
+## Parameter details
+
+```{r}
+data_seplr = data[model %in% c('seplr', 'uncertainty_seplr')] %>%
+  # Only focus on fitted params
+  .[variable == 'coefs' & x %in% c('alpha_pos', 'alpha_neg', 'pi')] %>%
+  # Sort order of parameters for better plot display
+  .[, x := factor(x, levels = c('alpha_pos',
+                                              'alpha_neg',
+                                              'pi'))] %>%
+  .[order(x),]
+```
+
+```{r}
+# Across all participants
+data_seplr_all = data_seplr %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'x')] %>%
+  .[, group := 'all']
+
+# Within groups
+data_seplr_group = data_seplr %>%
+  .[, .(mean = mean(value),
+        sd = sd(value),
+        n = .N),
+    by = c('model', 'group', 'x')]
+
+# Display table
+table_seplr = rbind(data_seplr_all,
+                    data_seplr_group) %>%
+  .[, c('mean', 'sd') := lapply(.SD, round, 3), .SDcols = c('mean', 'sd')] %>%
+  .[order(model, group, x)] %>%
+  data.table::setcolorder(c('model', 'group', 'x')) %>%
+  Collapse_repeated_rows(x = .,
+                         columns = c(1,2),
+                         replace = '') %>%
+  kableExtra::kbl() %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  kableExtra::row_spec(row = 0,
+                       bold = TRUE) %>%
+  kableExtra::row_spec(row = 6,
+                       extra_css = "border-bottom: 2px solid;")
+table_seplr
+```
+
+```{r}
+# Plot
+p = ggplot(data = data_seplr,
+           aes(x = x,
+               y = value,
+               fill = x)) +
+  geom_point(size = 0.5,
+             alpha = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.1,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.15,
+                                                    nudge.y = 0)) +
+  gghalves::geom_half_violin(side = 'r',
+                             alpha = 0.8,
+                             width = 0.5,
+                             color = NA,
+                             position = position_nudge(x = 0.15,
+                                                       y = 0)) +
+  geom_boxplot(outlier.shape = NA,
+               width = 0.1,
+               alpha = 0.8) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               shape = 23,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5) +
+  facet_grid(. ~ model,
+             scales = 'free_x',
+             space = 'free_x') +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = 'none')
+Neurocodify_plot(p)
+```
+
+## Relationship between LRs within-person
+
+```{r}
+# Compare LRs within-person
+data_seplr_pos_neg = data_seplr %>%
+  # Long format for parameter comparison
+  data.table::dcast(participant_id + group + age + starting_values + iter + model + AIC + AICc ~ x,
+                    value.var = 'value') %>%
+  # Difference between alpha_pos and alpha_neg
+  .[, pos_m_neg := alpha_pos - alpha_neg] %>%
+  Prepare_data_for_plot(.)
+
+# Plot
+p = ggplot(data = data_seplr_pos_neg,
+           aes(x = group,
+               y = pos_m_neg,
+               fill = group)) +
+  geom_hline(yintercept = 0,
+             linewidth = 0.2) +
+  geom_point(size = 0.5,
+             alpha = 0.5,
+             position = sdamr::position_jitternudge(jitter.width = 0.1,
+                                                    jitter.height = 0,
+                                                    nudge.x = -0.15,
+                                                    nudge.y = 0)) +
+  gghalves::geom_half_violin(side = 'r',
+                             alpha = 0.8,
+                             width = 0.5,
+                             color = NA,
+                             position = position_nudge(x = 0.15,
+                                                       y = 0)) +
+  geom_boxplot(outlier.shape = NA,
+               width = 0.1,
+               alpha = 0.8) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               shape = 23,
+               fill = 'white',
+               size = 2,
+               stroke = 0.5) +
+  scale_fill_manual(values = custom_guides) +
+  facet_grid(. ~ model) +
+  theme(legend.position = 'none',
+        axis.title.x = element_blank())
+Neurocodify_plot(p)
+```
+
+------------------------------------------------------------------------
 
 # Surprise model
-            
+
 ```{r}
 # Data for correlation between RW betas and performance
 data_corr = data %>%
@@ -373,7 +764,7 @@ p.adjust(c(m_right$p.value,
 ```
 
 **Parameter details**
-         
+
 ```{r}
 # get coefficients of winning model
 data_surprise = data[model == 'surprise' & variable == 'coefs']
@@ -448,7 +839,7 @@ p = ggplot(data = data_lrs,
 p
 ```
 
-**$\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions**
+$\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions
 
 ```{r}
 # Chi-Sq with rising and falling
@@ -466,7 +857,7 @@ c_sq = chisq.test(cbind(data_rising[group == 'younger']$value,
 c_sq
 ```
 
-**Parametric $u-l$ analysis against 0**
+**Parametric** $u-l$ analysis against 0
 
 ```{r}
 # t-test vs. 0
@@ -483,7 +874,7 @@ p.adjust(c(ty$p.value, to$p.value),
          method = 'holm')
 ```
 
-**Parametric $u-l$ analysis between age groups**
+**Parametric** $u-l$ analysis between age groups
 
 ```{r}
 # t-test between groups
@@ -521,7 +912,7 @@ p = ggplot(data = data_surprise_param,
 Neurocodify_plot(p)
 ```
 
-**Parametric $u$ analysis between age groups**
+**Parametric** $u$ analysis between age groups
 
 ```{r}
 # t-test between groups
@@ -583,8 +974,7 @@ p = ggplot(data = data_surprise_param,
 Neurocodify_plot(p)
 ```
 
-
-**Slope parameter $s$ between age groups**
+**Slope parameter** $s$ between age groups
 
 ```{r}
 # Slope parameter
@@ -619,8 +1009,7 @@ p = ggplot(data = data_surprise_param,
 Neurocodify_plot(p)
 ```
 
-
-**$u-l$ vs. immediate influence of surprising outcomes**
+$u-l$ vs. immediate influence of surprising outcomes
 
 ```{r}
 # Load data
@@ -665,7 +1054,7 @@ Windowrize = function(data,
   result$window_relative = seq(max(index_rare - window_size + 1, 1),
                                index_rare + window_size) - index_rare
   result[window_relative == 0]$correct_choice = NA
-  
+
   result$window_center = as.factor(result$window_center)
   result$window_relative = as.factor(result$window_relative)
   return(result)
@@ -677,11 +1066,11 @@ window_data = data.table()
 # For each participant & run
 for(i_id in unique(data_ii$participant_id)){
   for(i_run in unique(data_ii$run)){
-    
+
     # Select data
     temp_data = data_ii[participant_id == i_id &
                       run == i_run]
-    
+
     # Get all trials where rare outcomes were obtained
     idx_chosen_rare_outcome = which(temp_data$is_rare == 1 &
                                       # CHANGE: I also allow rare outcomes that came from forced choices
@@ -741,7 +1130,7 @@ m1 = lm(cbe ~ param_uml * group,
 summary(m1)
 ```
 
-**$u$ vs. immediate influence of surprising outcomes**
+$u$ vs. immediate influence of surprising outcomes
 
 ```{r}
 # model u (continuous) and group
@@ -788,4 +1177,3 @@ p = ggplot(data = data_cbe_fit_surprise,
   geom_point()
 Neurocodify_plot(p)
 ```
-
