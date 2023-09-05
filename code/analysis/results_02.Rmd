@@ -125,10 +125,10 @@ $\boldsymbol{\beta_3}$ and $\boldsymbol{\beta_4}$ are not included in the logist
 # Get data for betas
 data_betas = data %>%
   .[variable == 'coefs',] %>%
-  .[x %in% c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'), ] %>%
+  .[x %in% c('z_(Intercept)', 'z_V1', 'z_V2', 'z_V1u', 'z_V2u'), ] %>%
   .[, ('x') := lapply(.SD,
                       factor,
-                      levels = c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'),
+                      levels = c('z_(Intercept)', 'z_V1', 'z_V2', 'z_V1u', 'z_V2u'),
                       labels= c('b_0', 'b_1', 'b_2', 'b_3', 'b_4')),
     .SDcols = 'x']
 ```
@@ -264,7 +264,7 @@ data_rw_beta = data_betas %>%
   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
 ```
 
-## Left bandit (beta_2)
+## Right bandit (beta_2)
 
 ```{r}
 # Left bandit
@@ -279,7 +279,7 @@ b_left_ya
 b_left_oa
 ```
 
-## Right bandit (beta_1)
+## Left bandit (beta_1)
 
 ```{r}
 # Right bandit
@@ -298,12 +298,12 @@ b_right_oa
 
 ```{r}
 # Get correlation of betas with percentage correct (high betas mean less random behavior)
-# Left bandit
-c_b_left = cor.test(data_rw_beta$b_2,
+# Right bandit
+c_b_right = cor.test(data_rw_beta$b_2,
                     data_rw_beta$perc_correct_1v2)
 
-# Right bandit
-c_b_right = cor.test(data_rw_beta$b_1,
+# Left bandit
+c_b_left = cor.test(data_rw_beta$b_1,
                      data_rw_beta$perc_correct_1v2)
 
 # Adjust for multiple testing
