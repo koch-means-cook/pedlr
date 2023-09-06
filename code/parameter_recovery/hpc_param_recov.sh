@@ -62,16 +62,16 @@ MEM_MB=1000
 # ===
 # Set list of models to recover
 # ===
-MODEL_LIST='rw uncertainty uncertainty_seplr surprise uncertainty_surprise'
-#MODEL_LIST='seplr'
+#MODEL_LIST='rw uncertainty uncertainty_seplr surprise uncertainty_surprise'
+MODEL_LIST='uncertainty'
 
 # ===
 # Set recov parameters
 # ===
 RANDOM_INPUT_PARAMS="TRUE"
 #RANDOM_INPUT_PARAMS="FALSE"
-RANDOM_INPUT_BETAS="TRUE"
-#RANDOM_INPUT_BETAS="FALSE"
+#RANDOM_INPUT_BETAS="TRUE"
+RANDOM_INPUT_BETAS="FALSE"
 RANDOM_STARTING_VALUES="TRUE"
 #RANDOM_STARTING_VALUES="FALSE"
 ALGORITHM="NLOPT_GN_DIRECT_L"
@@ -108,8 +108,8 @@ for DATA in ${DATA_LIST}; do
 			# UNCERTAINTY
 		elif [[ ${MODEL} == 'uncertainty' ]]; then
 			# Full recovery
-			LB='0.01,0.01,NA,NA'
-			UB='1,1,NA,NA'
+			PARAM_LB='0.01,0.01,NA,NA'
+			PARAM_UB='1,1,NA,NA'
 			IPS='0.2,0.7,NA,NA'
 			SVS='0.5,0.5,NA,NA'
 			BETAS_LB='-0.1,-0.5,0,-0.5,0'

@@ -91,7 +91,7 @@ Param_recov = function(data,
   # weights based on z-scored predictors (e.g. "z_V1") because z-scoring requires
   # all values encountered in the entire experiment (full distribution).
   # Recovery therefore needs to be evaluated based on beta weights stemming from
-  # non-nirmalized predictors
+  # non-normalized predictors
   add$value = c(rep(NA, length(beta_weights[!is.na(beta_weights)])),
                 beta_weights[!is.na(beta_weights)],
                 input_params[!is.na(input_params)])
