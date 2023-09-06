@@ -12,25 +12,6 @@ Fit_models_new = function(data,
                           ub,
                           param_recov = FALSE,
                           recov_model = NA){
-
-  # data = Load_data() %>%
-  #   Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
-  #   .[participant_id == '1NU6KP5']
-  # algorithm = 'NLOPT_GN_DIRECT_L'
-  # xtol_rel = 1.0e-5
-  # maxeval = 10
-  # x0 = list(0.2,
-  #           c(0.2, 0.2),
-  #           c(0.2, 0.5, 1),
-  #           c(0.2, 0.5, 1,0.2))
-  # lb = list(0.01,
-  #           c(0.01, 0.01),
-  #           c(0.01, 0.01, -1),
-  #           c(0.01, 0.01, -1, 0.01))
-  # ub = list(1,
-  #           c(1, 1),
-  #           c(1, 1, 7),
-  #           c(1, 1, 7, 1))
     
   
   # Set base_path

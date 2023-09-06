@@ -54,15 +54,16 @@ load_path = file.path(here::here(),
                       'derivatives',
                       'parameter_recovery',
                       fsep = .Platform$file.sep)
+# Load data with fixed betas during simulation
 files = Sys.glob(file.path(load_path,
-                           'paramrecov_base-*.tsv',
+                           'paramrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE.tsv',
                            fsep = .Platform$file.sep))
 
 # Function to load text files (.tsv)
 Load_tsv = function(file_path){
   tsv = data.table::fread(file_path,
                           sep = '\t',
-                          na.strings = 'NaN')
+                          na.strings = 'n/a')
   return(tsv)
 }
 
@@ -74,7 +75,11 @@ data_list = parallel::mclapply(X = files,
 # (using optimized bind function by data.table package)
 data = data.table::rbindlist(data_list) %>%
   # Rename to avoid 'x' as column name
-  data.table::setnames(., old = 'x', new = 'params')
+  data.table::setnames(., old = 'x', new = 'params') %>%
+  # Delete betas based on z-scored predictor values from recovery (data can not
+  # be generated based these z_betas since they require a complete data set to
+  # be calculated)
+  .[!params %in% c('z_(Intercept)', 'z_V1', 'z_V2', 'z_V1u', 'z_V2u'),]
 ```
 
 # Information on fitting process
@@ -160,6 +165,43 @@ p
 ```
 
 `pi` does not seem to recover at all. Implementation problem?
+
+## SEPLR
+
+```{r}
+# Isolate target model
+data_seplr = data %>%
+  .[model == 'seplr',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_seplr_recov = data_seplr %>%
+  .[params %in% c('alpha_pos', 'alpha_neg'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_seplr_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p
+```
+
 
 ## Surprise
 
@@ -281,6 +323,9 @@ p = ggplot2::ggplot(data = data_uncertainty_surprise_recov,
   ggplot2::geom_point(alpha = 0.3) +
   ggplot2::geom_smooth(method = 'lm',
                        formula = y ~ x) +
+  ggplot2::geom_vline(data = cutoffs,
+                      aes(xintercept = as.numeric(x)),
+                      linetype = 'dashed') +
   ggplot2::facet_wrap(~ params,
                       scales = 'free',
                       nrow = 1) +
@@ -295,6 +340,42 @@ p
 
 - No recovery in `s` or `pi`
 - Otherwise similar pattern to `surprise` model
+
+## Uncertainty+SEPLR
+
+```{r}
+# Isolate target model
+data_uncertainty_seplr = data %>%
+  .[model == 'uncertainty_seplr',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_uncertainty_seplr_recov = data_uncertainty_seplr %>%
+  .[params %in% c('alpha_pos', 'alpha_neg', 'pi'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_uncertainty_seplr_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p
+```
 
 # Analysis of `s`
 
@@ -650,6 +731,8 @@ p = Neurocodify_plot(p)
 p
 
 ```
+
+- Errors are more likely to happen in estimating negative slopes, although the real data is positive
 
 ### Does anything stand out in cases in which estimated function direction is flipped?
 
