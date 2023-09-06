@@ -499,6 +499,233 @@ p = Neurocodify_plot(p) +
 p
 ```
 
+# Average AICc across models
+
+## Across age groups
+
+```{r}
+# Across all participants
+data_AICc = data_model_comp %>%
+  .[, .(mean_AICc = mean(AICc),
+        sd_AICc = sd(AICc),
+        sem_AICc = sd(AICc)/sqrt(.N)),
+    by = c('model')]
+
+# Display table
+table_AICc_all = data_AICc %>%
+  .[, c('mean_AICc', 'sd_AICc', 'sem_AICc') := lapply(.SD, round, 2),
+    .SDcols = c('mean_AICc', 'sd_AICc', 'sem_AICc')] %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  column_spec(1,
+              bold = TRUE) %>%
+  row_spec(row = 0,
+           bold = TRUE)
+table_AICc_all
+```
+
+```{r}
+# Plot
+data_plot = data_model_comp
+data_plot_mean = data_AICc
+
+p1 = ggplot(data = data_plot,
+           aes(x = model,
+               y = AICc,
+               fill = model,
+               color = model)) +
+  geom_col(data = data_plot_mean,
+           inherit.aes = FALSE,
+           aes(x = model,
+               y = mean_AICc,
+               fill = model),
+           color = NA) + 
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0),
+             size = 0.5,
+             alpha = 0.5,
+             color = 'black') +
+  geom_errorbar(data = data_plot_mean,
+                inherit.aes = FALSE,
+                aes(x = model,
+                    ymin = mean_AICc - sem_AICc,
+                    ymax = mean_AICc + sem_AICc),
+                color = 'black',
+                width = 0.3)
+
+p1 = Neurocodify_plot(p1) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none',
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1))
+
+# Zoomed in version
+p2 = ggplot(data = data_plot,
+           aes(x = model,
+               y = AICc,
+               fill = model,
+               color = model)) +
+    geom_errorbar(data = data_plot_mean,
+                inherit.aes = FALSE,
+                aes(x = model,
+                    ymin = mean_AICc - sem_AICc,
+                    ymax = mean_AICc + sem_AICc),
+                color = 'black',
+                width = 0.3) +
+  geom_point(data = data_plot_mean,
+             inherit.aes = FALSE,
+             aes(x = model,
+                 y = mean_AICc,
+                 fill = model),
+             color = 'black',
+             size = 4,
+             shape = 23,
+             stroke = 1) +
+  scale_y_continuous(limits = c(110,125))
+
+
+p2 = Neurocodify_plot(p2) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none',
+        axis.title = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1))
+
+p = cowplot::plot_grid(p1, p2,
+                       ncol = 2,
+                       nrow = 1,
+                       axis = 'bt',
+                       align = 'h',
+                       rel_widths = c(2,1))
+p
+```
+
+## Withing age groups
+
+```{r}
+# Across all participants
+data_AICc_group = data_model_comp %>%
+  .[, .(mean_AICc = mean(AICc),
+        sd_AICc = sd(AICc),
+        sem_AICc = sd(AICc)/sqrt(.N)),
+    by = c('group', 'model')]
+
+# Display table
+table_AICc_group = Collapse_repeated_rows(data_AICc_group,
+                                          columns = 1,
+                                          replace = '') %>%
+  .[, c('mean_AICc', 'sd_AICc', 'sem_AICc') := lapply(.SD, as.numeric),
+    .SDcols = c('mean_AICc', 'sd_AICc', 'sem_AICc')] %>%
+  .[, c('mean_AICc', 'sd_AICc', 'sem_AICc') := lapply(.SD, round, 2),
+    .SDcols = c('mean_AICc', 'sd_AICc', 'sem_AICc')] %>%
+  kableExtra::kbl("html", align = 'l') %>%
+  kableExtra::kable_classic(full_width = FALSE) %>%
+  column_spec(1,
+              bold = TRUE) %>%
+  row_spec(row = 0,
+           bold = TRUE)
+table_AICc_group
+```
+
+```{r}
+# Plot
+data_plot = data_model_comp
+data_plot_mean = data_AICc_group
+data_plot_line = data_AICc_group %>%
+  .[, .(mean_AICc = min(mean_AICc)),
+    by = 'group']
+
+p1 = ggplot(data = data_plot,
+           aes(x = model,
+               y = AICc,
+               fill = model,
+               color = model)) +
+  geom_col(data = data_plot_mean,
+           inherit.aes = FALSE,
+           aes(x = model,
+               y = mean_AICc,
+               fill = model),
+           color = NA) + 
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0),
+             size = 0.5,
+             alpha = 0.5,
+             color = 'black') +
+  geom_errorbar(data = data_plot_mean,
+                inherit.aes = FALSE,
+                aes(x = model,
+                    ymin = mean_AICc - sem_AICc,
+                    ymax = mean_AICc + sem_AICc),
+                color = 'black',
+                width = 0.3) +
+  facet_grid(group ~ .,
+             switch = 'y')
+
+p1 = Neurocodify_plot(p1) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none',
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        strip.placement = 'outside')
+
+# Zoomed in version
+p2 = ggplot(data = data_plot,
+           aes(x = model,
+               y = AICc,
+               fill = model,
+               color = model)) +
+  geom_hline(data = data_plot_line,
+             aes(yintercept = mean_AICc),
+             color = 'black',
+             linetype = 'dashed',
+             linewidth = 0.3) +
+    geom_errorbar(data = data_plot_mean,
+                inherit.aes = FALSE,
+                aes(x = model,
+                    ymin = mean_AICc - sem_AICc,
+                    ymax = mean_AICc + sem_AICc),
+                color = 'black',
+                width = 0.3) +
+  geom_point(data = data_plot_mean,
+             inherit.aes = FALSE,
+             aes(x = model,
+                 y = mean_AICc,
+                 fill = model),
+             color = 'black',
+             size = 2,
+             shape = 23,
+             stroke = 1) +
+  scale_y_continuous(limits = c(100,130)) +
+  facet_grid(group ~ .)
+
+
+p2 = Neurocodify_plot(p2) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none',
+        axis.title = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        strip.text = element_blank())
+
+p = cowplot::plot_grid(p1, p2,
+                       ncol = 2,
+                       nrow = 1,
+                       axis = 'bt',
+                       align = 'h',
+                       rel_widths = c(2,1))
+p
+```
+
 
 ------------------------------------------------------------------------
 
