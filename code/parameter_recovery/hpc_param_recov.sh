@@ -62,16 +62,16 @@ MEM_MB=1000
 # ===
 # Set list of models to recover
 # ===
-#MODEL_LIST='rw uncertainty uncertainty_seplr surprise uncertainty_surprise'
-MODEL_LIST='uncertainty'
+MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
+#MODEL_LIST='uncertainty'
 
 # ===
 # Set recov parameters
 # ===
 RANDOM_INPUT_PARAMS="TRUE"
 #RANDOM_INPUT_PARAMS="FALSE"
-#RANDOM_INPUT_BETAS="TRUE"
-RANDOM_INPUT_BETAS="FALSE"
+RANDOM_INPUT_BETAS="TRUE"
+#RANDOM_INPUT_BETAS="FALSE"
 RANDOM_STARTING_VALUES="TRUE"
 #RANDOM_STARTING_VALUES="FALSE"
 ALGORITHM="NLOPT_GN_DIRECT_L"
