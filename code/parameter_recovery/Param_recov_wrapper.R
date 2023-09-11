@@ -21,21 +21,21 @@ Param_recov_wrapper = function(participant_id,
                                svs){
   
 # participant_id = '09RI1ZH'
-# model = 'uncertainty'
+# model = 'seplr'
 # random_input_params = TRUE
 # random_input_betas = TRUE
 # random_starting_values = TRUE
 # param_lb = c(0.01, 0.01, NA, NA)
 # param_ub = c(1, 1, NA, NA)
-# betas_lb = c(-0.2, -0.5, 0, -0.5, 0)
-# betas_ub = c(0.2, 0, 0.5, 0, 0.5)
+# betas_lb = c(-0.2, -0.5, 0, NA, NA)
+# betas_ub = c(0.2, 0, 0.5, NA, NA)
 # algorithm = 'NLOPT_GN_DIRECT_L'
 # xtol_rel = 1.0e-5
 # maxeval = 1000
 # iterations = 3
 # tau = 0.2
 # ips = c(0.2, 0.1, NA, NA)
-# beta_weights = c(1, -0.5, 0.5, -0.1, 0.1)
+# beta_weights = c(1, -0.5, 0.5, NA, NA)
 # svs = c(0.5, 0.5, NA, NA)
   
   # Give message to user
@@ -129,6 +129,7 @@ Param_recov_wrapper = function(participant_id,
   # Allocate output table
   out = data.table()
   out_data = data.table()
+  out_model_recov = data.table()
   
   # Loop over simulation iterations
   for(n_iter in seq(iterations)){
@@ -380,6 +381,7 @@ Param_recov_wrapper = function(participant_id,
     # Get recovery output and model data of recovered parameters/betas
     recovery = res$recovery
     recovery_data = res$recovery_data
+    model_recovery = res$model_recovery
     
     # Fuse output over iterations
     # Recovery
@@ -388,6 +390,10 @@ Param_recov_wrapper = function(participant_id,
     # Data
     recovery_data$iter = n_iter
     out_data = rbind(out_data, recovery_data)
+    # Model recovery
+    model_recovery$iter = n_iter
+    out_model_recov = rbind(out_model_recov, model_recovery)
+    
     
   }
   
@@ -402,6 +408,12 @@ Param_recov_wrapper = function(participant_id,
   out_data$algorithm = algorithm
   out_data$xtol_rel = xtol_rel
   out_data$maxeval = maxeval
+  # Full Model recovery
+  out_model_recov$algorithm = algorithm
+  out_model_recov$xtol_rel = xtol_rel
+  out_model_recov$maxeval = maxeval
+  out_model_recov$tau = tau
+  
   
   # Savefile name giving base of simulation for recovery
   file_name_out = paste('paramrecov_base-',
@@ -431,6 +443,18 @@ Param_recov_wrapper = function(participant_id,
                         '.tsv',
                         sep = '')
   
+  file_name_outmodel = paste('modelrecov_base-',
+                             participant_id,
+                             '_model-',
+                             model,
+                             '_randips-',
+                             random_input_params,
+                             '_randbetas-',
+                             random_input_betas,
+                             '_randsvs-TRUE', # model recovery is based on random starting values for minimization
+                             '.tsv',
+                             sep = '')
+  
   # Create save directory in case it does not exist yet
   save_dir = file.path(here::here(),
                        'derivatives',
@@ -452,6 +476,15 @@ Param_recov_wrapper = function(participant_id,
   # Data
   file = file.path(save_dir,
                    file_name_outdata,
+                   fsep = .Platform$file.sep)
+  data.table::fwrite(x = out,
+                     file = file,
+                     na = 'n/a',
+                     sep = '\t')
+  
+  # Model recovery
+  file = file.path(save_dir,
+                   file_name_outmodel,
                    fsep = .Platform$file.sep)
   data.table::fwrite(x = out,
                      file = file,
