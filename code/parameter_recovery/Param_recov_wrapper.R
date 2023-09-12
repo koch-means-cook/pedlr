@@ -477,7 +477,7 @@ Param_recov_wrapper = function(participant_id,
   file = file.path(save_dir,
                    file_name_outdata,
                    fsep = .Platform$file.sep)
-  data.table::fwrite(x = out,
+  data.table::fwrite(x = out_data,
                      file = file,
                      na = 'n/a',
                      sep = '\t')
@@ -486,7 +486,7 @@ Param_recov_wrapper = function(participant_id,
   file = file.path(save_dir,
                    file_name_outmodel,
                    fsep = .Platform$file.sep)
-  data.table::fwrite(x = out,
+  data.table::fwrite(x = out_model_recov,
                      file = file,
                      na = 'n/a',
                      sep = '\t')
