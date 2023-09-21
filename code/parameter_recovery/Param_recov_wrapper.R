@@ -20,23 +20,23 @@ Param_recov_wrapper = function(participant_id,
                                beta_weights,
                                svs){
   
-# participant_id = '09RI1ZH'
-# model = 'seplr'
-# random_input_params = TRUE
-# random_input_betas = TRUE
-# random_starting_values = TRUE
-# param_lb = c(0.01, 0.01, NA, NA)
-# param_ub = c(1, 1, NA, NA)
-# betas_lb = c(-0.2, -0.5, 0, NA, NA)
-# betas_ub = c(0.2, 0, 0.5, NA, NA)
+# participant_id = 'VVBU17E'
+# model = 'uncertainty_seplr'
+# random_input_params = FALSE
+# random_input_betas = FALSE
+# random_starting_values = FALSE
+# param_lb = c(0.01, 0.01, 0.01, NA)
+# param_ub = c(1, 1, 1, NA)
+# betas_lb = c(-0.1, -0.5, 0, -0.5, 0)
+# betas_ub = c(0.1, 0, 0.5, 0, 0.5)
 # algorithm = 'NLOPT_GN_DIRECT_L'
 # xtol_rel = 1.0e-5
 # maxeval = 1000
 # iterations = 3
 # tau = 0.2
-# ips = c(0.2, 0.1, NA, NA)
-# beta_weights = c(1, -0.5, 0.5, NA, NA)
-# svs = c(0.5, 0.5, NA, NA)
+# ips = c(0.93, 0.42, 0.93, NA)
+# beta_weights = c(0, -0.2, 0.2, -0.1, 0.1)
+# svs = c(0.33, 0.27, 0.01, NA)
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)
@@ -481,7 +481,7 @@ Param_recov_wrapper = function(participant_id,
                      file = file,
                      na = 'n/a',
                      sep = '\t')
-  
+
   # Model recovery
   file = file.path(save_dir,
                    file_name_outmodel,
@@ -490,7 +490,7 @@ Param_recov_wrapper = function(participant_id,
                      file = file,
                      na = 'n/a',
                      sep = '\t')
-  
+
   message(paste('\nSaving output to: ', file, '...\n', sep = ''), appendLF = FALSE)
   message(paste('...Well done Superperson!', sep = ''), appendLF = FALSE)
   message('\n')
