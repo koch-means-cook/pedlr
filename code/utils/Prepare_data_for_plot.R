@@ -15,22 +15,30 @@ Prepare_data_for_plot = function(data){
                           levels = c('Younger\nadults', 'Older\nadults'))
     }
     
-    # Sort model names
-    if('Rw' %in% data[,col] |
-       'Pedlr' %in% data[,col] |
-       'Pedlr_interdep' %in% data[,col] |
-       'Pedlr_simple' %in% data[,col] |
-       'Pedlr_fixdep' %in% data[,col] |
-       'Pedlr_simple_const' %in% data[,col]){
+    # Sort and rename model names
+    if('rw' %in% data[,col] |
+       'uncertainty' %in% data[,col] |
+       'seplr' %in% data[,col] |
+       'uncertainty_seplr' %in% data[,col] |
+       'surprise' %in% data[,col] |
+       'uncertainty_surprise' %in% data[,col]){
+      
+      #rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise
       
       # Set different models
-      models = c('Rw',
-                 'Pedlr_simple',
-                 'Pedlr_simple_const',
-                 'Pedlr',
-                 'Pedlr_step',
-                 'Pedlr_fixdep',
-                 'Pedlr_interdep')
+      models = c('rw',
+                 'uncertainty',
+                 'seplr',
+                 'uncertainty_seplr',
+                 'surprise',
+                 'uncertainty_surprise')
+      model_names_new = c('RW',
+                          'Uncertainty',
+                          'SepLR',
+                          'Unc+SepLR',
+                          'Surprise',
+                          'Unc+Surprise')
+      
       # Raise error if you find a new model
       for(i_model in unique(data[,col])){
         if(!i_model %in% models){
@@ -42,38 +50,96 @@ Prepare_data_for_plot = function(data){
                      sep = ''))
         }
       }
+      
+      # Rename models
+      data[,col] = as.character(data[,col])
+      data[data[,col] == 'rw', col] = 'RW'
+      data[data[,col] == 'uncertainty', col] = 'Uncertainty'
+      data[data[,col] == 'seplr', col] = 'SepLR'
+      data[data[,col] == 'uncertainty_seplr', col] = 'Unc+SepLR'
+      data[data[,col] == 'surprise', col] = 'Surprise'
+      data[data[,col] == 'uncertainty_surprise', col] = 'Unc+Surprise'
+      
       # Set factor order
       data[,col] = factor(data[,col],
-                          levels = models)
+                          levels = model_names_new)
     }
     
-    # Sort parameters
-    if('alpha' %in% data[,col] |
-       'alpha0' %in% data[,col] |
-       'alpha1' %in% data[,col] |
-       'interdep' %in% data[,col] |
-       'temperature' %in% data[,col]){
+    # Sort and rename parameters
+    if('z_(Intercept)' %in% data[,col] |
+       'z_V1' %in% data[,col] |
+       'z_V2' %in% data[,col] |
+       '(Intercept)' %in% data[,col] |
+       'V1' %in% data[,col] |
+       'V2' %in% data[,col] |
+       'alpha' %in% data[,col] |
+       'z_V1u' %in% data[,col] |
+       'z_V2u' %in% data[,col] |
+       'V1u' %in% data[,col] |
+       'V2u' %in% data[,col] |
+       'pi' %in% data[,col] |
+       'alpha_pos' %in% data[,col] |
+       'alpha_neg' %in% data[,col] |
+       'l' %in% data[,col] |
+       'u' %in% data[,col] |
+       's' %in% data[,col]){
       
       # Set all parameters
-      paras = c('alpha',
-                'alpha0',
-                'alpha1',
-                'interdep',
-                'temperature')
+      paras = c('z_(Intercept)',
+                'z_V1',
+                'z_V2',
+                '(Intercept)',
+                'V1',
+                'V2',
+                'alpha',
+                'z_V1u',
+                'z_V2u',
+                'V1u',
+                'V2u',
+                'pi',
+                'alpha_pos',
+                'alpha_neg',
+                'l',
+                'u',
+                's')
+      paras_names_new = c('\\beta_0 (z)',
+                          '\\beta_1 (z)',
+                          '\\beta_2 (z)',
+                          '\\beta_0',
+                          '\\beta_1',
+                          '\\beta_2',
+                          '\\alpha',
+                          '\\beta_3 (z)',
+                          '\\beta_4 (z)',
+                          '\\beta_3',
+                          '\\beta_4',
+                          '\\pi',
+                          '\\alpha_+',
+                          '\\alpha_-',
+                          'l',
+                          'u',
+                          's')
       # Raise error if you find a new parameter
-      for(i_para in unique(data[,col])){
-        if(!i_para %in% paras){
-          stop(paste('New parameter in data: ',
-                     '"', i_para, '"',
-                     ' cannot be found in parameter pool (',
-                     paste(paras, collapse = ', '),
-                     ')',
-                     sep = ''))
-        }
+      # for(i_para in unique(data[,col])){
+      #   if(!i_para %in% paras){
+      #     stop(paste('New parameter in data: ',
+      #                '"', i_para, '"',
+      #                ' cannot be found in parameter pool (',
+      #                paste(paras, collapse = ', '),
+      #                ')',
+      #                sep = ''))
+      #   }
+      # }
+      
+      # Rename parameters
+      data[,col] = as.character(data[,col])
+      for(name_count in seq(length(paras))){
+        data[data[,col] == paras[name_count], col] = paras_names_new[name_count]
       }
-      # Set factor order
-      data[,col] = factor(data[,col],
-                          levels = paras)
+      
+      # # Set factor order
+      # data[,col] = factor(data[,col],
+      #                     levels = paras_names_new)
       
     }
     

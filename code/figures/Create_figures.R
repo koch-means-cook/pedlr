@@ -30,7 +30,8 @@ Create_figures = function(){
          height = 3)
   
   # Behavioral data (Overall correct and RT diff)
-  p_pcrt = Figure_behav_pcrt()
+  p_pcrt = Figure_behav_pcrt() +
+    theme(plot.margin = margin(0,0,0,5,'pt'))
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_pcrt.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
@@ -40,7 +41,8 @@ Create_figures = function(){
          height = 8)
   
   # Behavioral data (rare influence)
-  p_ri = Figure_behav_ri()
+  p_ri = Figure_behav_ri() +
+    theme(plot.margin = margin(0,0,0,5,'pt'))
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_ri.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
@@ -50,7 +52,8 @@ Create_figures = function(){
          height = 3)
   
   # Behavioral data (Estimation distance bias)
-  p_ed = Figure_behav_ed()
+  p_ed = Figure_behav_ed() +
+    theme(plot.margin = margin(0,0,0,5,'pt'))
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_ed.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
@@ -82,3 +85,5 @@ Create_figures = function(){
   
   
 }
+
+Create_figures()
