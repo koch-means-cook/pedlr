@@ -17,6 +17,7 @@ library(gghalves)
 library(latex2exp)
 
 Figure_sup_des = function(){
+  
   # Get directory of repository
   base_path = here::here()
   
@@ -43,15 +44,14 @@ Figure_sup_des = function(){
              group = as.factor(group),
              sex = as.factor(sex),
              starting_values = as.factor(starting_values))]
-  # Sort model levels by number of parameters
-  data$model = factor(data$model, levels = c('rw',
-                                             'uncertainty',
-                                             'surprise',
-                                             'uncertainty_surprise'))
+  # # Sort model levels by number of parameters
+  # data$model = factor(data$model, levels = c('rw',
+  #                                            'uncertainty',
+  #                                            'surprise',
+  #                                            'uncertainty_surprise'))
   
   # get coefficients of winning model
-  data_surprise = data[model == 'surprise' & variable == 'coefs'] %>%
-    Prepare_data_for_plot(.)
+  data_surprise = data[model == 'surprise' & variable == 'coefs']
   data_surprise[x == '(Intercept)']$x = 'intercept'
   
   data_param_corr = data_surprise %>%
@@ -90,6 +90,7 @@ Figure_sup_des = function(){
   suprise_cor$equal = suprise_cor$Var1 == suprise_cor$Var2
   #levels(suprise_cor$Var2) = rev(levels(suprise_cor$Var2))
   
+  # Plot correlation matrix between parameters
   p1 = ggplot(data = suprise_cor,
              aes(x = Var1,
                  y = Var2,
@@ -124,16 +125,22 @@ Figure_sup_des = function(){
           legend.direction = 'horizontal',
           legend.position = c(0.7,0.15),
           legend.key.height = unit(10,'pt'),
-          legend.key.width = unit(15,'pt'))
+          legend.key.width = unit(15,'pt'),
+          aspect.ratio = 1)
   
-  data_plot = data_surprise
+  # Plot distribution of l, u, and s
+  data_plot = data_surprise %>%
+    .[x == 'intercept', x := '(Intercept)'] %>%
+    Prepare_data_for_plot(.) %>%
+    # Exclude betas based on z-scored predictors
+    .[!(x %in% c('\\beta_0 (z)', '\\beta_1 (z)', '\\beta_2 (z)')),]
   data_plot$x = factor(data_plot$x)
   levels(data_plot$x) = c('beta[0]',
+                          'beta[1]',
+                          'beta[2]',
                           'l',
                           's',
-                          'u',
-                          'beta[1]',
-                          'beta[2]')
+                          'u')
   data_plot$x = factor(data_plot$x, levels = c('beta[0]',
                                                'beta[1]',
                                                'beta[2]',
@@ -141,7 +148,8 @@ Figure_sup_des = function(){
                                                's',
                                                'u'))
   
-  p2 = ggplot(data = data_plot[x %in% c('l', 's', 'u')],
+  # Distribution l
+  p_l = ggplot(data = data_plot[x =='l'],
               aes(x = value,
                   fill = group)) +
     scale_fill_manual(values = custom_guides,
@@ -153,10 +161,10 @@ Figure_sup_des = function(){
                    size = 0.3,
                    position = 'identity') +
     facet_wrap(~x, scales = 'free_x', nrow = 1, labeller = label_parsed) +
-    scale_x_continuous(n.breaks = 3) +
+    scale_x_continuous(breaks = c(0,0.5,1)) +
     labs(y = 'Count')
-  p2 = Neurocodify_plot(p2) +
-    theme(legend.position = 'right',
+  p_l = Neurocodify_plot(p_l) +
+    theme(legend.position = 'none',
           legend.spacing.x = unit(15, 'pt'),
           legend.title = element_blank(),
           legend.text = element_text(size = 15),
@@ -170,8 +178,79 @@ Figure_sup_des = function(){
           panel.spacing.x = unit(20, 'pt'),
           panel.grid = element_blank())
   
-  p2 = p2 +
-    theme(plot.margin = margin(0,20,0,0,'pt'))
+  # Distribution s
+  p_s = ggplot(data = data_plot[x =='s'],
+               aes(x = value,
+                   fill = group)) +
+    scale_fill_manual(values = custom_guides,
+                      labels = c('Younger',
+                                 'Older')) +
+    geom_histogram(bins = 10,
+                   alpha = 0.6,
+                   color = 'black',
+                   size = 0.3,
+                   position = 'identity') +
+    facet_wrap(~x, scales = 'free_x', nrow = 1, labeller = label_parsed) +
+    scale_x_continuous(breaks = c(1,3,5,7)) +
+    labs(y = 'Count')
+  p_s = Neurocodify_plot(p_s) +
+    theme(legend.position = 'none',
+          legend.spacing.x = unit(15, 'pt'),
+          legend.title = element_blank(),
+          legend.text = element_text(size = 15),
+          strip.text = element_text(size = 15),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.x = element_text(size = 12,
+                                     angle = 45,
+                                     hjust = 1),
+          axis.text.y = element_blank(),
+          axis.line.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          panel.spacing.x = unit(20, 'pt'),
+          panel.grid = element_blank())
+  
+  # Distribution u
+  p_u = ggplot(data = data_plot[x =='u'],
+               aes(x = value,
+                   fill = group)) +
+    scale_fill_manual(values = custom_guides,
+                      labels = c('Younger',
+                                 'Older')) +
+    geom_histogram(bins = 10,
+                   alpha = 0.6,
+                   color = 'black',
+                   size = 0.3,
+                   position = 'identity') +
+    facet_wrap(~x, scales = 'free_x', nrow = 1, labeller = label_parsed) +
+    scale_x_continuous(breaks = c(0,0.5,1)) +
+    labs(y = 'Count')
+  p_u = Neurocodify_plot(p_u) +
+    theme(legend.position = 'right',
+          legend.spacing.y = unit(15, 'pt'),
+          legend.title = element_blank(),
+          legend.text = element_text(size = 15),
+          strip.text = element_text(size = 15),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.x = element_text(size = 12,
+                                     angle = 45,
+                                     hjust = 1),
+          axis.text.y = element_blank(),
+          axis.line.y = element_blank(),
+          axis.ticks.y = element_blank(),
+          panel.spacing.x = unit(20, 'pt'),
+          panel.grid = element_blank())
+  
+  # Combine distributions to one plot
+  p2 = cowplot::plot_grid(p_l, p_s, p_u,
+                          rel_widths = c(1,0.7,1.7),
+                          ncol = 3,
+                          axis = 'bt',
+                          align = 'h')
+  
+  # p2 = p2 +
+  #   theme(plot.margin = margin(0,20,0,0,'pt'))
   
   p = cowplot::plot_grid(p2,p1,
                      rel_widths = c(7,3),
@@ -210,11 +289,11 @@ Figure_mc_uml_groups = function(){
              group = as.factor(group),
              sex = as.factor(sex),
              starting_values = as.factor(starting_values))]
-  # Sort model levels by number of parameters
-  data$model = factor(data$model, levels = c('rw',
-                                             'uncertainty',
-                                             'surprise',
-                                             'uncertainty_surprise'))
+  # # Sort model levels by number of parameters
+  # data$model = factor(data$model, levels = c('rw',
+  #                                            'uncertainty',
+  #                                            'surprise',
+  #                                            'uncertainty_surprise'))
 
   # get coefficients of winning model
   data_surprise = data[model == 'surprise' & variable == 'coefs']
@@ -229,84 +308,6 @@ Figure_mc_uml_groups = function(){
     .[, param_uml_dicho := as.factor(param_u > param_l)] %>%
     Prepare_data_for_plot(.)
   levels(data_surprise_param$param_uml_dicho) = c('Decreased', 'Increased')
-  
-  suprise_cor = cor(data_surprise_param[, .SD, .SDcols = c('param_intercept',
-                                             'param_V1',
-                                             'param_V2',
-                                             'param_l',
-                                             'param_s',
-                                             'param_u')])
-  suprise_cor[lower.tri(suprise_cor)] = NA
-  suprise_cor = reshape2::melt(suprise_cor, na.rm = TRUE)
-  suprise_cor$Var1 = factor(suprise_cor$Var1)
-  suprise_cor$Var2 = factor(suprise_cor$Var2)
-  levels(suprise_cor$Var1) = c('beta0',
-                               'beta1',
-                               'beta2',
-                               'l',
-                               's',
-                               'u')
-  levels(suprise_cor$Var2) = c('beta0',
-                               'beta1',
-                               'beta2',
-                               'l',
-                               's',
-                               'u')
-  suprise_cor = as.data.table(suprise_cor)
-  suprise_cor$equal = suprise_cor$Var1 == suprise_cor$Var2
-  #levels(suprise_cor$Var2) = rev(levels(suprise_cor$Var2))
-  
-  p = ggplot(data = suprise_cor,
-             aes(x = Var1,
-                 y = Var2,
-                 fill = value,
-                 label = sub("^(-?)0.", "\\1.", sprintf("%.2f", round(value, 2))))) +
-    geom_tile() +
-    geom_label(data = suprise_cor[!suprise_cor$equal,],
-               fill = 'white',
-               size = 3) +
-    viridis::scale_fill_viridis(option = 'D',
-                                limits = c(-1,1),
-                                breaks = c(-1,0,1)) +
-  scale_x_discrete(labels = list('beta0' = bquote(beta[0]),
-                              'beta1' = bquote(beta[1]),
-                              'beta2' = bquote(beta[2]),
-                              'l',
-                              's',
-                              'u')) +
-    scale_y_discrete(labels = list('beta0' = bquote(beta[0]),
-                                   'beta1' = bquote(beta[1]),
-                                   'beta2' = bquote(beta[2]),
-                                   'l',
-                                   's',
-                                   'u'))
-  Neurocodify_plot(p) +
-    theme(panel.grid = element_blank(),
-          axis.title = element_blank(),
-          legend.title = element_blank(),
-          axis.text = element_text(size = 15),
-          axis.ticks = element_blank(),
-          axis.line = element_line(color = 'transparent'),
-          legend.direction = 'horizontal',
-          legend.position = c(0.7,0.15))
-  
-  # p = GGally::ggpairs(data_surprise_param,
-  #                     columns = which(colnames(data_surprise_param) %in% c('param_l',
-  #                                                                'param_s',
-  #                                                                'param_u')),
-  #                     mapping = ggplot2::aes(color = group),
-  #                     upper = 'blank',
-  #                     lower = list(continuous = GGally::wrap('cor', stars = FALSE, color = 'black')),
-  #                     diag = list(continuous = GGally::wrap('densityDiag', alpha = 0.7)))
-  #   #scale_color_manual(custom_guides)
-  # Neurocodify_plot(p) +
-  #   scale_fill_manual(values = custom_guides[c(1:2)]) +
-  #   scale_color_manual(values = custom_guides[c(1:2)]) +
-  #   theme(panel.grid = element_blank(),
-  #         axis.line.y = element_line(size = NA),
-  #         axis.text.y = element_blank(),
-  #         axis.ticks.y = element_blank())
-
 
   p = ggplot(data = data_surprise_param,
              aes(x = param_uml_dicho,
@@ -324,7 +325,7 @@ Figure_mc_uml_groups = function(){
           axis.title.y = element_text(size = 15,
                                       face = 'bold',
                                       margin = margin(0,0,0,0,'pt')),
-          legend.position = 'right',
+          legend.position = 'top',
           legend.title = element_blank(),
           legend.spacing.y = unit(10, 'pt'),
           legend.text = element_text(size = 12),
@@ -368,11 +369,11 @@ Figure_mc_params = function(){
              group = as.factor(group),
              sex = as.factor(sex),
              starting_values = as.factor(starting_values))]
-  # Sort model levels by number of parameters
-  data$model = factor(data$model, levels = c('rw',
-                                             'uncertainty',
-                                             'surprise',
-                                             'uncertainty_surprise'))
+  # # Sort model levels by number of parameters
+  # data$model = factor(data$model, levels = c('rw',
+  #                                            'uncertainty',
+  #                                            'surprise',
+  #                                            'uncertainty_surprise'))
 
   # get coefficients of winning model
   data_surprise = data[model == 'surprise' & variable == 'coefs']
@@ -391,7 +392,8 @@ Figure_mc_params = function(){
   levels(data_surprise_param$variable) = c(latex2exp::TeX('u \u2212 l'),
                                            latex2exp::TeX('s'))
 
-  p = ggplot(data = data_surprise_param,
+  # Plot for u-l
+  p1 = ggplot(data = data_surprise_param[variable == 'u \u2212 l'],
              aes(x = group,
                  y = value,
                  fill = group,
@@ -400,19 +402,19 @@ Figure_mc_params = function(){
     scale_fill_manual(values = custom_guides) +
     geom_hline(yintercept = 0,
                size = 0.5) +
-    geom_point(data = data_surprise_param[group == 'Older\nadults'],
+    geom_point(data = data_surprise_param[variable == 'u \u2212 l' & group == 'Older\nadults'],
                alpha = 0.5,
                position = sdamr::position_jitternudge(jitter.width = 0.2,
                                           jitter.height = 0,
                                           nudge.x = -0.2,
                                           nudge.y = 0,
                                           seed = 666)) +
-    geom_boxplot(data = data_surprise_param[group == 'Older\nadults'],
+    geom_boxplot(data = data_surprise_param[variable == 'u \u2212 l' & group == 'Older\nadults'],
                  width = 0.2,
                  color = 'black',
                  position = position_nudge(x = -0.2,
                                            y = 0),) +
-    stat_summary(data = data_surprise_param[group == 'Older\nadults'],
+    stat_summary(data = data_surprise_param[variable == 'u \u2212 l' & group == 'Older\nadults'],
                  fun = 'mean',
                  geom = 'point',
                  shape = 23,
@@ -422,26 +424,26 @@ Figure_mc_params = function(){
                  stroke = 1,
                  position = position_nudge(x = -0.2,
                                            y = 0)) +
-    gghalves::geom_half_violin(data = data_surprise_param[group == 'Older\nadults'],
+    gghalves::geom_half_violin(data = data_surprise_param[variable == 'u \u2212 l' & group == 'Older\nadults'],
                                side = 'l',
                                position = position_nudge(x = 0.5,
                                                          y = 0),
                                width = 0.6,
                                alpha = 0.7,
                                color = NA) +
-    geom_point(data = data_surprise_param[group == 'Younger\nadults'],
+    geom_point(data = data_surprise_param[variable == 'u \u2212 l' & group == 'Younger\nadults'],
                alpha = 0.5,
                position = sdamr::position_jitternudge(jitter.width = 0.2,
                                                       jitter.height = 0,
                                                       nudge.x = 0.2,
                                                       nudge.y = 0,
                                                       seed = 666)) +
-    geom_boxplot(data = data_surprise_param[group == 'Younger\nadults'],
+    geom_boxplot(data = data_surprise_param[variable == 'u \u2212 l' & group == 'Younger\nadults'],
                  width = 0.2,
                  color = 'black',
                  position = position_nudge(x = 0.2,
                                            y = 0),) +
-    stat_summary(data = data_surprise_param[group == 'Younger\nadults'],
+    stat_summary(data = data_surprise_param[variable == 'u \u2212 l' & group == 'Younger\nadults'],
                  fun = 'mean',
                  geom = 'point',
                  shape = 23,
@@ -451,7 +453,7 @@ Figure_mc_params = function(){
                  stroke = 1,
                  position = position_nudge(x = 0.2,
                                            y = 0)) +
-    gghalves::geom_half_violin(data = data_surprise_param[group == 'Younger\nadults'],
+    gghalves::geom_half_violin(data = data_surprise_param[variable == 'u \u2212 l' & group == 'Younger\nadults'],
                                side = 'r',
                                position = position_nudge(x = -0.5,
                                                          y = 0),
@@ -459,11 +461,11 @@ Figure_mc_params = function(){
                                alpha = 0.7,
                                color = NA) +
 
-    labs(y = 'Parameter value') +
-    facet_wrap(~variable,
-               scales = 'free_y')
+    labs(y = 'Parameter value',
+         title = 'u \u2212 l')
+    facet_wrap(~variable)
 
-  p = Neurocodify_plot(p) +
+  p1 = Neurocodify_plot(p1) +
     theme(axis.title.x = element_blank(),
           axis.text.x = element_text(size = 12, margin = margin(5,0,0,0, 'pt')),
           axis.text.y = element_text(size = 12, margin = margin(0,2.5,0,10, 'pt')),
@@ -473,8 +475,96 @@ Figure_mc_params = function(){
           legend.position = 'none',
           plot.margin = margin(0,0,0,0,'pt'),
           panel.grid = element_blank(),
-          strip.text = element_text(size = 18))
+          plot.title = element_text(size = 18, face = 'plain', hjust = 0.5))
 
+  
+  # Plot for s
+  p2 = ggplot(data = data_surprise_param[variable == 's'],
+              aes(x = group,
+                  y = value,
+                  fill = group,
+                  color = group)) +
+    scale_color_manual(values = custom_guides) +
+    scale_fill_manual(values = custom_guides) +
+    scale_y_continuous(limits = c(1,7),
+                       breaks = seq(1,7, by = 2)) +
+    geom_point(data = data_surprise_param[variable == 's' & group == 'Older\nadults'],
+               alpha = 0.5,
+               position = sdamr::position_jitternudge(jitter.width = 0.2,
+                                                      jitter.height = 0,
+                                                      nudge.x = -0.2,
+                                                      nudge.y = 0,
+                                                      seed = 666)) +
+    geom_boxplot(data = data_surprise_param[variable == 's' & group == 'Older\nadults'],
+                 width = 0.2,
+                 color = 'black',
+                 position = position_nudge(x = -0.2,
+                                           y = 0),) +
+    stat_summary(data = data_surprise_param[variable == 's' & group == 'Older\nadults'],
+                 fun = 'mean',
+                 geom = 'point',
+                 shape = 23,
+                 size = 3,
+                 fill = 'white',
+                 color = 'black',
+                 stroke = 1,
+                 position = position_nudge(x = -0.2,
+                                           y = 0)) +
+    gghalves::geom_half_violin(data = data_surprise_param[variable == 's' & group == 'Older\nadults'],
+                               side = 'l',
+                               position = position_nudge(x = 0.5,
+                                                         y = 0),
+                               width = 0.6,
+                               alpha = 0.7,
+                               color = NA) +
+    geom_point(data = data_surprise_param[variable == 's' & group == 'Younger\nadults'],
+               alpha = 0.5,
+               position = sdamr::position_jitternudge(jitter.width = 0.2,
+                                                      jitter.height = 0,
+                                                      nudge.x = 0.2,
+                                                      nudge.y = 0,
+                                                      seed = 666)) +
+    geom_boxplot(data = data_surprise_param[variable == 's' & group == 'Younger\nadults'],
+                 width = 0.2,
+                 color = 'black',
+                 position = position_nudge(x = 0.2,
+                                           y = 0),) +
+    stat_summary(data = data_surprise_param[variable == 's' & group == 'Younger\nadults'],
+                 fun = 'mean',
+                 geom = 'point',
+                 shape = 23,
+                 size = 3,
+                 fill = 'white',
+                 color = 'black',
+                 stroke = 1,
+                 position = position_nudge(x = 0.2,
+                                           y = 0)) +
+    gghalves::geom_half_violin(data = data_surprise_param[variable == 's' & group == 'Younger\nadults'],
+                               side = 'r',
+                               position = position_nudge(x = -0.5,
+                                                         y = 0),
+                               width = 0.6,
+                               alpha = 0.7,
+                               color = NA) +
+    
+    labs(y = 'Parameter value',
+         title = 's')
+  facet_wrap(~variable)
+  
+  p2 = Neurocodify_plot(p2) +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_text(size = 12, margin = margin(5,0,0,0, 'pt')),
+          axis.title.y = element_blank(),
+          axis.text.y = element_text(size = 12, margin = margin(0,2.5,0,10, 'pt')),
+          legend.position = 'none',
+          plot.margin = margin(0,0,0,0,'pt'),
+          panel.grid = element_blank(),
+          plot.title = element_text(size = 18, face = 'plain', hjust = 0.5))
+  
+  p = cowplot::plot_grid(p1,p2,
+                         ncol = 2,
+                         axis = 'tb',
+                         align = 'v')
   return(p)
 
 
@@ -509,11 +599,11 @@ Figure_mc_lrf = function(){
              group = as.factor(group),
              sex = as.factor(sex),
              starting_values = as.factor(starting_values))]
-  # Sort model levels by number of parameters
-  data$model = factor(data$model, levels = c('rw',
-                                             'uncertainty',
-                                             'surprise',
-                                             'uncertainty_surprise'))
+  # # Sort model levels by number of parameters
+  # data$model = factor(data$model, levels = c('rw',
+  #                                            'uncertainty',
+  #                                            'surprise',
+  #                                            'uncertainty_surprise'))
 
   # get coefficients of winning model
   data_surprise = data[model == 'surprise' & variable == 'coefs']
@@ -549,8 +639,7 @@ Figure_mc_lrf = function(){
     labs(y = latex2exp::TeX('$\\alpha*$'),
          x = 'Surprise (|PE|)',
          title = 'Older adults') +
-    facet_wrap(~param_uml_dicho) +
-    coord_fixed(ratio = 1)
+    facet_wrap(~param_uml_dicho)
   p1 = Neurocodify_plot(p1) +
     theme(axis.title.x = element_text(size = 15,
                                       face = 'bold',
@@ -566,7 +655,8 @@ Figure_mc_lrf = function(){
           strip.text = element_blank(),
           plot.title = element_text(size = 18,
                                     hjust = 0.5,
-                                    face = 'bold'))
+                                    face = 'bold'),
+          aspect.ratio = 1)
 
   p2 = ggplot(data = data_lrs[group == 'Younger\nadults'],
               aes(x = as.numeric(x),
@@ -580,8 +670,7 @@ Figure_mc_lrf = function(){
     labs(y = latex2exp::TeX('$\\alpha*$'),
          x = 'Surprise (|PE|)',
          title = 'Younger adults') +
-    facet_wrap(~param_uml_dicho) +
-    coord_fixed(ratio = 1)
+    facet_wrap(~param_uml_dicho)
   p2 = Neurocodify_plot(p2) +
     theme(axis.title.x = element_text(size = 15,
                                       face = 'bold',
@@ -597,12 +686,13 @@ Figure_mc_lrf = function(){
           strip.text = element_blank(),
           plot.title = element_text(size = 18,
                                     hjust = 0.5,
-                                    face = 'bold'))
+                                    face = 'bold'),
+          aspect.ratio = 1)
 
   p = cowplot::plot_grid(p1,p2,
                          rel_widths = c(1,1),
                          ncol = 2,
-                         axis = 'bl',
+                         axis = 'lb',
                          align = 'hv')
 
   return(p)
@@ -620,44 +710,37 @@ Figure_model_surprise = function(){
   p_lrf = Figure_mc_lrf()
 
   # Adjust plots
-  p_des = p_des +
-    theme(plot.margin = margin(0,5,30,30,'pt'),
+  p_1 = p_des +
+    theme(plot.margin = margin(0,10,30,10,'pt'),
           legend.position = 'right')
-  p1 = p_des
   
-  p_lrf = p_lrf +
+  p_2 = p_lrf +
     theme(plot.margin = margin(0,0,30,30,'pt'))
-  p2 = p_lrf
   
-  p_uml = p_uml +
+  p_3 = p_uml +
     theme(plot.margin = margin(0,10,0,30,'pt'),
           legend.position = 'top')
-  p_para = p_para +
+  p_4 = p_para +
     theme(plot.margin = margin(0,0,0,30,'pt'))
   
-  p3 = cowplot::plot_grid(p_uml, p_para,
+  p_bottom = cowplot::plot_grid(p_3, p_4,
                           rel_widths = c(3,5),
                           ncol = 2,
-                          axis = 'bt',
-                          align = 'h',
+                          # axis = 'tb',
+                          # align = 'h',
                           labels = c('C', 'D'),
                           label_size = 25,
                           label_y = 1,
                           label_x = c(-0.04, 0.02))
-  p3
   
   
-  p_model_sup = cowplot::plot_grid(p1,p2,p3,
+  p_model_sup = cowplot::plot_grid(p_1,p_2,p_bottom,
                      rel_heights = c(1,1,1),
                      ncol = 1,
                      labels = c('A', 'B', ''),
                      label_size = 25,
-                     label_x = -0.015)
-  p_model_sup
-
-
-  
-  
+                     label_x = -0.015) +
+    theme(plot.margin = margin(0,0,5,0,'pt'))
   
   return(p_model_sup)
   

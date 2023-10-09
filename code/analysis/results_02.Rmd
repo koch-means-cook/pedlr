@@ -380,8 +380,10 @@ table_counts_all
 ```
 
 ```{r}
+data_plot = Prepare_data_for_plot(data_counts_all)
+
 # Plot
-p = ggplot(data = data_counts_all,
+p = ggplot(data = data_plot,
            aes(x = model,
                y = n_winning,
                fill = model)) +
