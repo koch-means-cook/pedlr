@@ -24,6 +24,7 @@ Param_recov = function(data,
   source(file.path(here::here(), 'code', 'simulation', 'Simulate.R'))
   source(file.path(here::here(), 'code', 'model_fitting', 'Fit_models_new.R'))
   source(file.path(here::here(), 'code', 'utils', 'Add_comp.R'))
+  source(file.path(here::here(), 'code', 'utils', 'Get_svs.R'))
   
   # Simulate behavior given model and parameters
   # Examples:
@@ -63,6 +64,8 @@ Param_recov = function(data,
   sim = sim %>%
     .[, bandit := paste(substr(comp, 1, 1), substr(comp, 3,3), sep = '')]
   
+  # Saved na-padded x0 for later when generating output of model recovery
+  x0_pad = x0
   # Delete NA from parameter vectors
   x0 = x0[!is.na(x0)]
   lb = lb[!is.na(lb)]
@@ -127,9 +130,42 @@ Param_recov = function(data,
              recov_b3 = add_betas[4],
              recov_b4 = add_betas[5])]
   
+  ### Full model recovery
+  # Get model to be recovered
+  generating_model = model
+  # Set random starting values for full model recovery
+  model_recov_svs = Get_svs(starting_values = 'random')
+  # Fit all models to simulated data
+  model_recov = Fit_models_new(data = sim,
+                               algorithm = algorithm,
+                               xtol_rel = xtol_rel,
+                               maxeval = maxeval,
+                               x0 = model_recov_svs$x0,
+                               lb = model_recov_svs$lb,
+                               ub = model_recov_svs$ub,
+                               param_recov = FALSE)
+  # Add constant variables to model recovery
+  model_recov_res = model_recov$fitting_out %>%
+    # Remove LR information
+    .[variable != 'LRs',] %>%
+    # Add info on generating process (model and parameters)
+    .[, generating_model := generating_model] %>%
+    .[, ':='(generating_x1 = x0_pad[1],
+             generating_x2 = x0_pad[2],
+             generating_x3 = x0_pad[3],
+             generating_x4 = x0_pad[4],
+             generating_b0 = beta_weights[1],
+             generating_b1 = beta_weights[2],
+             generating_b2 = beta_weights[3],
+             generating_b3 = beta_weights[4],
+             generating_b4 = beta_weights[5])] %>%
+    # Information that starting values for model recovery were random
+    .[, model_recovery_svs := 'random']
+  
   # Form named list of outputs
   out = list(recovery = res,
-             recovery_data = model_data)
+             recovery_data = model_data,
+             model_recovery = model_recov_res)
   
   # Return results table
   return(out)

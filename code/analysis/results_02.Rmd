@@ -499,6 +499,57 @@ p = Neurocodify_plot(p) +
 p
 ```
 
+## PXP split by group
+
+```{r}
+# Set seed for sampling (for reproducibility)
+set.seed(666)
+
+# PXP only for younger age group
+ep_younger = bmsR::VB_bms(as.matrix(data_ep[group == 'younger', .SD, .SDcols = levels(data_counts_all$model)]),
+                          n_samples = 100000)
+data_pxp_younger = data.table::data.table('model' = levels(data_counts_all$model),
+                                          'pxp' = ep_younger$pxp) %>%
+  .[, model := factor(model, levels = model)] %>%
+  .[, group := 'younger']
+
+# PXP only for older age group
+ep_older = bmsR::VB_bms(as.matrix(data_ep[group == 'older', .SD, .SDcols = levels(data_counts_all$model)]),
+                        n_samples = 100000)
+data_pxp_older = data.table::data.table('model' = levels(data_counts_all$model),
+                                        'pxp' = ep_older$pxp) %>%
+  .[, model := factor(model, levels = model)] %>%
+  .[, group := 'older']
+
+# Fuse PXP for both groups
+data_pxp_age = rbind(data_pxp_older,
+                     data_pxp_younger)
+
+# Re-initialize seed
+set.seed(NULL)
+```
+
+```{r}
+# Plot
+p = ggplot(data = data_pxp_age,
+           aes(x = model,
+               y = pxp,
+               fill = model)) +
+  geom_col() +
+  scale_y_continuous(limits = c(0,1)) +
+  facet_wrap(~group)
+
+p = Neurocodify_plot(p) +
+  theme(legend.position = 'none',
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.x = element_blank())
+p
+```
+
 # Average AICc across models
 
 ## Across age groups
