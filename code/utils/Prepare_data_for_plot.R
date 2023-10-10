@@ -34,8 +34,8 @@ Prepare_data_for_plot = function(data){
                  'uncertainty_surprise')
       model_names_new = c('RW',
                           'Uncertainty',
-                          'SepLR',
-                          'Unc+SepLR',
+                          'Valence',
+                          'Unc+Valence',
                           'Surprise',
                           'Unc+Surprise')
       
@@ -55,8 +55,8 @@ Prepare_data_for_plot = function(data){
       data[,col] = as.character(data[,col])
       data[data[,col] == 'rw', col] = 'RW'
       data[data[,col] == 'uncertainty', col] = 'Uncertainty'
-      data[data[,col] == 'seplr', col] = 'SepLR'
-      data[data[,col] == 'uncertainty_seplr', col] = 'Unc+SepLR'
+      data[data[,col] == 'seplr', col] = 'Valence'
+      data[data[,col] == 'uncertainty_seplr', col] = 'Unc+Valence'
       data[data[,col] == 'surprise', col] = 'Surprise'
       data[data[,col] == 'uncertainty_surprise', col] = 'Unc+Surprise'
       

@@ -188,19 +188,19 @@ Figure_mc_rel_aic = function(){
     data.table::dcast(participant_id + group ~ paste0('AICc_', model),
                       value.var = 'AICc') %>%
     .[, ':='(AICc_UmRW = AICc_uncertainty - AICc_rw,
-             AICc_SEPmRW = AICc_seplr - AICc_rw,
-             AICc_USEPmRW = AICc_uncertainty_seplr - AICc_rw,
+             AICc_VmRW = AICc_seplr - AICc_rw,
+             AICc_UVmRW = AICc_uncertainty_seplr - AICc_rw,
              AICc_SmRW = AICc_surprise - AICc_rw,
              AICc_USmRW = AICc_uncertainty_surprise - AICc_rw),
       by = c('participant_id', 'group')] %>%
     data.table::melt(id.vars = c('participant_id', 'group'),
                      measure.vars = c('AICc_UmRW',
-                                      'AICc_SEPmRW',
-                                      'AICc_USEPmRW',
+                                      'AICc_VmRW',
+                                      'AICc_UVmRW',
                                       'AICc_SmRW',
                                       'AICc_USmRW')) %>%
     Prepare_data_for_plot(.)
-  levels(data_model_comp_rw$variable) = c('Uncertainty', 'SepLR', 'Unc+SepLR', 'Surprise', 'Unc+Surprise')
+  levels(data_model_comp_rw$variable) = c('Uncertainty', 'Valence', 'Unc+Valence', 'Surprise', 'Unc+Surprise')
   
   data_model_comp_rw_mean = data_model_comp_rw %>%
     .[, .(value = mean(value),
@@ -218,7 +218,7 @@ Figure_mc_rel_aic = function(){
     scale_color_manual(values = custom_guides) +
     geom_col(data = data_model_comp_rw_mean) +
     geom_hline(yintercept = 0,
-               size = 0.5) +
+               linewidth = 0.5) +
     geom_point(position = position_jitter(width = 0.1,
                                           height = 0,
                                           seed = 666),
@@ -231,9 +231,9 @@ Figure_mc_rel_aic = function(){
                   color = 'black',
                   width = 0.3) +
     labs(y = 'AICc relative to RW model') +
-    # limit = -50 removes two outtliers in uncertainty & combined
-    scale_y_reverse(limits = c(13,-100),
-                    breaks = seq(10,-100,-10))
+    # limit = -50 removes three outliers, one each in Uncertainty, Unc+Surprise & Unc+Valence
+    scale_y_reverse(limits = c(13,-55),
+                    breaks = seq(10,-50,-10))
   p = Neurocodify_plot(p) +
     coord_flip() +
     theme(axis.title.y = element_blank(),
@@ -248,7 +248,6 @@ Figure_mc_rel_aic = function(){
           legend.position = 'none',
           plot.margin = margin(0,0,0,0,'pt'),
           panel.grid = element_blank())
-  p
   
   # Return plot
   return(p)
@@ -311,7 +310,6 @@ Figure_mc_pxp = function(){
       by = c('participant_id', 'variable')] %>%
     # Only keep winning model
     .[loc_winning == TRUE]
-  #levels(data_counts$model) = c('RW', 'Uncertainty', 'Surprise', 'Combined')
   
   # Count winning models across participants
   data_counts_all = data_counts %>%
@@ -340,11 +338,11 @@ Figure_mc_pxp = function(){
                            data_ep$surprise,
                            data_ep$uncertainty_surprise),
                      n_samples = 100000)$pxp
-  model_names = c('RW', 'Uncertainty', 'SepLR', 'Unc+SepLR', 'Surprise', 'Unc+Surprise')
+  model_names = c('RW', 'Uncertainty', 'Valence', 'Unc+Valence', 'Surprise', 'Unc+Surprise')
   data_plot = data.table(cbind(model_names,
                                pxp)) %>%
     .[, pxp := as.numeric(pxp)] %>%
-    .[, model_names := factor(model_names, levels = c('RW', 'Uncertainty', 'SepLR', 'Unc+SepLR', 'Surprise', 'Unc+Surprise'))] %>%
+    .[, model_names := factor(model_names, levels = c('RW', 'Uncertainty', 'Valence', 'Unc+Valence', 'Surprise', 'Unc+Surprise'))] %>%
     # Add frame for winning model
     .[, size := pxp == max(pxp)]
   colnames(data_plot) = c('model', 'pxp', 'size')

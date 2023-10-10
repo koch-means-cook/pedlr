@@ -10,8 +10,8 @@ Get_plot_guides = function(){
           'Guided\nchoices' = 'dashed',
           'RW' = '#A36A2C',
           'Uncertainty' = '#D2C08E',
-          'SepLR' = '#2586A0',
-          'Uncertainty +\nSepLR' = '#A7544B',
+          'Valence' = '#2586A0',
+          'Uncertainty +\nValence' = '#A7544B',
           'Surprise' = '#B7C7B8',
           'Uncertainty +\nSurprise' = '#2F4858')
   
