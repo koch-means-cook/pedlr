@@ -20,7 +20,7 @@ Create_figures = function(){
   
   
   # Task figure
-  message("Creating task figure...\n")
+  message("Creating task figure...")
   p_t = Figure_task()
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_t.pdf',
                        fsep = .Platform$file.sep)
@@ -30,8 +30,19 @@ Create_figures = function(){
          width = 7,
          height = 3)
   
+  # Model illustration figure
+  message("Creating model illustration...")
+  p_mi = Figure_model_illustration()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_mi.pdf',
+                       fsep = .Platform$file.sep)
+  ggsave(filename = out_file,
+         plot = p_mi,
+         device = 'pdf',
+         width = 9,
+         height = 9)
+  
   # Behavioral data (Overall correct and RT diff)
-  message("Creating behavioral figure...\n")
+  message("Creating behavioral figure...")
   p_pcrt = Figure_behav_pcrt() +
     theme(plot.margin = margin(0,0,0,5,'pt'))
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_pcrt.pdf',
@@ -43,7 +54,7 @@ Create_figures = function(){
          height = 8)
   
   # Behavioral data (rare influence)
-  message("Creating surprise figure...\n")
+  message("Creating surprise figure...")
   p_ri = Figure_behav_ri() +
     theme(plot.margin = margin(0,0,0,5,'pt'))
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_ri.pdf',
@@ -55,7 +66,7 @@ Create_figures = function(){
          height = 3)
   
   # Behavioral data (Estimation distance bias)
-  message("Creating estimation figure...\n")
+  message("Creating estimation figure...")
   p_ed = Figure_behav_ed() +
     theme(plot.margin = margin(0,0,0,5,'pt'))
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_ed.pdf',
@@ -67,7 +78,7 @@ Create_figures = function(){
          height = 3)
   
   # Model comp
-  message("Creating model comparison figure...\n")
+  message("Creating model comparison figure...")
   p_mc = Figure_model_comp()
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_mc.pdf',
                        fsep = .Platform$file.sep)
@@ -78,7 +89,7 @@ Create_figures = function(){
          height = 5)
   
   # Model surprsie
-  message("Creating surprise model figure...\n")
+  message("Creating surprise model figure...")
   p_ms = Figure_model_surprise()
   #base_path = here::here()
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_ms.pdf',

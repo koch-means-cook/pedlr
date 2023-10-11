@@ -38,8 +38,13 @@ Figure_model_illustration = function(){
   
   # Simulate data
   # Constant LR
-  data_lr_const = data.table::data.table('pe' = seq(0,50,length.out = 1000),
+  data_lr_const = data.table::data.table('pe' = seq(0,50,by = 0.1),
                                          'alpha_star' = 0.5)
+  # Step LR
+  data_lr_seplr = data.table::data.table('pe' = seq(-50,50,by = 0.1),
+                                         'alpha_star' = 0.5) %>%
+    .[pe >= 0, alpha_star := 0.2]
+  # LR function Surprise
   data_lr_surprise_u = data.table::data.table('u' = seq(0,1, by = 0.1)) %>%
     .[, .(pe = seq(0,50,by = 0.05)),
       by = 'u'] %>%
@@ -60,6 +65,7 @@ Figure_model_illustration = function(){
                                  tau = 0.2),
       by = 's'] %>%
     .[, s := factor(s)]
+  # Standard choice probability
   data_prob_const = data.table::data.table('vl' = seq(-50,50, length.out = 1000),
                                            'vr' = 0) %>%
     .[, vlmvr := vl - vr] %>%
@@ -69,6 +75,7 @@ Figure_model_illustration = function(){
              beta_3 = 0,
              beta_4 = 0)] %>%
     .[, prob := 1/(1 + exp(-(beta_0 + beta_1*vl + beta_2*vr)))]
+  # Choice probability variation with uncertainty
   data_prob_unc = data.table::data.table('beta_0' = 0,
                                          'beta_1' = 0.1,
                                          'beta_2' = -0.1,
@@ -85,7 +92,15 @@ Figure_model_illustration = function(){
     .[, beta_3 := factor(beta_3)]
   
   # Set shared variables
-  annotate_text_size = 7
+  # Text size of annotation layers (e.g. alpha on plot line)
+  annotate_text_size = 3.5
+  # Textsize for plot titles
+  textsize_title = 13
+  # Textsize for axis text and title
+  axis_size = 11
+  # Aspet ratio of all plots
+  aspect_ratio = 0.8
+  # Create color palatte to pick values in between red and orange for annotations (e.g. beta3 = 0.2)
   col_pallette = colorRampPalette(c('red', 'orange'))
   
   # Plot: LR no variation
@@ -96,29 +111,34 @@ Figure_model_illustration = function(){
                        breaks = c(0,1)) +
     geom_line() +
     labs(x = 'Surprise (|PE|)',
-         y = latex2exp::TeX(r'(Learning rate $\alpha^{*}$)')) +
+         y = latex2exp::TeX(r'(Learning rate $\alpha^{*}$)'),
+         title = ' ') +
+    # display alpha
     annotate('label',
              x = 25,
              y = 0.5,
-             label = latex2exp::TeX(r'($\alpha = 0.5$)',
+             label = latex2exp::TeX(r'(\textit{$\alpha = 0.5$})',
                                     output = 'character'),
              parse = TRUE,
              label.size = 0,
+             family = "serif",
              size = annotate_text_size,
              fill = 'white')
   p_lr_const = Neurocodify_plot(p_lr_const) +
-    theme(axis.text.x = element_text(size = 15, 
+    theme(axis.text.x = element_text(size = axis_size, 
                                      margin = margin(2.5,0,0,0, 'pt')),
-          axis.title.x = element_text(size = 15,
+          axis.title.x = element_text(size = axis_size,
                                       margin = margin(10,0,0,0,'pt')),
-          axis.title.y = element_text(size = 15,
-                                      margin = margin(0,10,0,0,'pt')),
-          axis.text.y = element_text(size = 15),
+          axis.title.y = element_text(size = axis_size,
+                                      margin = margin(0,5,0,0,'pt')),
+          axis.text.y = element_text(size = axis_size),
           legend.position = 'none',
           plot.margin = margin(0,0,0,0,'pt'),
           panel.grid = element_blank(),
-          aspect.ratio = 1)
-  p_lr_const
+          aspect.ratio = aspect_ratio,
+          plot.title = element_text(size = textsize_title,
+                                    margin = margin(0,0,10,0, 'pt'),
+                                    hjust = 0.5))
   
   # Plot: Prob no variation
   p_prob_const = ggplot(data = data_prob_const,
@@ -128,61 +148,73 @@ Figure_model_illustration = function(){
     scale_y_continuous(limits = c(0,1),
                        breaks = seq(0, 1)) +
     labs(x = 'Value left \u2212 Value right',
-         y = 'Probability to choose left') +
+         y = 'Probability to choose left',
+         title = ' ') +
     geom_line() +
+    # display beta3
     annotate('label',
              x = 0,
              y = 0.5,
-             label = latex2exp::TeX(r'($\beta_{3} = 0$)',
+             label = latex2exp::TeX(r'(\textit{$\beta_{3} = 0$})',
                                     output = 'character'),
              parse = TRUE,
              label.size = 0,
+             family = "serif",
              size = annotate_text_size,
              fill = 'white') +
+    # display beta0
     annotate('label',
-             x = 22,
-             y = 0.23,
-             label = latex2exp::TeX(r'($\beta_{0} = 0$)',
+             x = 18,
+             y = 0.29,
+             label = latex2exp::TeX(r'(\textit{$\beta_{0} = 0$})',
                                     output = 'character'),
              parse = TRUE,
              label.size = 0,
+             family = "serif",
              size = annotate_text_size,
              fill = 'white',
              hjust = 0) +
+    # display beta1
     annotate('label',
-             x = 22,
-             y = 0.13,
-             label = latex2exp::TeX(r'($\beta_{1} = 0.1$)',
+             x = 18,
+             y = 0.16,
+             label = latex2exp::TeX(r'(\textit{$\beta_{1} = 0.1$})',
                                     output = 'character'),
              parse = TRUE,
              label.size = 0,
+             family = "serif",
              size = annotate_text_size,
              fill = 'white',
              hjust = 0) +
+    # display beta2
     annotate('label',
-             x = 22,
+             x = 18,
              y = 0.03,
-             label = latex2exp::TeX(r'($\beta_{2} = -0.1$)',
+             label = latex2exp::TeX(r'(\textit{$\beta_{2} = -0.1$})',
                                     output = 'character'),
              parse = TRUE,
              label.size = 0,
+             family = "serif",
              size = annotate_text_size,
              fill = 'white',
-             hjust = 0)
+             hjust = 0) +
+    coord_cartesian(clip = 'off')
     
     p_prob_const = Neurocodify_plot(p_prob_const) +
-      theme(axis.text.x = element_text(size = 15, 
+      theme(axis.text.x = element_text(size = axis_size, 
                                        margin = margin(2.5,0,0,0, 'pt')),
-            axis.title.x = element_text(size = 15,
+            axis.title.x = element_text(size = axis_size,
                                         margin = margin(10,0,0,0,'pt')),
-            axis.title.y = element_text(size = 15,
-                                        margin = margin(0,10,0,0,'pt')),
-            axis.text.y = element_text(size = 15),
+            axis.title.y = element_text(size = axis_size,
+                                        margin = margin(0,5,0,0,'pt')),
+            axis.text.y = element_text(size = axis_size),
             legend.position = 'none',
             plot.margin = margin(0,0,0,0,'pt'),
             panel.grid = element_blank(),
-            aspect.ratio = 1)
-    p_prob_const
+            aspect.ratio = aspect_ratio,
+            plot.title = element_text(size = textsize_title,
+                                      margin = margin(0,0,10,0, 'pt'),
+                                      hjust = 0.5))
     
     # Plot: Varying prob
     p_prob_var = ggplot(data = data_prob_unc,
@@ -194,99 +226,117 @@ Figure_model_illustration = function(){
       scale_y_continuous(limits = c(0,1),
                          breaks = seq(0, 1)) +
       labs(x = 'Value left \u2212 Value right',
-           y = 'Probability to choose left') +
+           y = 'Probability to choose left',
+           title = latex2exp::TeX(r'(Variation in uncertainty effect \textit{$\beta_{3}$})')) +
       geom_line() +
+      # Display high value of beta3
       annotate('label',
                x = data_prob_unc[round(prob,2) == 0.50 & beta_3 == '0.2'][1]$vlmvr,
-               y = 0.5,
-               label = latex2exp::TeX(r'($\beta_{3} = .2$)',
+               y = 0.6,
+               label = latex2exp::TeX(r'(\textit{$\beta_{3} = .2$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                color = 'orange',
-               hjust = 0.8) +
+               hjust = 1) +
+      # Display low value of beta3
       annotate('label',
                x = data_prob_unc[round(prob,2) == 0.50 & beta_3 == '-0.2'][1]$vlmvr,
                y = 0.5,
-               label = latex2exp::TeX(r'($\beta_{3} = -.2$)',
+               label = latex2exp::TeX(r'(\textit{$\beta_{3} = -.2$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                color = 'red',
-               hjust = 0.2) +
+               hjust = -0.1) +
+      # Display beta0
       annotate('label',
-               x = 22,
-               y = 0.23,
-               label = latex2exp::TeX(r'($\beta_{0} = 0$)',
+               x = 18,
+               y = 0.29,
+               label = latex2exp::TeX(r'(\textit{$\beta_{0} = 0$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 0) +
+      # Display beta1
       annotate('label',
-               x = 22,
-               y = 0.13,
-               label = latex2exp::TeX(r'($\beta_{1} = 0.1$)',
+               x = 18,
+               y = 0.16,
+               label = latex2exp::TeX(r'(\textit{$\beta_{1} = 0.1$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 0) +
+      # Display beta2
       annotate('label',
-               x = 22,
+               x = 18,
                y = 0.03,
-               label = latex2exp::TeX(r'($\beta_{2} = -0.1$)',
+               label = latex2exp::TeX(r'(\textit{$\beta_{2} = -0.1$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 0) +
+      # Textbox "uncertainty"
       annotate('label',
                x = -50,
                y = 0.9,
-               label = latex2exp::TeX(r'(\underline{Uncertainty:})',
+               label = latex2exp::TeX(r'(Uncertainty:)',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 0,
                vjust = 0) +
+      # Textbox U = 10
       annotate('label',
                x = -50,
-               y = 0.8,
-               label = latex2exp::TeX(r'($\U = 10$)',
+               y = 0.79,
+               label = latex2exp::TeX(r'(\textit{$\U = 10$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 0,
                vjust = 0) +
-      scale_color_gradient(low = 'red', high = 'orange')
+      scale_color_gradient(low = 'red', high = 'orange') +
+      coord_cartesian(clip = 'off')
     
     p_prob_var = Neurocodify_plot(p_prob_var) +
-      theme(axis.text.x = element_text(size = 15, 
+      theme(axis.text.x = element_text(size = axis_size, 
                                        margin = margin(2.5,0,0,0, 'pt')),
-            axis.title.x = element_text(size = 15,
+            axis.title.x = element_text(size = axis_size,
                                         margin = margin(10,0,0,0,'pt')),
-            axis.title.y = element_text(size = 15,
-                                        margin = margin(0,10,0,0,'pt')),
-            axis.text.y = element_text(size = 15),
+            axis.title.y = element_text(size = axis_size,
+                                        margin = margin(0,5,0,0,'pt')),
+            axis.text.y = element_text(size = axis_size),
             legend.position = 'none',
             plot.margin = margin(0,0,0,0,'pt'),
             panel.grid = element_blank(),
-            aspect.ratio = 1)
-    p_prob_var
+            aspect.ratio = aspect_ratio,
+            plot.title = element_text(size = textsize_title,
+                                      margin = margin(0,0,10,0, 'pt'),
+                                      hjust = 0.7))
     
-    # Plot: LR varying
+    # Plot: LR varying by u
     p_lr_var_u = ggplot(data = data_lr_surprise_u,
                         aes(x = pe,
                             y = alpha_star,
@@ -296,52 +346,62 @@ Figure_model_illustration = function(){
                          breaks = c(0,1)) +
       geom_line() +
       labs(x = 'Surprise (|PE|)',
-           y = latex2exp::TeX(r'(Learning rate $\alpha^{*}$)')) +
+           y = latex2exp::TeX(r'(Learning rate $\alpha^{*}$)'),
+           title = latex2exp::TeX(r'(Variation in upper LR \textit{$u$})')) +
+      # Display u = 0
       annotate('label',
                x = 50,
                y = data_lr_surprise_u[pe == 50 & u == 0]$alpha_star,
-               label = latex2exp::TeX(r'($u = 0$)',
+               label = latex2exp::TeX(r'(\textit{$u = 0$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 1,
                color = 'red') +
+      # Display u = 0.4
       annotate('label',
                x = 50,
                y = data_lr_surprise_u[pe == 50 & u == 0.4]$alpha_star,
-               label = latex2exp::TeX(r'($u = 0.4$)',
+               label = latex2exp::TeX(r'(\textit{$u = 0.4$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 1,
                color = col_pallette(10)[4]) +
+      # Display u = 6
       annotate('label',
                x = 50,
                y = data_lr_surprise_u[pe == 50 & u == 0.6]$alpha_star,
-               label = latex2exp::TeX(r'($u = 0.6$)',
+               label = latex2exp::TeX(r'(\textit{$u = 0.6$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 1,
                color = col_pallette(10)[6]) +
+      # Display u = 1
       annotate('label',
                x = 50,
                y = data_lr_surprise_u[pe == 50 & u == 1]$alpha_star,
-               label = latex2exp::TeX(r'($u = 1$)',
+               label = latex2exp::TeX(r'(\textit{$u = 1$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                hjust = 1,
                color = 'orange') +
       scale_color_gradient(low = 'red', high = 'orange') +
+      # Display textbox "lower LR"
       annotate('label',
                x = 0,
                y = 0.8,
@@ -349,24 +409,32 @@ Figure_model_illustration = function(){
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                vjust = 0,
                hjust = 0) +
+      # Display l = 0.5
       annotate('label',
                x = 0,
                y = 0.7,
-               label = latex2exp::TeX(r'($l = 0.5$)',
+               label = latex2exp::TeX(r'(\textit{$l = 0.5$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                vjust = 0,
                hjust = 0) +
+      # Arrow from textbox (l) to line
       geom_segment(aes(x = 4, y = 0.7, xend = 4, yend = 0.52),
-                   arrow = arrow(),
+                   arrow = arrow(length = unit(0.03, "npc"),
+                                 angle = 30,
+                                 type = 'closed'),
+                   linewidth = 0.4,
                    color = 'black') +
+      # Display textbox "slope:"
       annotate('label',
                x = 0,
                y = 0.13,
@@ -374,39 +442,48 @@ Figure_model_illustration = function(){
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                vjust = 0,
                hjust = 0) +
+      # Display s = 3
       annotate('label',
                x = 0,
                y = 0.03,
-               label = latex2exp::TeX(r'($s = 3$)',
+               label = latex2exp::TeX(r'(\textit{$s = 3$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                vjust = 0,
                hjust = 0) +
+      # Arrow from textbox (s) to line
       geom_segment(aes(x = 11, y = 0.13, xend = 15, yend = 0.3),
-                   arrow = arrow(),
-                   color = 'black')
+                   arrow = arrow(length = unit(0.03, "npc"),
+                                 angle = 30,
+                                 type = 'closed'),
+                   color = 'black',
+                   linewidth = 0.4)
     p_lr_var_u = Neurocodify_plot(p_lr_var_u) +
-      theme(axis.text.x = element_text(size = 15, 
+      theme(axis.text.x = element_text(size = axis_size, 
                                        margin = margin(2.5,0,0,0, 'pt')),
-            axis.title.x = element_text(size = 15,
+            axis.title.x = element_text(size = axis_size,
                                         margin = margin(10,0,0,0,'pt')),
-            axis.title.y = element_text(size = 15,
-                                        margin = margin(0,10,0,0,'pt')),
-            axis.text.y = element_text(size = 15),
+            axis.title.y = element_text(size = axis_size,
+                                        margin = margin(0,5,0,0,'pt')),
+            axis.text.y = element_text(size = axis_size),
             legend.position = 'none',
             plot.margin = margin(0,0,0,0,'pt'),
             panel.grid = element_blank(),
-            aspect.ratio = 1)
-    p_lr_var_u
+            aspect.ratio = aspect_ratio,
+            plot.title = element_text(size = textsize_title,
+                                      margin = margin(0,0,10,0, 'pt'),
+                                      hjust = 0.5))
   
-    # Plot: LR varying
+    # Plot: LR varying by s
     p_lr_var_s = ggplot(data = data_lr_surprise_s,
                         aes(x = pe,
                             y = alpha_star,
@@ -416,77 +493,209 @@ Figure_model_illustration = function(){
                          breaks = c(0,1)) +
       geom_line() +
       labs(x = 'Surprise (|PE|)',
-           y = latex2exp::TeX(r'(Learning rate $\alpha^{*}$)')) +
+           y = latex2exp::TeX(r'(Learning rate $\alpha^{*}$)'),
+           title = latex2exp::TeX(r'(Variation in slope \textit{$s$})')) +
+      # Display s = 1
       annotate('label',
                x = 10,
                y = 0.6,
-               label = latex2exp::TeX(r'($s = 1$)',
+               label = latex2exp::TeX(r'(\textit{$s = 1$})',
                                       output = 'character'),
                parse = TRUE,
+               family = "serif",
                label.size = 0,
                size = annotate_text_size,
                fill = 'white',
                color = 'red') +
+      # Display s = 4
       annotate('label',
                x = 23,
                y = 0.4,
-               label = latex2exp::TeX(r'($s = 4$)',
+               label = latex2exp::TeX(r'(\textit{$s = 4$})',
                                       output = 'character'),
                parse = TRUE,
+               family = "serif",
                label.size = 0,
                size = annotate_text_size,
                fill = 'white',
                color = col_pallette(6)[4]) +
+      # Display s = 7
       annotate('label',
                x = 36,
                y = 0.2,
-               label = latex2exp::TeX(r'($s = 7$)',
+               label = latex2exp::TeX(r'(\textit{$s = 7$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                color = 'orange') +
       scale_color_gradient(low = 'red', high = 'orange') +
-      # annotate('label',
-      #          x = 30,
-      #          y = 1,
-      #          label = latex2exp::TeX(r'(upper LR:)',
-      #                                 output = 'character'),
-      #          parse = TRUE,
-      #          label.size = 0,
-      #          size = annotate_text_size,
-      #          fill = 'white',
-      #          vjust = 0,
-      #          hjust = 0) +
+      # Display textbox "upper LR: u = 0.8"
       annotate('label',
                x = 15,
                y = 0.9,
-               label = latex2exp::TeX(r'(upper LR:   $u = 0.8$)',
+               label = latex2exp::TeX(r'(upper LR:   \textit{$u = 0.8$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
+               family = "serif",
                size = annotate_text_size,
                fill = 'white',
                vjust = 0,
                hjust = 0) +
+      # Arrow from textbox (upper LR) to line
       geom_segment(aes(x = 35, y = 0.9, xend = 35, yend = 0.82),
-                   arrow = arrow(),
-                   color = 'black')
+                   arrow = arrow(length = unit(0.03, "npc"),
+                                 angle = 30,
+                                 type = 'closed'),
+                   color = 'black',
+                   linewidth = 0.4)
     
     p_lr_var_s = Neurocodify_plot(p_lr_var_s) +
-      theme(axis.text.x = element_text(size = 15, 
+      theme(axis.text.x = element_text(size = axis_size, 
                                        margin = margin(2.5,0,0,0, 'pt')),
-            axis.title.x = element_text(size = 15,
+            axis.title.x = element_text(size = axis_size,
                                         margin = margin(10,0,0,0,'pt')),
-            axis.title.y = element_text(size = 15,
-                                        margin = margin(0,10,0,0,'pt')),
-            axis.text.y = element_text(size = 15),
+            axis.title.y = element_text(size = axis_size,
+                                        margin = margin(0,5,0,0,'pt')),
+            axis.text.y = element_text(size = axis_size),
             legend.position = 'none',
             plot.margin = margin(0,0,0,0,'pt'),
             panel.grid = element_blank(),
-            aspect.ratio = 1)
-    p_lr_var_s
+            aspect.ratio = aspect_ratio,
+            plot.title = element_text(size = textsize_title,
+                                      margin = margin(0,0,10,0, 'pt'),
+                                      hjust = 0.5))
     
     # Plot: Step function
+    p_lr_step = ggplot(data = data_lr_seplr,
+                       aes(x = pe,
+                           y = alpha_star)) +
+      geom_line() +
+      scale_y_continuous(limits = c(0,1),
+                         breaks = c(0,1)) +
+      labs(x = 'PE',
+           y = latex2exp::TeX(r'(Learning rate $\alpha^{*}$)'),
+           title = ' ') +
+      # Display alpha(neg)
+      annotate('label',
+               x = -25,
+               y = 0.5,
+               label = latex2exp::TeX(r'(\textit{$\alpha_{\textrm{neg}} = 0.5$})',
+                                      output = 'character'),
+               parse = TRUE,
+               label.size = 0,
+               family = "serif",
+               size = annotate_text_size*0.8,
+               fill = 'white') +
+      # Display alpha(pos)
+      annotate('label',
+               x = 25,
+               y = 0.2,
+               label = latex2exp::TeX(r'(\textit{$\alpha_{\textrm{pos}} = 0.2$})',
+                                      output = 'character'),
+               parse = TRUE,
+               label.size = 0,
+               family = "serif",
+               size = annotate_text_size*0.9,
+               fill = 'white')
+    p_lr_step = Neurocodify_plot(p_lr_step) +
+      theme(axis.text.x = element_text(size = axis_size, 
+                                       margin = margin(2.5,0,0,0, 'pt')),
+            axis.title.x = element_text(size = axis_size,
+                                        margin = margin(10,0,0,0,'pt')),
+            axis.title.y = element_text(size = axis_size,
+                                        margin = margin(0,5,0,0,'pt')),
+            axis.text.y = element_text(size = axis_size),
+            legend.position = 'none',
+            plot.margin = margin(0,0,0,0,'pt'),
+            panel.grid = element_blank(),
+            aspect.ratio = aspect_ratio,
+            plot.title = element_text(size = textsize_title,
+                                      margin = margin(0,0,10,0, 'pt'),
+                                      hjust = 0.5))
+    
+    # Combine plots: RW
+    p1 = p_lr_const + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p2 = p_prob_const + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p_rw = cowplot::plot_grid(p1, NULL, p2,
+                              ncol = 1,
+                              rel_heights = c(1,0.05,1),
+                              axis = 'btlr',
+                              align = 'vh',
+                              labels = c('Rescorla-Wagner Model', ''),
+                              label_x = 0.5,
+                              hjust = 0.5,
+                              label_y = 1.11) +
+      theme(panel.border = element_rect(fill = NA,
+                                        color = 'black',
+                                        linewidth = 1),
+            plot.margin = margin(15,0,0,0,'pt'))
+    
+    # Combine plots: Unc
+    p1 = p_lr_const + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p2 = p_prob_var + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p_unc = cowplot::plot_grid(p1, NULL, p2,
+                               ncol = 1,
+                               rel_heights = c(1,0.05,1),
+                               axis = 'btrl',
+                               align = 'hv',
+                               labels = c('Uncertainty Model', ''),
+                               label_x = 0.5,
+                               hjust = 0.5,
+                               label_y = 1.11) +
+      theme(panel.border = element_rect(fill = NA,
+                                        color = 'black',
+                                        linewidth = 1),
+            plot.margin = margin(15,0,0,0,'pt'))
+    
+    # Combine plots: Valence
+    p1 = p_lr_step + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p2 = p_prob_const + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p_val = cowplot::plot_grid(p1, NULL, p2,
+                               ncol = 1,
+                               rel_heights = c(1,0.05,1),
+                               axis = 'btrl',
+                               align = 'hv',
+                               labels = c('Valence Model', ''),
+                               label_x = 0.5,
+                               hjust = 0.5,
+                               label_y = 1.11) +
+      theme(panel.border = element_rect(fill = NA,
+                                        color = 'black',
+                                        linewidth = 1),
+            plot.margin = margin(15,0,0,0,'pt'))
+    
+    # Combine plots: Surprise
+    p1 = p_lr_var_u + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p2 = p_lr_var_s + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p3 = p_prob_const + theme(plot.margin = margin(5,5,5,0,'pt'))
+    p_surprise = cowplot::plot_grid(NULL,p1,NULL, p2,NULL, p3,NULL,
+                                    nrow = 1,
+                                    rel_widths = c(0.02,1,0.1,1,0.1,1,0.02),
+                                    axis = 'btrl',
+                                    align = 'hv',
+                                    labels = c('','','', 'Surprise Model', '', '', ''),
+                                    label_x = 0.5,
+                                    hjust = 0.5,
+                                    label_y = 1.1) +
+      theme(panel.border = element_rect(fill = NA,
+                                        color = 'black',
+                                        linewidth = 1),
+            plot.margin = margin(20,5,5,5,'pt'))
+    
+    # Form top row (RW, Uncertainty, Valence)
+    p_top = cowplot::plot_grid(p_rw, NULL, p_unc, NULL, p_val,
+                               rel_widths = c(1,0.05,1,0.05,1),
+                               nrow = 1) +
+      theme(plot.margin = margin(5,5,5,5,'pt'))
+    
+    # Combine top row with surprise plot
+    p = cowplot::plot_grid(p_top, NULL, p_surprise,
+                           rel_heights = c(1,0.02,0.6),
+                           ncol = 1)
+    
+    return(p)
 }
