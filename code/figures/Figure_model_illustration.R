@@ -15,6 +15,7 @@ library(patchwork)
 library(sdamr)
 library(gghalves)
 library(latex2exp)
+library(grid)
 
 Figure_model_illustration = function(){
   
@@ -102,6 +103,18 @@ Figure_model_illustration = function(){
   aspect_ratio = 0.8
   # Create color palatte to pick values in between red and orange for annotations (e.g. beta3 = 0.2)
   col_pallette = colorRampPalette(c('red', 'orange'))
+  # Headlines for subplots
+  headline_label_rw = 'A'
+  headline_label_unc = 'B'
+  headline_label_seplr = 'C'
+  headline_label_surprise = 'D'
+  # Subplot Headline position
+  headline_y = 1.13
+  headline_x = 0
+  headline_hjust = 0
+  # Subplot label size
+  headline_label_size = 20
+  
   
   # Plot: LR no variation
   p_lr_const = ggplot(data = data_lr_const,
@@ -588,7 +601,7 @@ Figure_model_illustration = function(){
                parse = TRUE,
                label.size = 0,
                family = "serif",
-               size = annotate_text_size*0.8,
+               size = annotate_text_size*0.9,
                fill = 'white') +
       # Display alpha(pos)
       annotate('label',
@@ -625,14 +638,24 @@ Figure_model_illustration = function(){
                               rel_heights = c(1,0.05,1),
                               axis = 'btlr',
                               align = 'vh',
-                              labels = c('Rescorla-Wagner Model', ''),
-                              label_x = 0.5,
-                              hjust = 0.5,
-                              label_y = 1.11) +
+                              labels = c(headline_label_rw, ''),
+                              label_size = headline_label_size,
+                              label_x = headline_x,
+                              hjust = headline_hjust,
+                              label_y = headline_y) +
       theme(panel.border = element_rect(fill = NA,
                                         color = 'black',
                                         linewidth = 1),
-            plot.margin = margin(15,0,0,0,'pt'))
+            plot.margin = margin(15,0,0,0,'pt')) +
+      # Annotate model name above subplot-frame
+      annotation_custom(grob = grid::textGrob(label = 'Rescorla-Wagner Model',
+                                              hjust = 0.5,
+                                              vjust = 0,
+                                              gp = grid::gpar(cex = 1.2)),
+                        ymin = 1.014,
+                        ymax = 1.014,
+                        xmin = 0.5,
+                        xmax = 0.5)
     
     # Combine plots: Unc
     p1 = p_lr_const + theme(plot.margin = margin(5,5,5,0,'pt'))
@@ -642,14 +665,24 @@ Figure_model_illustration = function(){
                                rel_heights = c(1,0.05,1),
                                axis = 'btrl',
                                align = 'hv',
-                               labels = c('Uncertainty Model', ''),
-                               label_x = 0.5,
-                               hjust = 0.5,
-                               label_y = 1.11) +
+                               labels = c(headline_label_unc, ''),
+                               label_size = headline_label_size,
+                               label_x = headline_x,
+                               hjust = headline_hjust,
+                               label_y = headline_y) +
       theme(panel.border = element_rect(fill = NA,
                                         color = 'black',
                                         linewidth = 1),
-            plot.margin = margin(15,0,0,0,'pt'))
+            plot.margin = margin(15,0,0,0,'pt')) +
+      # Annotate model name above subplot-frame
+      annotation_custom(grob = grid::textGrob(label = 'Uncertainty Model',
+                                              hjust = 0.5,
+                                              vjust = 0,
+                                              gp = grid::gpar(cex = 1.2)),
+                        ymin = 1.014,
+                        ymax = 1.014,
+                        xmin = 0.5,
+                        xmax = 0.5)
     
     # Combine plots: Valence
     p1 = p_lr_step + theme(plot.margin = margin(5,5,5,0,'pt'))
@@ -659,14 +692,24 @@ Figure_model_illustration = function(){
                                rel_heights = c(1,0.05,1),
                                axis = 'btrl',
                                align = 'hv',
-                               labels = c('Valence Model', ''),
-                               label_x = 0.5,
-                               hjust = 0.5,
-                               label_y = 1.11) +
+                               labels = c(headline_label_seplr, ''),
+                               label_size = headline_label_size,
+                               label_x = headline_x,
+                               hjust = headline_hjust,
+                               label_y = headline_y) +
       theme(panel.border = element_rect(fill = NA,
                                         color = 'black',
                                         linewidth = 1),
-            plot.margin = margin(15,0,0,0,'pt'))
+            plot.margin = margin(15,0,0,0,'pt')) +
+      # Annotate model name above subplot-frame
+      annotation_custom(grob = grid::textGrob(label = 'Valence Model',
+                                              hjust = 0.5,
+                                              vjust = 0,
+                                              gp = grid::gpar(cex = 1.2)),
+                        ymin = 1.014,
+                        ymax = 1.014,
+                        xmin = 0.5,
+                        xmax = 0.5)
     
     # Combine plots: Surprise
     p1 = p_lr_var_u + theme(plot.margin = margin(5,5,5,0,'pt'))
@@ -677,14 +720,24 @@ Figure_model_illustration = function(){
                                     rel_widths = c(0.02,1,0.1,1,0.1,1,0.02),
                                     axis = 'btrl',
                                     align = 'hv',
-                                    labels = c('','','', 'Surprise Model', '', '', ''),
-                                    label_x = 0.5,
-                                    hjust = 0.5,
-                                    label_y = 1.1) +
+                                    labels = c(headline_label_surprise ,'','', '', '', '', ''),
+                                    label_size = headline_label_size,
+                                    label_x = headline_x,
+                                    hjust = headline_hjust,
+                                    label_y = headline_y - 0.015) +
       theme(panel.border = element_rect(fill = NA,
                                         color = 'black',
                                         linewidth = 1),
-            plot.margin = margin(20,5,5,5,'pt'))
+            plot.margin = margin(20,5,5,5,'pt')) +
+      # Annotate model name above subplot-frame
+      annotation_custom(grob = grid::textGrob(label = 'Surprise Model',
+                                              hjust = 0.5,
+                                              vjust = 0,
+                                              gp = grid::gpar(cex = 1.2)),
+                        ymin = 1.032,
+                        ymax = 1.032,
+                        xmin = 0.5,
+                        xmax = 0.5)
     
     # Form top row (RW, Uncertainty, Valence)
     p_top = cowplot::plot_grid(p_rw, NULL, p_unc, NULL, p_val,
