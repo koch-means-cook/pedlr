@@ -53,29 +53,16 @@ Create_figures = function(){
          width = 6,
          height = 8)
   
-  # Behavioral data (rare influence)
-  message("Creating surprise figure...")
-  p_ri = Figure_behav_ri() +
-    theme(plot.margin = margin(0,0,0,5,'pt'))
-  out_file = file.path(base_path, 'derivatives', 'figures', 'f_ri.pdf',
+  # Behavioral data (rare influence and estimation)
+  message("Creating surprise and estimation figure...")
+  p_ried = Figure_behav_ried()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_ried.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
-         plot = p_ri,
+         plot = p_ried,
          device = 'pdf',
-         width = 7,
-         height = 3)
-  
-  # Behavioral data (Estimation distance bias)
-  message("Creating estimation figure...")
-  p_ed = Figure_behav_ed() +
-    theme(plot.margin = margin(0,0,0,5,'pt'))
-  out_file = file.path(base_path, 'derivatives', 'figures', 'f_ed.pdf',
-                       fsep = .Platform$file.sep)
-  ggsave(filename = out_file,
-         plot = p_ed,
-         device = 'pdf',
-         width = 2.5,
-         height = 3)
+         width = 9,
+         height = 4)
   
   # Model comp
   message("Creating model comparison figure...")
