@@ -85,8 +85,8 @@ Create_figures = function(){
   ggsave(filename = out_file,
          plot = p_mc,
          device = 'pdf',
-         width = 8,
-         height = 5)
+         width = 6,
+         height = 7)
   
   # Model surprsie
   message("Creating surprise model figure...")

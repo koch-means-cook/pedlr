@@ -94,9 +94,11 @@ Figure_mc_nwinning = function(){
              aes(x = model,
                  y = n_winning,
                  fill = model,
-                 size = size)) +
+                 linewidth = size)) +
     scale_fill_manual(values = custom_guides) +
-    scale_size_manual(values = c(0,1)) +
+    scale_linewidth_manual(values = c(NA,1)) +
+    scale_y_continuous(limits = c(0,max(data_counts_all$n_winning)),
+                       breaks = seq(0, round(max(data_counts_all$n_winning), -1), by = 10)) +
     geom_col(color = 'black') +
     labs(y = 'Number of best fits')
   p_all = Neurocodify_plot(p_all) +
@@ -119,8 +121,10 @@ Figure_mc_nwinning = function(){
                  size = size)) +
     scale_fill_manual(values = custom_guides) +
     scale_size_manual(values = c(0,1)) +
+    scale_y_continuous(limits = c(0,max(data_counts_all$n_winning)),
+                       breaks = seq(0, round(max(data_counts_all$n_winning), -1), by = 10)) +
     geom_col(color = 'black') +
-    facet_grid(.~group)
+    facet_grid(.~group, switch = 'x')
   p_age = Neurocodify_plot(p_age) +
     theme(panel.grid = element_blank(),
           axis.title.x = element_blank(),
@@ -131,13 +135,13 @@ Figure_mc_nwinning = function(){
           axis.ticks.x = element_line(color = 'transparent'),
           legend.position = 'none',
           plot.margin = margin(10,0,0,0,'pt'),
-          strip.text = element_text(size = 12, angle = 0))
+          strip.text.x.bottom = element_text(size = 12, face = 'bold', angle = 0))
   
-  p = cowplot::plot_grid(p_all, p_age,
-                         rel_heights = c(1.4,1),
-                         # axis = 'lr',
-                         # align = 'v',
-                         ncol = 1)
+  p = cowplot::plot_grid(p_all, NULL, p_age,
+                         rel_widths = c(1,0.1,0.8),
+                         axis = 'bt',
+                         align = 'h',
+                         ncol = 3)
   
   # Return plot
   return(p)
@@ -249,10 +253,46 @@ Figure_mc_rel_aic = function(){
           plot.margin = margin(0,0,0,0,'pt'),
           panel.grid = element_blank())
   
-  # Return plot
-  return(p)
+  # Simple version of plot (no dots)
+  p_simple = ggplot(data = data_model_comp_rw,
+               aes(x = variable,
+                   y = value,
+                   fill = variable,
+                   color = variable)) +
+    scale_fill_manual(values = custom_guides) +
+    scale_color_manual(values = custom_guides) +
+    geom_col(data = data_model_comp_rw_mean) +
+    geom_hline(yintercept = 0,
+               linewidth = 0.5) +
+    geom_errorbar(data = data_model_comp_rw_mean,
+                  aes(ymin = value - sem,
+                      ymax = value + sem),
+                  color = 'black',
+                  width = 0.3) +
+    labs(y = 'AICc relative\nto RW model') +
+    scale_y_continuous(limits = c(-6,0),
+                       breaks = seq(-6,0, by = 1))
+  p_simple = Neurocodify_plot(p_simple) +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_text(size = 12, 
+                                     margin = margin(2.5,0,0,0, 'pt'),
+                                     angle = 55,
+                                     hjust = 1),
+          axis.title.y = element_text(size = 15,
+                                      face = 'bold',
+                                      margin = margin(0,10,0,0,'pt')),
+          axis.text.y = element_text(size = 12),
+          legend.position = 'none',
+          plot.margin = margin(5,5,5,5,'pt'),
+          panel.grid = element_blank())
+  
+  # Return plots
+  res = list('p_full' = p,
+             'p_simple' = p_simple)
+  return(res)
   
 }
+
 
 
 Figure_mc_pxp = function(){
@@ -368,6 +408,7 @@ Figure_mc_pxp = function(){
                                       face = 'bold',
                                       margin = margin(0,0,0,0,'pt')),
           axis.text.x = element_text(size = 12,
+                                     margin = margin(2.5,0,0,0,'pt'),
                                      angle = 55,
                                      hjust = 1),
           legend.position = 'none',
@@ -386,81 +427,63 @@ Figure_model_comp = function(){
   p_nwin = Figure_mc_nwinning()
   p_aic = Figure_mc_rel_aic()
   p_pxp = Figure_mc_pxp()
-  # p_para = Figure_mc_params()
-  # p_uml = Figure_mc_uml_groups()
-  # p_lrf = Figure_mc_lrf()
-
-  # Adjust plots
-  # p_nwin = p_nwin +
-  #   theme(plot.margin = margin(0,20,0,30,'pt'))
-  # p_pxp = p_pxp +
-  #   theme(plot.margin = margin(0,10,0,30,'pt'))
-  # 
-  # 
-  # p1 = cowplot::plot_grid(p_nwin, p_pxp,
-  #                         rel_widths = c(1,0.6),
-  #                         ncol = 2,
-  #                         #axis = 'tlr',
-  #                         #align = 'v',
-  #                         labels = c('A', 'B'),
-  #                         label_size = 25,
-  #                         label_y = 1.03,
-  #                         label_x = -0.022)
-  # 
-  # 
-  # 
-  # 
-  # p_aic = p_aic +
-  #   theme(plot.margin = margin(30,0,0,30,'pt'))
-  # 
-  # p2 = cowplot::plot_grid(NULL, p_aic, NULL,
-  #                         rel_widths = c(0.2,1,0.2),
+  
+  p1 = p_aic$p_simple
+  p2 = p_pxp
+  p3 = p_nwin
+  
+  p_top = cowplot::plot_grid(p1,NULL,p2,
+                             nrow = 1,
+                             rel_widths = c(1,0.2,1.2),
+                             axis = 'bt',
+                             align = 'h',
+                             labels = c('A', '', 'B'),
+                             label_size = 25,
+                             label_y = 1.05,
+                             label_x = -0.07)
+  p_bottom = cowplot::plot_grid(NULL,p3,NULL,
+                                nrow = 1,
+                                rel_widths = c(0.1,1,0.1),
+                                labels = c('','C', ''),
+                                label_size = 25,
+                                label_y = 1.1,
+                                label_x = -0.03)
+  p_model_comp = cowplot::plot_grid(p_top, NULL, p_bottom,
+                                    ncol = 1,
+                                    rel_heights = c(1,0.1,1),
+                                    axis = 'lr',
+                                    align = 'v') +
+    theme(plot.margin = margin(5,5,5,5,'pt'))
+  
+  # p2 = cowplot::plot_grid(NULL, p2, NULL,
+  #                         rel_widths = c(0.3,1,0.3),
   #                         ncol = 3,
-  #                         axis = 'b',
-  #                         align = 'h',
-  #                         labels = c('', 'C', ''),
+  #                         labels = c('B','',''),
   #                         label_size = 25,
   #                         label_y = 1,
-  #                         label_x = -0.02)
-  # 
-  # p_model_comp = cowplot::plot_grid(p1,p2,
-  #                         rel_heights = c(1,0.7),
-  #                         nrow = 2,
-  #                         axis = 'l',
+  #                         label_x = -0.02,
+  #                         axis = 'b',
   #                         align = 'h')
-  
-  p1 = p_nwin + theme(plot.margin = margin(0,30,0,30,'pt'))
-  p2 = p_pxp + theme(plot.margin = margin(30,0,0,0,'pt'))
-  p3 = p_aic + theme(plot.margin = margin(10,0,0,30,'pt'))
-  p2 = cowplot::plot_grid(NULL, p2, NULL,
-                          rel_widths = c(0.3,1,0.3),
-                          ncol = 3,
-                          labels = c('B','',''),
-                          label_size = 25,
-                          label_y = 1,
-                          label_x = -0.02,
-                          axis = 'b',
-                          align = 'h')
-  
-  p_right = cowplot::plot_grid(p2, p3,
-                               ncol = 1,
-                               labels = c('', 'C'),
-                               rel_heights = c(1.4,1),
-                               label_size = 25,
-                               label_y = 1,
-                               label_x = -0.02)
-  
-  # p_left = p_left + theme(plot.margin = margin(30, 0, 0, 30, 'pt'))
-  # p_right = p_right + theme(plot.margin = margin(30, 0, 0, 30, 'pt'))
-  p_model_comp = cowplot::plot_grid(p1, p_right,
-                     ncol = 2,
-                     # axis = 't',
-                     # align = 'v',
-                     rel_widths = c(1, 1.5),
-                     labels = c('A', ''),
-                     label_size = 25,
-                     label_y = 1,
-                     label_x = -0.02)
+  # 
+  # p_right = cowplot::plot_grid(p2, p3,
+  #                              ncol = 1,
+  #                              labels = c('', 'C'),
+  #                              rel_heights = c(1.4,1),
+  #                              label_size = 25,
+  #                              label_y = 1,
+  #                              label_x = -0.02)
+  # 
+  # # p_left = p_left + theme(plot.margin = margin(30, 0, 0, 30, 'pt'))
+  # # p_right = p_right + theme(plot.margin = margin(30, 0, 0, 30, 'pt'))
+  # p_model_comp = cowplot::plot_grid(p1, p_right,
+  #                    ncol = 2,
+  #                    # axis = 't',
+  #                    # align = 'v',
+  #                    rel_widths = c(1, 1.5),
+  #                    labels = c('A', ''),
+  #                    label_size = 25,
+  #                    label_y = 1,
+  #                    label_x = -0.02)
 
   
   
