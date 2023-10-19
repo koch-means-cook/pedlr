@@ -75,6 +75,17 @@ Create_figures = function(){
          width = 6,
          height = 7)
   
+  # Supplement: Relative model comparison
+  message("Creating supplementary figure relative AICc...")
+  sp_mc = Figure_mc_rel_aic()$p_full
+  out_file = file.path(base_path, 'derivatives', 'figures', 'sf_mc.pdf',
+                       fsep = .Platform$file.sep)
+  ggsave(filename = out_file,
+         plot = sp_mc,
+         device = 'pdf',
+         width = 9,
+         height = 2)
+  
   # Model surprsie
   message("Creating surprise model figure...")
   p_ms = Figure_model_surprise()

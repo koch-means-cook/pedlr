@@ -235,9 +235,7 @@ Figure_mc_rel_aic = function(){
                   color = 'black',
                   width = 0.3) +
     labs(y = 'AICc relative to RW model') +
-    # limit = -50 removes three outliers, one each in Uncertainty, Unc+Surprise & Unc+Valence
-    scale_y_reverse(limits = c(13,-55),
-                    breaks = seq(10,-50,-10))
+    scale_y_reverse()
   p = Neurocodify_plot(p) +
     coord_flip() +
     theme(axis.title.y = element_blank(),

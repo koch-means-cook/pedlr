@@ -69,28 +69,28 @@ Figure_model_illustration = function(){
   # Standard choice probability
   data_prob_const = data.table::data.table('vl' = seq(-50,50, length.out = 1000),
                                            'vr' = 0) %>%
-    .[, vlmvr := vl - vr] %>%
+    .[, vrmvl := vr - vl] %>%
     .[, ':='(beta_0 = 0,
-             beta_1 = 0.1,
-             beta_2 = -0.1,
+             beta_1 = -0.1,
+             beta_2 = 0.1,
              beta_3 = 0,
              beta_4 = 0)] %>%
-    .[, prob := 1/(1 + exp(-(beta_0 + beta_1*vl + beta_2*vr)))]
+    .[, prob_right := 1/(1 + exp(-(beta_0 + beta_1*vl + beta_2*vr)))]
   # Choice probability variation with uncertainty
   data_prob_unc = data.table::data.table('beta_0' = 0,
-                                         'beta_1' = 0.1,
-                                         'beta_2' = -0.1,
-                                         'beta_3' = seq(0.2, -0.2, length.out = 10)) %>%
+                                         'beta_1' = -0.1,
+                                         'beta_2' = 0.1,
+                                         'beta_4' = seq(0.2, -0.2, length.out = 10)) %>%
     .[, .(beta_0 = unique(beta_0),
           beta_1 = unique(beta_1),
           beta_2 = unique(beta_2),
           vl = seq(-50,50, length.out = 1000),
           vr = 0),
-      by = 'beta_3'] %>%
-    .[, ':='(vlmvr = vl-vr,
-             U_l = 10)] %>%
-    .[, prob := 1/(1 + exp(-(beta_0 + beta_1*vl + beta_2*vr + beta_3*U_l)))] %>%
-    .[, beta_3 := factor(beta_3)]
+      by = 'beta_4'] %>%
+    .[, ':='(vrmvl = vr - vl,
+             U_r = 10)] %>%
+    .[, prob_right := 1/(1 + exp(-(beta_0 + beta_1*vl + beta_2*vr + beta_4*U_r)))] %>%
+    .[, beta_4 := factor(beta_4)]
   
   # Set shared variables
   # Text size of annotation layers (e.g. alpha on plot line)
@@ -101,7 +101,7 @@ Figure_model_illustration = function(){
   axis_size = 11
   # Aspet ratio of all plots
   aspect_ratio = 0.8
-  # Create color palatte to pick values in between red and orange for annotations (e.g. beta3 = 0.2)
+  # Create color palatte to pick values in between red and orange for annotations (e.g. beta4 = 0.2)
   col_pallette = colorRampPalette(c('red', 'orange'))
   # Headlines for subplots
   headline_label_rw = 'A'
@@ -155,20 +155,20 @@ Figure_model_illustration = function(){
   
   # Plot: Prob no variation
   p_prob_const = ggplot(data = data_prob_const,
-                        aes(x = vlmvr,
-                            y = prob)) +
+                        aes(x = vrmvl,
+                            y = prob_right)) +
     scale_x_continuous(breaks = seq(-40, 40, by = 20)) +
     scale_y_continuous(limits = c(0,1),
                        breaks = seq(0, 1)) +
-    labs(x = 'Value left \u2212 Value right',
-         y = 'Probability to choose left',
+    labs(x = 'Value right \u2212 Value left',
+         y = 'Probability to choose right',
          title = ' ') +
     geom_line() +
-    # display beta3
+    # display beta4
     annotate('label',
              x = 0,
              y = 0.5,
-             label = latex2exp::TeX(r'(\textit{$\beta_{3} = 0$})',
+             label = latex2exp::TeX(r'(\textit{$\beta_{4} = 0$})',
                                     output = 'character'),
              parse = TRUE,
              label.size = 0,
@@ -191,7 +191,7 @@ Figure_model_illustration = function(){
     annotate('label',
              x = 18,
              y = 0.16,
-             label = latex2exp::TeX(r'(\textit{$\beta_{1} = 0.1$})',
+             label = latex2exp::TeX(r'(\textit{$\beta_{1} = -0.1$})',
                                     output = 'character'),
              parse = TRUE,
              label.size = 0,
@@ -203,7 +203,7 @@ Figure_model_illustration = function(){
     annotate('label',
              x = 18,
              y = 0.03,
-             label = latex2exp::TeX(r'(\textit{$\beta_{2} = -0.1$})',
+             label = latex2exp::TeX(r'(\textit{$\beta_{2} = 0.1$})',
                                     output = 'character'),
              parse = TRUE,
              label.size = 0,
@@ -231,22 +231,22 @@ Figure_model_illustration = function(){
     
     # Plot: Varying prob
     p_prob_var = ggplot(data = data_prob_unc,
-                          aes(x = vlmvr,
-                              y = prob,
-                              color = as.numeric(beta_3),
-                              group = beta_3)) +
+                          aes(x = vrmvl,
+                              y = prob_right,
+                              color = as.numeric(beta_4),
+                              group = beta_4)) +
       scale_x_continuous(breaks = seq(-40, 40, by = 20)) +
       scale_y_continuous(limits = c(0,1),
                          breaks = seq(0, 1)) +
-      labs(x = 'Value left \u2212 Value right',
-           y = 'Probability to choose left',
-           title = latex2exp::TeX(r'(Variation in uncertainty effect \textit{$\beta_{3}$})')) +
+      labs(x = 'Value right \u2212 Value left',
+           y = 'Probability to choose right',
+           title = latex2exp::TeX(r'(Variation in uncertainty effect \textit{$\beta_{4}$})')) +
       geom_line() +
-      # Display high value of beta3
+      # Display high value of beta4
       annotate('label',
-               x = data_prob_unc[round(prob,2) == 0.50 & beta_3 == '0.2'][1]$vlmvr,
+               x = data_prob_unc[round(prob_right,2) == 0.50 & beta_4 == '0.2'][1]$vrmvl,
                y = 0.6,
-               label = latex2exp::TeX(r'(\textit{$\beta_{3} = .2$})',
+               label = latex2exp::TeX(r'(\textit{$\beta_{4} = .2$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
@@ -255,11 +255,11 @@ Figure_model_illustration = function(){
                fill = 'white',
                color = 'orange',
                hjust = 1) +
-      # Display low value of beta3
+      # Display low value of beta4
       annotate('label',
-               x = data_prob_unc[round(prob,2) == 0.50 & beta_3 == '-0.2'][1]$vlmvr,
+               x = data_prob_unc[round(prob_right,2) == 0.50 & beta_4 == '-0.2'][1]$vrmvl,
                y = 0.5,
-               label = latex2exp::TeX(r'(\textit{$\beta_{3} = -.2$})',
+               label = latex2exp::TeX(r'(\textit{$\beta_{4} = -.2$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
@@ -284,7 +284,7 @@ Figure_model_illustration = function(){
       annotate('label',
                x = 18,
                y = 0.16,
-               label = latex2exp::TeX(r'(\textit{$\beta_{1} = 0.1$})',
+               label = latex2exp::TeX(r'(\textit{$\beta_{1} = -0.1$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
@@ -296,7 +296,7 @@ Figure_model_illustration = function(){
       annotate('label',
                x = 18,
                y = 0.03,
-               label = latex2exp::TeX(r'(\textit{$\beta_{2} = -0.1$})',
+               label = latex2exp::TeX(r'(\textit{$\beta_{2} = 0.1$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
@@ -307,7 +307,7 @@ Figure_model_illustration = function(){
       # Textbox "uncertainty"
       annotate('label',
                x = -50,
-               y = 0.9,
+               y = 0.95,
                label = latex2exp::TeX(r'(Uncertainty:)',
                                       output = 'character'),
                parse = TRUE,
@@ -320,8 +320,8 @@ Figure_model_illustration = function(){
       # Textbox U = 10
       annotate('label',
                x = -50,
-               y = 0.79,
-               label = latex2exp::TeX(r'(\textit{$\U = 10$})',
+               y = 0.84,
+               label = latex2exp::TeX(r'(\textit{$\U_{k} = 10$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,
