@@ -575,14 +575,15 @@ for(i_id in unique(data_ii$participant_id)){
    }
   }
 }
-
-# Summarize data
-window_data_run = window_data %>%
-  # Eliminate windows which extended across trial boundaries (<1 or >240)
+# Eliminate windows which extended across trial boundaries (<1 or >240)
+window_data = window_data %>%
   .[, relative_trial := as.numeric(as.character(window_center)) + as.numeric(as.character(window_relative))] %>%
   .[!(relative_trial < 1 | relative_trial > 240),] %>%
   # Sort by relative window
-  .[order(rank(group), rank(participant_id), rank(run), rank(window_relative)),] %>%
+  .[order(rank(group), rank(participant_id), rank(run), rank(window_relative)),]
+
+# Summarize data
+window_data_run = window_data %>%
   # Get mean accuracy across all relative window positions (-2 to +3)
   .[, .(mean_accuracy = mean(correct_choice, na.rm = TRUE),
         n_data = sum(!is.na(correct_choice))),
@@ -600,6 +601,19 @@ window_data_group = window_data_participant %>%
     by = c('group', 'window_relative')] %>%
   .[order(rank(group), rank(window_relative)),]
 ```
+
+## Save windorized data to derivatives
+
+```{r}
+save_dir = file.path(base_path, 'derivatives', 'analysis',
+                     fsep = .Platform$file.sep)
+if(!dir.exists(save_dir)){
+  dir.create(save_dir)
+}
+file = file.path(save_dir, 'windowrize.tsv', fsep = .Platform$file.sep)
+data.table::fwrite(window_data, file = file, sep = '\t', na = 'n/a')
+```
+
 
 ## Check: Average N of rare outcomes per group
 
