@@ -336,7 +336,7 @@ res
 **Bisquare weights**
 
 ```{r}
-# Look at weights created by RR (low weights = "outlier-y behavior")
+# Look at weights created by RR (low weights = "outlier behavior")
 bweights = data_rr_mean_correct %>%
   .[, ':='(resid = rr.bisquare$resid,
            weight = rr.bisquare$w)] %>%

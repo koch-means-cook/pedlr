@@ -168,3 +168,69 @@ Neurocodify_plot(p) +
         legend.position = 'none')
 ```
 
+## Restricted to reasonable parameters
+
+```{r}
+data_recovery_gap = data %>%
+  # For each model that generated data, get AICc for all fitted models
+  .[, .(AICc = unique(AICc)),
+    by = c('participant_id',
+           'generating_model',
+           'iter',
+           'model',
+           'generating_x1',
+           'generating_x2',
+           'generating_x3',
+           'generating_x4')] %>%
+  # Restrict data to seplr and surprise
+  .[generating_model %in% c('surprise', 'seplr')] %>%
+  # Add column if parameter combinations are different (SEPLR & Surprise)
+  .[, different := FALSE] %>%
+  # Get abs difference between parameters
+  .[, diff := abs(generating_x1 - generating_x2)] %>%
+  # Select only entries in which difference is large enough to not be too close to RW
+  .[diff >= 0.4, different := TRUE] %>%
+  .[different == TRUE,] %>%
+  # Get winning model of recovery (lowest AICc)
+  .[, recovered_model := model[which(AICc == min(AICc))],
+    by = c('participant_id',
+           'generating_model',
+           'iter')] %>%
+  # Get match between generating/recovered model
+  .[, correct_recovery := generating_model == recovered_model]
+
+# Plot recovery as histogram
+data_plot = data_recovery_gap %>%
+  # Reduce to row for each attempted recovery
+  .[, .(recovered_model = unique(recovered_model)),
+    by = c('participant_id', 'generating_model', 'iter')] %>%
+  # Get matching model for each generative model to mark it in plot
+  .[, correct_model := as.character(recovered_model) == as.character(generating_model)]
+p = ggplot(data = data_plot,
+           aes(x = recovered_model,
+               color = correct_model)) +
+  scale_color_manual(values = c('transparent', 'black')) +
+  geom_bar(fill = 'lightgrey') +
+  labs(x = 'Recovered Model',
+       title = 'Model recovery: Recovered models for each generating model (min LR difference of 0.4)') + 
+  facet_grid(generating_model ~ .,
+             switch = 'y')
+Neurocodify_plot(p) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 25,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.y = element_blank(),
+        plot.title = element_text(face = 'bold',
+                                  hjust = 0.5),
+        strip.placement = 'outside',
+        strip.text.y.left = element_text(size = 10,
+                                  face = 'bold',
+                                  angle = 0,
+                                  hjust = 1),
+        legend.position = 'none',
+        aspect.ratio = 1/6)
+
+```
+

@@ -25,6 +25,8 @@ editor: source
 library(here)
 library(data.table)
 library(magrittr)
+library(car)
+library(MASS)
 
 # Get repo path
 base_path = file.path(here::here(),
@@ -39,7 +41,7 @@ source(file.path(source_path, 'utils', 'Neurocodify_plot.R', fsep = .Platform$fi
 source(file.path(source_path, 'utils', 'Prepare_data_for_plot.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'utils', 'Get_plot_guides.R', fsep = .Platform$file.sep))
 
-plot_guides = Get_plot_guides()
+custom_guides = Get_plot_guides()
 
 
 # # Load data
@@ -169,6 +171,133 @@ data_pred = data %>%
 data_ppc = rbind(data_real, data_pred) %>%
   .[, datatype := factor(datatype)] %>%
   data.table::setorder(participant_id, model, trial, datatype)
+```
+
+---
+
+# Choice correctness
+
+```{r}
+# Add group information to ppc
+group_info = data_fitting %>%
+  .[, .(group = unique(group)),
+    by = 'participant_id']
+
+# Percentage of optimal choices
+check_noc = data[model %in% c('surprise', 'seplr')] %>%
+  # Add group information to ppc data
+  data.table::merge.data.table(., group_info, by = 'participant_id') %>%
+  # Add bandit comparison to ppc data
+  Add_comp(.) %>%
+  # Add trial variable
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run', 'model')] %>%
+  # Select only free choices (no guided choices)
+  .[trial_type == 'choice',] %>%
+  # Set correct choice by selecting (on average) higher outcome bandit
+  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'run', 'model', 'trial')] %>%
+  .[, correct := correct_choice == choice] %>%
+  # Get percentage of correct choices (exclude timeouts from overall trials)
+  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
+    by = c('participant_id', 'group', 'model', 'run', 'comp')] %>%
+  # Set data types
+  .[, c('participant_id', 'group', 'run', 'comp', 'model') := lapply(.SD, factor),
+    .SDcols = c('participant_id', 'group', 'run', 'comp', 'model')]
+```
+
+## Surprise model
+
+### Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_noc[model == 'surprise'])
+p_noc_diff_comp_line = ggplot(data = data_plot,
+                              aes(x = comp,
+                                  y = perc_correct,
+                                  color = group,
+                                  fill = group)) +
+  geom_point(size = 0.2,
+             position = position_jitterdodge(dodge.width = 0.3,
+                                             jitter.width = 0.2,
+                                             jitter.height = 0)) +
+  geom_boxplot(width = 0.15,
+               color = 'black',
+               outlier.shape = NA,
+               position = position_dodge(width = 0.3),
+               show.legend = FALSE) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.3)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  facet_grid( ~ run) +
+  theme(strip.text.y = element_text(angle = 0),
+        legend.position = 'none')
+Neurocodify_plot(p_noc_diff_comp_line)
+```
+
+### Stats
+
+```{r}
+# Model percent of correct choices by group, run, and bandit comparison
+lme_noc = lme4::lmer(data = check_noc[model == 'surprise'],
+                     perc_correct ~ group * run * comp + (1 | participant_id))
+
+# Display results
+papeR::prettify(car::Anova(lme_noc))
+```
+
+## Valence model
+
+### Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(check_noc[model == 'seplr'])
+p_noc_diff_comp_line = ggplot(data = data_plot,
+                              aes(x = comp,
+                                  y = perc_correct,
+                                  color = group,
+                                  fill = group)) +
+  geom_point(size = 0.2,
+             position = position_jitterdodge(dodge.width = 0.3,
+                                             jitter.width = 0.2,
+                                             jitter.height = 0)) +
+  geom_boxplot(width = 0.15,
+               color = 'black',
+               outlier.shape = NA,
+               position = position_dodge(width = 0.3),
+               show.legend = FALSE) +
+  stat_summary(fun = 'mean',
+               geom = 'point',
+               na.rm = TRUE,
+               shape = 23,
+               fill = 'white',
+               size = 1.5,
+               stroke = 0.5,
+               position = position_dodge(width = 0.3)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  facet_grid( ~ run) +
+  theme(strip.text.y = element_text(angle = 0),
+        legend.position = 'none')
+Neurocodify_plot(p_noc_diff_comp_line)
+```
+
+### Stats
+
+```{r}
+# Model percent of correct choices by group, run, and bandit comparison
+lme_noc = lme4::lmer(data = check_noc[model == 'seplr'],
+                     perc_correct ~ group * run * comp + (1 | participant_id))
+
+# Display results
+papeR::prettify(car::Anova(lme_noc))
 ```
 
 ---
@@ -380,6 +509,26 @@ p = Neurocodify_plot(p) +
 p
 ```
 
+## Stats: Different age trajectories for PXP-relevant models
+
+```{r}
+data_lme = data_cbe[model %in% c('surprise', 'seplr')] %>%
+  .[, c('participant_id', 'group', 'model') := lapply(.SD, factor),
+    .SDcols = c('participant_id', 'group', 'model')]
+lme = lme4::lmer(data = data_lme,
+                 cbe ~ group * model + (1|participant_id))
+res = car::Anova(lme)
+papeR::prettify(res)
+```
+
+### Interaction: Group X Model
+
+```{r}
+em = emmeans::emmeans(lme,
+                      pairwise ~ group | model)
+em
+```
+
 ### Statistical comparison: Predictions from which candidate model are closer to real behavioral data?
 
 ```{r}
@@ -454,6 +603,13 @@ p = ggplot(data = Prepare_data_for_plot(data_cbe_comp_all),
 p = Neurocodify_plot(p) +
   theme(panel.grid = element_blank())
 p
+```
+
+```{r}
+ggplot(data = data_cbe_comp_all[group == 'older'], 
+       aes(x = variable,
+           y = value)) +
+  geom_point()
 ```
 
 
