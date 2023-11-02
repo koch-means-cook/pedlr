@@ -164,9 +164,7 @@ p = Neurocodify_plot(p)
 p
 ```
 
-`pi` does not seem to recover at all. Implementation problem?
-
-## SEPLR
+## Valence model
 
 ```{r}
 # Isolate target model
@@ -201,7 +199,6 @@ p = ggplot2::ggplot(data = data_seplr_recov,
 p = Neurocodify_plot(p)
 p
 ```
-
 
 ## Surprise
 
@@ -246,14 +243,46 @@ p = Neurocodify_plot(p)
 p
 ```
 
-Recovery of `s` works okay-ish when bound between 0-10.
-`l` seems to recover slightly better than `u`.
+### s bound between 1-7
+
+```{r}
+# Restrict data to subset where 1 < s < 7
+data_surprise_recov_s = data_surprise_recov %>%
+  .[, input_s := input_params[params == 's'],
+   by = c('participant_id', 'model', 'iter')] %>%
+  .[, inbounds := data.table::between(input_s, 1, 7)]
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_surprise_recov_s,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+    ggplot2::geom_vline(data = cutoffs,
+                      aes(xintercept = as.numeric(x)),
+                      linetype = 'dashed') +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::geom_smooth(data = data_surprise_recov_s[inbounds == TRUE],
+                       method = 'lm',
+                       formula = y ~ x,
+                       color = 'red') +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+p = Neurocodify_plot(p)
+p
+```
 
 
 ```{r}
 #| message: false
 
-data_corrplot = data_surprise_recov %>%
+data_corrplot = data_surprise_recov_s %>%
+  # Restrict simulation to 1 < s < 7
+  .[inbounds == TRUE, ] %>%
   .[, sim_id := paste0(participant_id, '_', iter)] %>%
   data.table::setnames(., old = c('coefs', 'input_params'),
                        new = c('est', 'in'),
@@ -269,8 +298,6 @@ p_in = GGally::ggpairs(data = data_corrplot,
 p_in
 ```
 
-- As intended: No correlation between parameters used for simulation
-
 ```{r}
 #| message: false
 
@@ -283,9 +310,6 @@ p_est = GGally::ggpairs(data = data_corrplot,
 p_est
 ```
 
-- Slight correlation between recovered parameters of `l` and `s`
-- Bias in `l` to estimate values that are either **very high** (more often) or very low (less often)
-- Bias away from estimating `l = u`
 
 ```{r}
 #| message: false
@@ -295,7 +319,8 @@ p = GGally::ggpairs(data = data_corrplot,
                                                            alpha = 0.3,
                                                            size=0.1)),
                     columns = colnames(data_corrplot)[colnames(data_corrplot) != 'sim_id'],
-                    title = 'All parameters')
+                    title = 'All parameters') +
+  theme(aspect.ratio = 1)
 p
 ```
 
@@ -338,8 +363,6 @@ p = Neurocodify_plot(p)
 p
 ```
 
-- No recovery in `s` or `pi`
-- Otherwise similar pattern to `surprise` model
 
 ## Uncertainty+SEPLR
 
