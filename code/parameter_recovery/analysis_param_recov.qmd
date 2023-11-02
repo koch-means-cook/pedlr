@@ -200,6 +200,56 @@ p = Neurocodify_plot(p)
 p
 ```
 
+```{r}
+data_corrplot = data_seplr_recov %>%
+  .[, sim_id := paste0(participant_id, '_', iter)] %>%
+  data.table::setnames(., old = c('coefs', 'input_params'),
+                       new = c('est', 'in'),
+                       skip_absent=TRUE) %>%
+  data.table::dcast(sim_id ~ params, value.var = c('est', 'in'))
+
+p_in = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[!colnames(data_corrplot) %in% c('sim_id', 'in_alpha_neg', 'in_alpha_pos')],
+                    title = 'Input parameters')
+p_in
+```
+
+```{r}
+p_est = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[!colnames(data_corrplot) %in% c('sim_id', 'est_alpha_neg', 'est_alpha_pos')],
+                    title = 'Input parameters')
+p_est
+```
+
+```{r}
+#| message: false
+  
+p = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[colnames(data_corrplot) != 'sim_id'],
+                    title = 'All parameters') +
+  theme_bw() +
+  theme(strip.background = element_rect(fill = NA,
+                                        color = NA),
+        strip.text.x = element_text(size = 15,
+                                  face = 'bold'),
+        strip.text.y = element_text(size = 15,
+                                  face = 'bold',
+                                  angle = 0,
+                                  hjust = 0),
+        panel.grid = element_blank())
+p
+```
+
+
 ## Surprise
 
 ```{r}
@@ -320,7 +370,16 @@ p = GGally::ggpairs(data = data_corrplot,
                                                            size=0.1)),
                     columns = colnames(data_corrplot)[colnames(data_corrplot) != 'sim_id'],
                     title = 'All parameters') +
-  theme(aspect.ratio = 1)
+  theme_bw() +
+  theme(strip.background = element_rect(fill = NA,
+                                        color = NA),
+        strip.text.x = element_text(size = 15,
+                                  face = 'bold'),
+        strip.text.y = element_text(size = 15,
+                                  face = 'bold',
+                                  angle = 0,
+                                  hjust = 0),
+        panel.grid = element_blank())
 p
 ```
 
