@@ -12,8 +12,10 @@ Get_plot_guides = function(){
           'Uncertainty' = '#D2C08E',
           'Valence' = '#2586A0',
           'Uncertainty +\nValence' = '#A7544B',
+          'Unc+Valence' = '#A7544B',
           'Surprise' = '#B7C7B8',
-          'Uncertainty +\nSurprise' = '#2F4858')
+          'Uncertainty +\nSurprise' = '#2F4858',
+          'Unc+Surprise' = '#2F4858')
   
   return(res)
   

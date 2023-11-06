@@ -262,14 +262,9 @@ Figure_mc_rel_aic = function(){
     geom_col(data = data_model_comp_rw_mean) +
     geom_hline(yintercept = 0,
                linewidth = 0.5) +
-    geom_errorbar(data = data_model_comp_rw_mean,
-                  aes(ymin = value - sem,
-                      ymax = value + sem),
-                  color = 'black',
-                  width = 0.3) +
     labs(y = 'AICc relative\nto RW model') +
-    scale_y_continuous(limits = c(-6,0),
-                       breaks = seq(-6,0, by = 1))
+    scale_y_continuous(limits = c(-5,0),
+                       breaks = seq(-5,0, by = 1))
   p_simple = Neurocodify_plot(p_simple) +
     theme(axis.title.x = element_blank(),
           axis.text.x = element_text(size = 12, 

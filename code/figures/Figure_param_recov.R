@@ -18,6 +18,7 @@ library(grid)
 library(gridExtra)
 library(ggcorrplot)
 library(corrr)
+library(stringr)
 
 
 Figure_param_recov = function(){
@@ -85,14 +86,14 @@ Figure_param_recov = function(){
   
   # Function to render simple recov plots per parameter
   Plot_recov = function(data,
-                        model,
+                        model_name,
                         param,
                         limits,
                         title_expr,
                         add_s_bounds = FALSE){
     
     # Constrain data
-    data_plot = data[model == model & params == param]
+    data_plot = data[model == model_name & params == param]
     
     # Plot
     p = ggplot(data = data_plot,
@@ -144,90 +145,90 @@ Figure_param_recov = function(){
   
   # RW
   p_rw_a = Plot_recov(data = data_recov,
-                      model = 'rw',
+                      model_name = 'rw',
                       param = 'alpha',
                       limits = c(0,1),
                       title_expr = latex2exp::TeX(r'($\alpha$)'))
   
   # Unc
   p_unc_a = Plot_recov(data = data_recov,
-                       model = 'uncertainty',
+                       model_name = 'uncertainty',
                        param = 'alpha',
                        limits = c(0,1),
                        title_expr = latex2exp::TeX(r'($\alpha$)'))
   p_unc_pi = Plot_recov(data = data_recov,
-                        model = 'uncertainty',
+                        model_name = 'uncertainty',
                         param = 'pi',
                         limits = c(0,1),
                         title_expr = latex2exp::TeX(r'($\pi$)'))
   
   # Valence
   p_val_ap = Plot_recov(data = data_recov,
-                        model = 'seplr',
+                        model_name = 'seplr',
                         param = 'alpha_pos',
                         limits = c(0,1),
                         title_expr = latex2exp::TeX(r'($\alpha_{\textit{pos}}$)'))
   p_val_an = Plot_recov(data = data_recov,
-                        model = 'seplr',
+                        model_name = 'seplr',
                         param = 'alpha_neg',
                         limits = c(0,1),
                         title_expr = latex2exp::TeX(r'($\alpha_{\textit{neg}}$)'))
   
   # Surprise
   p_surprise_l = Plot_recov(data = data_recov,
-                                model = 'surprise',
-                                param = 'l',
-                                limits = c(0,1),
-                                add_s_bounds = TRUE,
+                            model_name = 'surprise',
+                            param = 'l',
+                            limits = c(0,1),
+                            add_s_bounds = TRUE,
                             title_expr = latex2exp::TeX(r'($\textit{l}$)'))
   p_surprise_u = Plot_recov(data = data_recov,
-                                model = 'surprise',
-                                param = 'u',
-                                limits = c(0,1),
-                                add_s_bounds = TRUE,
+                            model_name = 'surprise',
+                            param = 'u',
+                            limits = c(0,1),
+                            add_s_bounds = TRUE,
                             title_expr = latex2exp::TeX(r'($\textit{u}$)'))
   p_surprise_s = Plot_recov(data = data_recov,
-                                model = 'surprise',
-                                param = 's',
-                                limits = c(0,10),
-                                add_s_bounds = TRUE,
+                            model_name = 'surprise',
+                            param = 's',
+                            limits = c(0,10),
+                            add_s_bounds = TRUE,
                             title_expr = latex2exp::TeX(r'($\textit{s}$)')) +
     geom_vline(data = cutoffs,
-                        aes(xintercept = as.numeric(x)),
-                        linetype = 'dashed')
+               aes(xintercept = as.numeric(x)),
+               linetype = 'dashed')
   
   # Valence+Unc
   p_val_unc_ap = Plot_recov(data = data_recov,
-                        model = 'uncertainty_seplr',
-                        param = 'alpha_pos',
-                        limits = c(0,1),
-                        title_expr = latex2exp::TeX(r'($\alpha_{\textit{pos}}$)'))
+                            model_name = 'uncertainty_seplr',
+                            param = 'alpha_pos',
+                            limits = c(0,1),
+                            title_expr = latex2exp::TeX(r'($\alpha_{\textit{pos}}$)'))
   p_val_unc_an = Plot_recov(data = data_recov,
-                        model = 'uncertainty_seplr',
-                        param = 'alpha_neg',
-                        limits = c(0,1),
-                        title_expr = latex2exp::TeX(r'($\alpha_{\textit{neg}}$)'))
+                            model_name = 'uncertainty_seplr',
+                            param = 'alpha_neg',
+                            limits = c(0,1),
+                            title_expr = latex2exp::TeX(r'($\alpha_{\textit{neg}}$)'))
   p_val_unc_pi = Plot_recov(data = data_recov,
-                            model = 'uncertainty_seplr',
+                            model_name = 'uncertainty_seplr',
                             param = 'pi',
                             limits = c(0,1),
                             title_expr = latex2exp::TeX(r'($\pi$)'))
   
   # Surprise+Unc
   p_surprise_unc_l = Plot_recov(data = data_recov,
-                                model = 'uncertainty_surprise',
+                                model_name = 'uncertainty_surprise',
                                 param = 'l',
                                 limits = c(0,1),
                                 add_s_bounds = TRUE,
                                 title_expr = latex2exp::TeX(r'($\textit{l}$)'))
   p_surprise_unc_u = Plot_recov(data = data_recov,
-                                model = 'uncertainty_surprise',
+                                model_name = 'uncertainty_surprise',
                                 param = 'u',
                                 limits = c(0,1),
                                 add_s_bounds = TRUE,
                                 title_expr = latex2exp::TeX(r'($\textit{u}$)'))
   p_surprise_unc_s = Plot_recov(data = data_recov,
-                                model = 'uncertainty_surprise',
+                                model_name = 'uncertainty_surprise',
                                 param = 's',
                                 limits = c(0,10),
                                 add_s_bounds = TRUE,
@@ -236,31 +237,31 @@ Figure_param_recov = function(){
                aes(xintercept = as.numeric(x)),
                linetype = 'dashed')
   p_surprise_unc_pi = Plot_recov(data = data_recov,
-                                model = 'uncertainty_surprise',
-                                param = 'pi',
-                                limits = c(0,1),
-                                add_s_bounds = TRUE,
-                                title_expr = latex2exp::TeX(r'($pi$)'))
+                                 model_name = 'uncertainty_surprise',
+                                 param = 'pi',
+                                 limits = c(0,1),
+                                 add_s_bounds = TRUE,
+                                 title_expr = latex2exp::TeX(r'($pi$)'))
   
   # Combine first colummn
-  p_1 = cowplot::plot_grid(p_rw_a, p_unc_a, p_val_ap, p_surprise_l, p_val_unc_ap, p_surprise_unc_l,
+  p_1 = cowplot::plot_grid(p_rw_a, p_unc_a, p_val_an, p_surprise_l, p_val_unc_an, p_surprise_unc_l,
                          ncol = 1,
                          rel_heights = c(1,1,1,1,1,1),
                          align = 'v',
                          axis = 'tb')
   # Second column
-  p_2 = cowplot::plot_grid(NULL, p_unc_pi, p_val_an, p_surprise_u, p_val_unc_an, p_surprise_unc_u,
+  p_2 = cowplot::plot_grid(NULL, p_unc_pi, p_val_ap, p_surprise_s, p_val_unc_ap, p_surprise_unc_pi,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'v',
                            axis = 'tb')
-  p_3 = cowplot::plot_grid(NULL, NULL, NULL, p_surprise_s, p_val_unc_pi, p_surprise_unc_s,
+  p_3 = cowplot::plot_grid(NULL, NULL, NULL, p_surprise_u, p_val_unc_pi, p_surprise_unc_s,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'v',
                            axis = 'tb') +
     theme(plot.margin = margin(0,5,0,0,'pt'))
-  p_4 = cowplot::plot_grid(NULL, NULL, NULL, NULL, NULL, p_surprise_unc_pi,
+  p_4 = cowplot::plot_grid(NULL, NULL, NULL, NULL, NULL, p_surprise_unc_u,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'v',
@@ -271,20 +272,6 @@ Figure_param_recov = function(){
                          align = 'v',
                          axis = 'tb')
   
-  title_y = textGrob("Estimate (Recovery)", 
-                     gp = gpar(fontface = "bold",
-                               fontsize = 15),
-                     rot = 90)
-  
-  title_x = textGrob("Input (Simulation)", 
-                     gp = gpar(fontface = "bold",
-                               fontsize = 15))
-  p = grid.arrange(arrangeGrob(p,
-                               left = title_y,
-                               bottom = title_x))
-  
-  p
-  
   # Prepare data for correlation plot
   data_corrplot = data_recov %>%
     .[, sim_id := paste0(participant_id, '_', iter)] %>%
@@ -293,6 +280,7 @@ Figure_param_recov = function(){
                          skip_absent=TRUE) %>%
     data.table::dcast(sim_id + model ~ params, value.var = c('est', 'in'))
   
+  # Function to plot corr matrix
   Plot_corr = function(data,
                        model_name){
     
@@ -307,88 +295,344 @@ Figure_param_recov = function(){
     # Select estimation column names to only use selected columns during plotting
     est_cols = colnames(data_corr)[grep('est_', colnames(data_corr))]
     
+    # Create correlation matrix to plot
     corr_mat  = correlate(data_corr,
                              method = "spearman",
                              diagonal = 1) %>%
+      # Eliminate in vs. in & est vs. est
       corrr::focus(all_of(est_cols)) %>%
       as.data.table(.) %>%
       data.table::setnames(., old = 'term', new = 'x') %>%
       data.table::melt(id.vars = 'x',
-                       variable.name = 'y')
+                       variable.name = 'y') %>%
+      # Add model variable for faceting
+      .[, model := model_name] %>%
+      # Logical to change text color of low values
+      .[, is_low := value < 0.3] %>%
+      # Add label for correlation
+      .[, label := format(round(value, 2), nsmall = 2)] %>%
+      .[, neg := value < 0] %>%
+      .[neg == TRUE, label_short := sub("^(-?)0(\\.)", "\\1\\2", label)] %>%
+      .[neg != TRUE, label_short := substr(format(round(value, 2), nsmall = 2), 2,4)]
     
+    # Plot in vs. est correlation matrix
     p = ggplot(data = corr_mat,
-               aes(x = x, y = y, fill = value, label = round(value, 2))) +
-      geom_tile() +
-      geom_text(color = 'black') +
+               aes(x = x,
+                   y = y,
+                   fill = value,
+                   color = is_low,
+                   label = label_short)) +
+      geom_tile(color = 'black') +
+      geom_text(size = 2.5) +
+      facet_wrap(~model,
+                 nrow = 1) +
+      # faux title to align plots similarly
+      labs(title = '',
+           color = 'black') +
       theme(panel.background = element_rect(fill = NA,
                                             color = NA),
             panel.grid = element_blank(),
             legend.position = 'none',
             axis.title = element_blank(),
             axis.ticks = element_blank(),
+            strip.text = element_blank(),
+            strip.background = element_blank(),
+            plot.title = element_text(hjust = 0.5,
+                                      vjust = 0),
             #axis.text = element_text(size = 12),
             plot.margin = margin(0,0,0,0,'pt')) +
-      scale_fill_viridis(option = 'D')
-    return(p)
+      scale_fill_gradient(low = 'black', high = 'white', limits = c(-1,1)) +
+      scale_color_manual(values = c('black', 'white'))
+    
+    # Use estimation columns only 
+    est_cols = c('sim_id', 'model', est_cols)
+    # Create correlation matrix only est vs. est
+    corr_mat_est  = correlate(data_corr[,..est_cols],
+                          method = "spearman",
+                          diagonal = 1) %>%
+      as.data.table(.) %>%
+      data.table::setnames(., old = 'term', new = 'x') %>%
+      data.table::melt(id.vars = 'x',
+                       variable.name = 'y') %>%
+      # Add model variable for faceting
+      .[, model := model_name] %>%
+      # Logical to change text color of low values
+      .[, is_low := value < 0.3] %>%
+      # Add label for correlation
+      .[, label := format(round(value, 2), nsmall = 2)] %>%
+      .[, neg := value < 0] %>%
+      .[neg == TRUE, label_short := sub("^(-?)0(\\.)", "\\1\\2", label)] %>%
+      .[neg != TRUE, label_short := substr(format(round(value, 2), nsmall = 2), 2,4)] %>%
+      .[value == 1, label_short := '1']
+    
+    # Plot only est vs. est in corr matrix
+    p_est = ggplot(data = corr_mat_est,
+               aes(x = x,
+                   y = y,
+                   fill = value,
+                   color = is_low,
+                   label = label_short)) +
+      geom_tile(color = 'black') +
+      geom_text(size = 2.5) +
+      facet_wrap(~model,
+                 nrow = 1) +
+      # faux title to align plots similarly
+      labs(title = '',
+           color = 'black') +
+      theme(panel.background = element_rect(fill = NA,
+                                            color = NA),
+            panel.grid = element_blank(),
+            legend.position = 'none',
+            axis.title = element_blank(),
+            axis.ticks = element_blank(),
+            strip.text = element_blank(),
+            strip.background = element_blank(),
+            plot.title = element_text(hjust = 0.5,
+                                      vjust = 0),
+            #axis.text = element_text(size = 12),
+            plot.margin = margin(0,0,0,0,'pt')) +
+      scale_fill_gradient(low = 'black', high = 'white', limits = c(-1,1)) +
+      scale_color_manual(values = c('black', 'white'))
+    
+    # Return both types of plots
+    res = list('all' = p,
+               'est' = p_est)
+    return(res)
   }
   
+  # RW (in vs. est)
   p_c_rw = Plot_corr(data = data_recov,
-                      model = 'rw') +
-    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'))) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')))
-  
+                     model_name = 'rw')$all +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')),
+                     expand = c(0,0))
+
+  # Uncertainty (in vs. est)
   p_c_unc = Plot_corr(data = data_recov,
-                     model = 'uncertainty') +
+                      model_name = 'uncertainty')$all +
     scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
-                                latex2exp::TeX(r'($\textit{$\pi$}$)'))) +
+                                latex2exp::TeX(r'($\textit{$\pi$}$)')),
+                     expand = c(0,0)) +
     scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
-                                latex2exp::TeX(r'($\textit{$\pi$}$)')))
+                                latex2exp::TeX(r'($\textit{$\pi$}$)')),
+                     expand = c(0,0))
   
+  # Valence (in vs. est)
   p_c_val = Plot_corr(data = data_recov,
-                      model = 'seplr') +
-    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
-                                latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'))) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
-                                latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)')))
+                      model_name = 'seplr')$all  +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)')),
+                     expand = c(0,0))
   
+  # Surprise (in vs. est)
   p_c_sup = Plot_corr(data = data_recov[inbounds == TRUE],
-                      model = 'surprise') +
+                      model_name = 'surprise')$all +
     scale_x_discrete(labels = c(latex2exp::TeX(r'($l$)'),
                                 latex2exp::TeX(r'($s$)'),
-                                latex2exp::TeX(r'($u$)'))) +
+                                latex2exp::TeX(r'($u$)')),
+                     expand = c(0,0)) +
     scale_y_discrete(labels = c(latex2exp::TeX(r'($l$)'),
                                 latex2exp::TeX(r'($s$)'),
-                                latex2exp::TeX(r'($u$)')))
+                                latex2exp::TeX(r'($u$)')),
+                     expand = c(0,0))
   
+  # Valence+Unc (in vs. est)
   p_c_val_unc = Plot_corr(data = data_recov,
-                      model = 'uncertainty_seplr') +
-    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
-                                latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
-                                latex2exp::TeX(r'($\pi$)'))) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
-                                latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
-                                latex2exp::TeX(r'($\pi$)')))
+                          model_name = 'uncertainty_seplr')$all +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
+                                latex2exp::TeX(r'($\pi$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
+                                latex2exp::TeX(r'($\pi$)')),
+                     expand = c(0,0))
   
+  # Surprise+Unc (in vs. est)
   p_c_sup_unc = Plot_corr(data = data_recov[inbounds == TRUE],
-                      model = 'uncertainty_surprise') +
+                          model_name = 'uncertainty_surprise')$all +
     scale_x_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+                                latex2exp::TeX(r'($\pi$)'),
                                 latex2exp::TeX(r'($s$)'),
-                                latex2exp::TeX(r'($u$)'),
-                                latex2exp::TeX(r'($\pi$)'))) +
+                                latex2exp::TeX(r'($u$)')),
+                     expand = c(0,0)) +
     scale_y_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+                                latex2exp::TeX(r'($\pi$)'),
                                 latex2exp::TeX(r'($s$)'),
-                                latex2exp::TeX(r'($u$)')))
+                                latex2exp::TeX(r'($u$)')),
+                     expand = c(0,0))
   
+  # Combine to one column of plot
   p_c = cowplot::plot_grid(p_c_rw, p_c_unc, p_c_val, p_c_sup, p_c_val_unc, p_c_sup_unc,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'vh',
                            axis = 'tbrl')
   
-  cowplot::plot_grid(p_c, p,
-                     ncol = 2,
-                     axis = 'bt',
-                     align = 'h')
+    
+  # Combine est vs. in corr matrix with correlation plots
+  p_full = cowplot::plot_grid(p_c, NULL, p,
+                              ncol = 3,
+                              rel_widths = c(1,0.2,4),
+                              axis = 'bt',
+                              align = 'h') +
+    theme(plot.margin = margin(5,5,5,5,'pt'))
+  # Add axis titles to combined plots
+  title_y = grid::textGrob("Estimate (Recovery)", 
+                           gp = gpar(fontface = "bold",
+                                     fontsize = 12),
+                           rot = 90)
+  
+  title_x = grid::textGrob("Input (Simulation)", 
+                           gp = gpar(fontface = "bold",
+                                     fontsize = 12))
+  p_full = grid.arrange(arrangeGrob(p_full,
+                                    left = title_y,
+                                    bottom = title_x))
+  
+  # Correlation between estimates
+  # RW
+  p_c_rw_est = Plot_corr(data = data_recov,
+                     model_name = 'rw')$est +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')),
+                     expand = c(0,0))
+  
+  # Uncertainty
+  p_c_unc_est = Plot_corr(data = data_recov,
+                      model_name = 'uncertainty')$est +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
+                                latex2exp::TeX(r'($\textit{$\pi$}$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
+                                latex2exp::TeX(r'($\textit{$\pi$}$)')),
+                     expand = c(0,0))
+  
+  # Valence
+  p_c_val_est = Plot_corr(data = data_recov,
+                      model_name = 'seplr')$est  +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)')),
+                     expand = c(0,0))
+  
+  # Surprise
+  p_c_sup_est = Plot_corr(data = data_recov[inbounds == TRUE],
+                      model_name = 'surprise')$est +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+                                latex2exp::TeX(r'($s$)'),
+                                latex2exp::TeX(r'($u$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+                                latex2exp::TeX(r'($s$)'),
+                                latex2exp::TeX(r'($u$)')),
+                     expand = c(0,0))
+  
+  # Valence+Unc
+  p_c_val_unc_est = Plot_corr(data = data_recov,
+                          model_name = 'uncertainty_seplr')$est +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
+                                latex2exp::TeX(r'($\pi$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
+                                latex2exp::TeX(r'($\pi$)')),
+                     expand = c(0,0))
+  
+  # Surprise+Unc
+  p_c_sup_unc_est = Plot_corr(data = data_recov[inbounds == TRUE],
+                          model_name = 'uncertainty_surprise')$est +
+    scale_x_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+                                latex2exp::TeX(r'($\pi$)'),
+                                latex2exp::TeX(r'($s$)'),
+                                latex2exp::TeX(r'($u$)')),
+                     expand = c(0,0)) +
+    scale_y_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+                                latex2exp::TeX(r'($\pi$)'),
+                                latex2exp::TeX(r'($s$)'),
+                                latex2exp::TeX(r'($u$)')),
+                     expand = c(0,0))
+  
+  # Combine to one column
+  p_c_est = cowplot::plot_grid(p_c_rw_est, p_c_unc_est, p_c_val_est, p_c_sup_est, p_c_val_unc_est, p_c_sup_unc_est,
+                           ncol = 1,
+                           rel_heights = c(1,1,1,1,1,1),
+                           align = 'vh',
+                           axis = 'tbrl') +
+    theme(plot.margin = margin(5,5,5,5,'pt'))
+  # Add different x-title to plot (estimate instead of input)
+  title_x = grid::textGrob("Estimate (Recovery)", 
+                           gp = gpar(fontface = "bold",
+                                     fontsize = 12),
+                           hjust = 0.4,
+                           rot = 0)
+  p_c_est = grid.arrange(arrangeGrob(p_c_est,
+                                    bottom = title_x))
+  # Combine
+  p_full_est = cowplot::plot_grid(p_full, NULL, p_c_est,
+                              ncol = 3,
+                              rel_widths = c(5,0.2,1),
+                              axis = 'bt',
+                              align = 'h',
+                              labels = c('A','B', ''),
+                              label_size = 20,
+                              label_x = -0.01,
+                              label_y = 1.01)
+  
+  # Panel only holding model names
+  Plot_name = function(name){
+    p = ggplot(data = as.data.table(name),
+               aes(x = 0,
+                   y = 0.5,
+                   label = name)) +
+      geom_text(size = 5, fontface = 'bold', hjust = 0) +
+      scale_x_continuous(limits = c(0,1),
+                         expand = c(0,0)) +
+      theme(axis.text = element_blank(),
+            axis.ticks = element_blank(),
+            axis.title = element_blank(),
+            panel.background = element_blank(),
+            panel.grid = element_blank())
+    return(p)
+  }
+  # Get all model names in same format as individual plots
+  p_name_rw = Plot_name('RW')
+  p_name_unc = Plot_name('Uncertainty')
+  p_name_val = Plot_name('Valence')
+  p_name_sup = Plot_name('Surprise')
+  p_name_val_unc = Plot_name('Valence + Unc')
+  p_name_sup_unc = Plot_name('Surprise + Unc')
+  # COmbine all names to rightmost column
+  p_names = cowplot::plot_grid(p_name_rw, p_name_unc, p_name_val, p_name_sup, p_name_val_unc, p_name_sup_unc,
+                           ncol = 1,
+                           rel_heights = c(1,1,1,1,1,1),
+                           align = 'vh',
+                           axis = 'tbrl') +
+    theme(plot.margin = margin(5,5,5,5,'pt'))
+  # Add faux title for alignment
+  title_x = grid::textGrob("", 
+                           gp = gpar(fontface = "bold",
+                                     fontsize = 12),
+                           rot = 0)
+  p_names = grid.arrange(arrangeGrob(p_names,
+                                     bottom = title_x))
+    
+  # Combine all plots with model names
+  p_all = cowplot::plot_grid(p_full_est, p_names,
+                                    ncol = 2,
+                                    rel_widths = c(6,1.4),
+                                    axis = 'bt',
+                                    align = 'h')
+  
+  return(p_all)
 }
 
 

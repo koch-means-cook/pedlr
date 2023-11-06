@@ -86,7 +86,7 @@ Create_figures = function(){
          width = 9,
          height = 2)
   
-  # Model surprsie
+  # Model surprise
   message("Creating surprise model figure...")
   p_ms = Figure_model_surprise()
   #base_path = here::here()
@@ -98,6 +98,17 @@ Create_figures = function(){
          width = 8,
          height = 9)
   
+  # Model parameter recovery
+  message("Creating parameter recovery figure...")
+  p_pr = Figure_param_recov()
+  #base_path = here::here()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_pr.pdf',
+                       fsep = .Platform$file.sep)
+  ggsave(filename = out_file,
+         plot = p_pr,
+         device = 'pdf',
+         width = 9.5,
+         height = 7.5)
   
 }
 
