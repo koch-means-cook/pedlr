@@ -62,7 +62,7 @@ Create_figures = function(){
          plot = p_ried,
          device = 'pdf',
          width = 9,
-         height = 4)
+         height = 4.5)
   
   # Model comp
   message("Creating model comparison figure...")

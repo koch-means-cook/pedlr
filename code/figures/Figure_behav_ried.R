@@ -281,7 +281,7 @@ Figure_behav_ed = function(){
                  show.legend = FALSE,
                  position = position_dodge(width = dodge_width)) +
     labs(x = 'Compared bandits',
-         y = 'Bias in estimated distance') +
+         y = 'Distance of estimates\nvs. true bandit distance') +
     scale_y_continuous(breaks = seq(-40, 40, by = 10)) +
     scale_color_manual(values = custom_guides) +
     scale_fill_manual(values = custom_guides) +
@@ -309,45 +309,63 @@ Figure_behav_ed = function(){
 
 Figure_behav_ried = function(){
   
+  # critical behavioral effect
   p_rie = Figure_behav_rie() +
-    theme(axis.title.x = element_blank())
-  p_ric = Figure_behav_ric() +
     labs(x = '') +
     theme(legend.position = 'none')
+  # 20-40 percentile
+  p_ric = Figure_behav_ric() +
+    labs(x = '') +
+    theme(legend.position = 'none',
+          axis.title.y = element_blank(),
+          plot.background = element_rect(fill = 'transparent',
+                                         color = NA))
+  # Isolate legend to plot for both plots
   legend = cowplot::get_legend(Figure_behav_ric() +
                                  theme(legend.position = 'top',
                                        legend.direction = 'horizontal',
-                                       legend.text = element_text(size = 10)))
+                                       legend.text = element_text(size = 10),
+                                       legend.key.height = unit(30, 'pt')))
+  # Estimation plot
   p_ed = Figure_behav_ed()
   
-  p_behav_ri = cowplot::plot_grid(p_rie, p_ric,
-                                  ncol = 2,
-                                  rel_widths = c(1,1),
-                                  rel_heights = c(1,1),
-                                  axis = 'tbrl',
-                                  align = 'hv',
-                                  labels = c('',''))
-  p_left = cowplot::plot_grid(legend, p_behav_ri,
-                           ncol = 1,
-                           rel_heights = c(0.1,1),
-                           axis = 'lr',
-                           align = 'v') +
+  # Left side of plot
+  p_behav_ri = cowplot::plot_grid(p_rie,NULL, p_ric,
+                                  ncol = 3,
+                                  rel_widths = c(1,0.1,0.8),
+                                  rel_heights = c(1,1,1),
+                                  axis = 'tb',
+                                  align = 'h',
+                                  labels = c('A', 'B', ''),
+                                  label_y = 1.04,
+                                  label_x = -0.09,
+                                  label_size = 25) +
     annotation_custom(grid::textGrob(label = 'Relative position of Low-Mid trial',
                                      hjust = 0.5,
                                      vjust = 0,
                                      gp = grid::gpar(cex = 1.2,
                                                      fontface = 'bold')),
                       xmin = 0.6, xmax = 0.6, ymin = 0.01, ymax = 0.01)
-  p_behav_ried = cowplot::plot_grid(p_left, NULL, p_ed,
-                             nrow = 1,
-                             rel_widths = c(1,0.15,0.5),
-                             labels = c('A', '', 'B'),
-                             label_size = 25,
-                             label_x = -0.05,
-                             label_y = 1.04) +
+  # Combine with right side
+  p_behav_ried = cowplot::plot_grid(p_behav_ri, NULL, p_ed,
+                                    nrow = 1,
+                                    rel_widths = c(1,0.1,0.5),
+                                    labels = c('', '', 'C'),
+                                    label_size = 25,
+                                    label_x = -0.05,
+                                    label_y = 1.04) +
     theme(plot.margin = margin(5,5,2.5,10,'pt'))
   
-  return(p_behav_ried)
+  # Adjust legend for top across left plots
+  legend = cowplot::plot_grid(NULL, legend, NULL,
+                              ncol = 3,
+                              rel_widths = c(0.1,1,0.8))
+  # Combine with legend
+  p = cowplot::plot_grid(legend, p_behav_ried,
+                         ncol = 1,
+                         rel_heights = c(0.1,1))
+  
+  return(p)
   
 }
 

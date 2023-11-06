@@ -1,6 +1,9 @@
 # Ignore all data files
 data/
 
+# Ignore pdfs
+*.pdf
+
 # Ignore all derivative files
 derivatives/
 derivatives_old/

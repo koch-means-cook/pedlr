@@ -1342,6 +1342,14 @@ m1 = lm(cbe ~ param_uml * group,
 summary(m1)
 ```
 
+```{r}
+# Simple Pearson correlation
+cor(x = data_cbe_fit$param_uml,
+    y = data_cbe_fit$cbe,
+    method = 'pearson')
+```
+
+
 $u$ vs. immediate influence of surprising outcomes
 
 ```{r}
