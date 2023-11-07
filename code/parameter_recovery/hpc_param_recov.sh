@@ -63,18 +63,13 @@ MEM_MB=200
 # Set list of models to recover
 # ===
 MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
-#MODEL_LIST='uncertainty'
-#MODEL_LIST='uncertainty_seplr'
 
 # ===
 # Set recov parameters
 # ===
 RANDOM_INPUT_PARAMS="TRUE"
-#RANDOM_INPUT_PARAMS="FALSE"
-#RANDOM_INPUT_BETAS="TRUE"
 RANDOM_INPUT_BETAS="FALSE"
 RANDOM_STARTING_VALUES="TRUE"
-#RANDOM_STARTING_VALUES="FALSE"
 ALGORITHM="NLOPT_GN_DIRECT_L"
 XTOL_REL=0.00001
 MAXEVAL=10000
@@ -105,7 +100,7 @@ for DATA in ${DATA_LIST}; do
 			SVS='0.5,NA,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,NA,NA'
 			BETAS_UB='0.1,-1.2,3.4,NA,NA'
-			BETA_WEIGHTS='0,-2.3,2.3,NA,NA'
+			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 			# UNCERTAINTY
 		elif [[ ${MODEL} == 'uncertainty' ]]; then
 			# Full recovery
@@ -115,7 +110,7 @@ for DATA in ${DATA_LIST}; do
 			SVS='0.5,0.5,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,-0.8,-0.4'
 			BETAS_UB='0.1,-1.2,3.4,0.4,0.8'
-			BETA_WEIGHTS='0,-2.3,2.3,-0.2,0.2'
+			BETA_WEIGHTS='0,-0.21,0.21,-0.04,0.04'
 		elif [[ ${MODEL} == 'seplr' ]]; then
 			PARAM_LB='0.01,0.01,NA,NA'
 			PARAM_UB='1,1,NA,NA'
@@ -123,7 +118,7 @@ for DATA in ${DATA_LIST}; do
 			SVS='0.5,0.5,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,NA,NA'
 			BETAS_UB='0.1,-1.2,3.4,NA,NA'
-			BETA_WEIGHTS='0,-2.3,2.3,NA,NA'
+			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty_seplr' ]]; then
 			PARAM_LB='0.01,0.01,0.01,NA'
 			PARAM_UB='1,1,1,NA'
@@ -131,7 +126,7 @@ for DATA in ${DATA_LIST}; do
 			SVS='0.5,0.5,0.5,NA'
 			BETAS_LB='-0.1,-3.4,1.2,-0.8,-0.4'
 			BETAS_UB='0.1,-1.2,3.4,0.4,0.8'
-			BETA_WEIGHTS='0,-2.3,2.3,-0.2,0.2'
+			BETA_WEIGHTS='0,-0.16,0.16,-0.02,0.02'
 		elif [[ ${MODEL} == 'surprise' ]]; then
 			PARAM_LB='0.01,0.01,0,NA'
 			PARAM_UB='1,1,10,NA'
@@ -139,7 +134,7 @@ for DATA in ${DATA_LIST}; do
 			SVS='0.5,0.5,0,NA'
 			BETAS_LB='-0.1,-3.4,1.2,NA,NA'
 			BETAS_UB='0.1,-1.2,3.4,NA,NA'
-			BETA_WEIGHTS='0,-2.3,2.3,NA,NA'
+			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty_surprise' ]]; then
 			PARAM_LB='0.01,0.01,0,0.01'
 			PARAM_UB='1,1,10,1'
@@ -147,7 +142,7 @@ for DATA in ${DATA_LIST}; do
 			SVS='0.5,0.5,0,0.5'
 			BETAS_LB='-0.1,-3.4,1.2,-0.8,-0.4'
 			BETAS_UB='0.1,-1.2,3.4,0.4,0.8'
-			BETA_WEIGHTS='0,-2.3,2.3,0.01,-0.01'
+			BETA_WEIGHTS='0,-0.16,0.16,-0.02,0.02'
 		fi
 
 		# Get job name

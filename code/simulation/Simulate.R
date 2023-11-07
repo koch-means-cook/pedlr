@@ -83,6 +83,8 @@ Simulate = function(data,
     
     # Use value and uncertainty of both bandits as predictors for regression
     # model (first entry "1" because of intercept (beta_0))
+    # The predictors are not z-scored, so we need to use beta_weights that are
+    # not based on z-scored predictors
     predictors = c(1,
                    left_value,
                    right_value,

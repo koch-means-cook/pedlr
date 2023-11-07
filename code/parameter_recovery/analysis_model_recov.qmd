@@ -56,11 +56,8 @@ load_path = file.path(here::here(),
                       fsep = .Platform$file.sep)
 # Load data with fixed betas during simulation
 files = Sys.glob(file.path(load_path,
-                           'modelrecov_base-*_randips-TRUE_randbetas-TRUE_randsvs-TRUE.tsv',
+                           'modelrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE.tsv',
                            fsep = .Platform$file.sep))
-# files = Sys.glob(file.path(load_path,
-#                            'modelrecov_base-09RI1ZH_model-uncer*_randips-TRUE_randbetas-TRUE_randsvs-TRUE.tsv',
-#                            fsep = .Platform$file.sep))
 
 # Function to load text files (.tsv)
 Load_tsv = function(file_path){
