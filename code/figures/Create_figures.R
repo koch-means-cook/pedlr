@@ -110,6 +110,18 @@ Create_figures = function(){
          width = 9.5,
          height = 7.5)
   
+  # Model recovery
+  message("Creating model recovery figure...")
+  p_mr = Figure_model_recov()
+  #base_path = here::here()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_mr.pdf',
+                       fsep = .Platform$file.sep)
+  ggsave(filename = out_file,
+         plot = p_mr,
+         device = 'pdf',
+         width = 7.5,
+         height = 3.5)
+  
 }
 
 Create_figures()

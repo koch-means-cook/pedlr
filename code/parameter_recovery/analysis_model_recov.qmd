@@ -145,7 +145,7 @@ Neurocodify_plot(p) +
 ## Confusion matrix
 
 ```{r}
-# Plot recovery as histogram
+# Plot recovery as CM
 data_plot = data_recovery %>%
   # Reduce to row for each attempted recovery
   .[, .(recovered_model = unique(recovered_model)),
@@ -188,6 +188,7 @@ p = ggplot(data = data_plot,
   scale_fill_gradient(low = 'black', high = 'white')
 p
 ```
+
 
 ## Recovery success
 

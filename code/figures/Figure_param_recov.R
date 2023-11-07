@@ -297,8 +297,8 @@ Figure_param_recov = function(){
     
     # Create correlation matrix to plot
     corr_mat  = correlate(data_corr,
-                             method = "spearman",
-                             diagonal = 1) %>%
+                          method = "spearman",
+                          diagonal = 1) %>%
       # Eliminate in vs. in & est vs. est
       corrr::focus(all_of(est_cols)) %>%
       as.data.table(.) %>%
@@ -341,6 +341,8 @@ Figure_param_recov = function(){
                                       vjust = 0),
             #axis.text = element_text(size = 12),
             plot.margin = margin(0,0,0,0,'pt')) +
+      # Reverse scaling of y axis
+      #scale_y_discrete(limits = rev) +
       scale_fill_gradient(low = 'black', high = 'white', limits = c(-1,1)) +
       scale_color_manual(values = c('black', 'white'))
     
@@ -405,7 +407,8 @@ Figure_param_recov = function(){
                      model_name = 'rw')$all +
     scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($\textit{$\alpha$}$)'))),
                      expand = c(0,0))
 
   # Uncertainty (in vs. est)
@@ -414,8 +417,9 @@ Figure_param_recov = function(){
     scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
                                 latex2exp::TeX(r'($\textit{$\pi$}$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
-                                latex2exp::TeX(r'($\textit{$\pi$}$)')),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
+                                latex2exp::TeX(r'($\textit{$\pi$}$)'))),
                      expand = c(0,0))
   
   # Valence (in vs. est)
@@ -424,8 +428,9 @@ Figure_param_recov = function(){
     scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
                                 latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
-                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)')),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'))),
                      expand = c(0,0))
   
   # Surprise (in vs. est)
@@ -435,9 +440,10 @@ Figure_param_recov = function(){
                                 latex2exp::TeX(r'($s$)'),
                                 latex2exp::TeX(r'($u$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($l$)'),
                                 latex2exp::TeX(r'($s$)'),
-                                latex2exp::TeX(r'($u$)')),
+                                latex2exp::TeX(r'($u$)'))),
                      expand = c(0,0))
   
   # Valence+Unc (in vs. est)
@@ -447,9 +453,10 @@ Figure_param_recov = function(){
                                 latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
                                 latex2exp::TeX(r'($\pi$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
                                 latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
-                                latex2exp::TeX(r'($\pi$)')),
+                                latex2exp::TeX(r'($\pi$)'))),
                      expand = c(0,0))
   
   # Surprise+Unc (in vs. est)
@@ -460,10 +467,11 @@ Figure_param_recov = function(){
                                 latex2exp::TeX(r'($s$)'),
                                 latex2exp::TeX(r'($u$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($l$)'),
                                 latex2exp::TeX(r'($\pi$)'),
                                 latex2exp::TeX(r'($s$)'),
-                                latex2exp::TeX(r'($u$)')),
+                                latex2exp::TeX(r'($u$)'))),
                      expand = c(0,0))
   
   # Combine to one column of plot
@@ -500,7 +508,8 @@ Figure_param_recov = function(){
                      model_name = 'rw')$est +
     scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)')),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($\textit{$\alpha$}$)'))),
                      expand = c(0,0))
   
   # Uncertainty
@@ -509,8 +518,9 @@ Figure_param_recov = function(){
     scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
                                 latex2exp::TeX(r'($\textit{$\pi$}$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
-                                latex2exp::TeX(r'($\textit{$\pi$}$)')),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($\textit{$\alpha$}$)'),
+                                latex2exp::TeX(r'($\textit{$\pi$}$)'))),
                      expand = c(0,0))
   
   # Valence
@@ -519,8 +529,9 @@ Figure_param_recov = function(){
     scale_x_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
                                 latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
-                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)')),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+                                latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'))),
                      expand = c(0,0))
   
   # Surprise
@@ -530,9 +541,10 @@ Figure_param_recov = function(){
                                 latex2exp::TeX(r'($s$)'),
                                 latex2exp::TeX(r'($u$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($l$)'),
                                 latex2exp::TeX(r'($s$)'),
-                                latex2exp::TeX(r'($u$)')),
+                                latex2exp::TeX(r'($u$)'))),
                      expand = c(0,0))
   
   # Valence+Unc
@@ -542,9 +554,10 @@ Figure_param_recov = function(){
                                 latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
                                 latex2exp::TeX(r'($\pi$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($\textit{\alpha_{\textit{neg}}}$)'),
                                 latex2exp::TeX(r'($\textit{\alpha_{\textit{pos}}}$)'),
-                                latex2exp::TeX(r'($\pi$)')),
+                                latex2exp::TeX(r'($\pi$)'))),
                      expand = c(0,0))
   
   # Surprise+Unc
@@ -555,10 +568,11 @@ Figure_param_recov = function(){
                                 latex2exp::TeX(r'($s$)'),
                                 latex2exp::TeX(r'($u$)')),
                      expand = c(0,0)) +
-    scale_y_discrete(labels = c(latex2exp::TeX(r'($l$)'),
+    scale_y_discrete(limits = rev,
+                     labels = rev(c(latex2exp::TeX(r'($l$)'),
                                 latex2exp::TeX(r'($\pi$)'),
                                 latex2exp::TeX(r'($s$)'),
-                                latex2exp::TeX(r'($u$)')),
+                                latex2exp::TeX(r'($u$)'))),
                      expand = c(0,0))
   
   # Combine to one column
