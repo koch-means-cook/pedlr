@@ -55,7 +55,7 @@ N_CPUS=1
 # maximum number of threads per process:
 N_THREADS=1
 # memory demand in *GB*
-MEM_MB=200
+MEM_MB=300
 # memory demand in *MB*
 #MEM_MB="$((${MEM_GB} * 1000))"
 
