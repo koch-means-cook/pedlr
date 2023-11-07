@@ -103,7 +103,11 @@ data_recovery = data %>%
   .[, c('generating_model', 'recovered_model') := lapply(.SD, factor),
     .SDcols = c('generating_model', 'recovered_model')] %>%
   .[, recovered_model := factor(recovered_model, levels = levels(generating_model))]
+```
 
+## Histogram matrix
+
+```{r}
 # Plot recovery as histogram
 data_plot = data_recovery %>%
   # Reduce to row for each attempted recovery
@@ -137,6 +141,55 @@ Neurocodify_plot(p) +
         legend.position = 'none',
         aspect.ratio = 1/6)
 ```
+
+## Confusion matrix
+
+```{r}
+# Plot recovery as histogram
+data_plot = data_recovery %>%
+  # Reduce to row for each attempted recovery
+  .[, .(recovered_model = unique(recovered_model)),
+    by = c('participant_id', 'generating_model', 'iter')] %>%
+  .[, .(count = .N),
+    by = c('recovered_model', 'generating_model')] %>%
+  data.table::setorder('generating_model') %>%
+  .[, perc := count/sum(count),
+    by = 'generating_model'] %>%
+  .[, sum_perc := sum(perc),
+    by = 'generating_model'] %>%
+  .[, label_short := substr(format(round(perc, 2), nsmall = 2), 2,4)] %>%
+  .[, is_low := perc < 0.4] %>%
+  Prepare_data_for_plot(.)
+
+p = ggplot(data = data_plot,
+           aes(x = recovered_model,
+               y = generating_model,
+               fill = perc,
+               color = is_low,
+               label = label_short)) +
+  geom_tile(color = 'black') +
+  geom_text() +
+  labs(x = 'Fit model',
+       y = 'Simulated model') +
+  theme(panel.background = element_rect(fill = NA,
+                                        color = NA),
+        panel.grid = element_blank(),
+        legend.position = 'none',
+        axis.title = element_text(size = 12, face = 'bold'),
+        axis.ticks = element_blank(),
+        strip.text = element_blank(),
+        strip.background = element_blank(),
+        plot.title = element_text(hjust = 0.5,
+                                  vjust = 0),
+        #axis.text = element_text(size = 12),
+        plot.margin = margin(0,0,0,0,'pt')) +
+  scale_y_discrete(limits = rev) +
+  scale_color_manual(values = c('black', 'white')) +
+  scale_fill_gradient(low = 'black', high = 'white')
+p
+```
+
+## Recovery success
 
 ```{r}
 # Overall recovery
