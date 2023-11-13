@@ -102,6 +102,7 @@ Figure_model_recov = function(){
              aes(x = recovered_model,
                  color = correct_model)) +
     scale_color_manual(values = c('transparent', 'black')) +
+    scale_y_continuous(breaks = c(0,400)) +
     geom_bar(fill = 'lightgrey') +
     labs(x = 'Fit model') + 
     facet_grid(generating_model ~ .,

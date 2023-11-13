@@ -198,6 +198,21 @@
       ],
       "Hash": "2042cd9759cc89a453c4aefef0ce9aae"
     },
+    "TSP": {
+      "Package": "TSP",
+      "Version": "1.2-4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "foreach",
+        "grDevices",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Hash": "7fba3f587b0f3cb3232d03d540dbf772"
+    },
     "abind": {
       "Package": "abind",
       "Version": "1.4-5",
@@ -348,6 +363,16 @@
       ],
       "Hash": "56ae7e1987b340186a8a5a157c2ec358"
     },
+    "ca": {
+      "Package": "ca",
+      "Version": "0.71.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "392f13bb4dfd3c07259ecdeba6aa71f9"
+    },
     "cachem": {
       "Package": "cachem",
       "Version": "1.0.6",
@@ -441,6 +466,30 @@
       ],
       "Hash": "89e6d8219950eac806ae0c489052048a"
     },
+    "cluster": {
+      "Package": "cluster",
+      "Version": "2.1.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "grDevices",
+        "graphics",
+        "stats",
+        "utils"
+      ],
+      "Hash": "5edbbabab6ce0bf7900a74fd4358628e"
+    },
+    "codetools": {
+      "Package": "codetools",
+      "Version": "0.2-19",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R"
+      ],
+      "Hash": "c089a619a7fae175d149d89164f8c7d8"
+    },
     "colorspace": {
       "Package": "colorspace",
       "Version": "2.1-0",
@@ -461,6 +510,24 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "2ba81b120c1655ab696c935ef33ea716"
+    },
+    "corrr": {
+      "Package": "corrr",
+      "Version": "0.4.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "dplyr",
+        "ggplot2",
+        "ggrepel",
+        "glue",
+        "purrr",
+        "rlang",
+        "seriation",
+        "tibble"
+      ],
+      "Hash": "2fb521ffc0592c3c47d1d7e3b0cba2d0"
     },
     "cowplot": {
       "Package": "cowplot",
@@ -762,6 +829,19 @@
       ],
       "Hash": "1a0a9a3d5083d0d573c4214576f1e690"
     },
+    "foreach": {
+      "Package": "foreach",
+      "Version": "1.5.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "codetools",
+        "iterators",
+        "utils"
+      ],
+      "Hash": "618609b42c9406731ead03adf5379850"
+    },
     "foreign": {
       "Package": "foreign",
       "Version": "0.8-83",
@@ -785,6 +865,17 @@
         "methods"
       ],
       "Hash": "7c89603d81793f0d5486d91ab1fc6f1d"
+    },
+    "gclus": {
+      "Package": "gclus",
+      "Version": "1.3.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "cluster"
+      ],
+      "Hash": "8f905e7f70ac42e5b0e39d6ba360dd44"
     },
     "gdata": {
       "Package": "gdata",
@@ -833,6 +924,19 @@
         "vipor"
       ],
       "Hash": "dd68b9b215b2d3119603549a794003c3"
+    },
+    "ggcorrplot": {
+      "Package": "ggcorrplot",
+      "Version": "0.1.4.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "ggplot2",
+        "reshape2",
+        "stats"
+      ],
+      "Hash": "aad38d027d0dd18621e213919c20a65f"
     },
     "ggh4x": {
       "Package": "ggh4x",
@@ -890,6 +994,22 @@
         "withr"
       ],
       "Hash": "3a147ee02e85a8941aad9909f1b43b7b"
+    },
+    "ggrepel": {
+      "Package": "ggrepel",
+      "Version": "0.9.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "Rcpp",
+        "ggplot2",
+        "grid",
+        "rlang",
+        "scales",
+        "withr"
+      ],
+      "Hash": "e9839af82cc43fda486a638b68b439b2"
     },
     "ggridges": {
       "Package": "ggridges",
@@ -1108,6 +1228,17 @@
         "utils"
       ],
       "Hash": "0080607b4a1a7b28979aecef976d8bc2"
+    },
+    "iterators": {
+      "Package": "iterators",
+      "Version": "1.0.14",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "utils"
+      ],
+      "Hash": "8954069286b4b2b0d023d1b288dce978"
     },
     "jpeg": {
       "Package": "jpeg",
@@ -1520,18 +1651,6 @@
       ],
       "Hash": "2490600671344e847c37a7f75ee458c0"
     },
-    "packrat": {
-      "Package": "packrat",
-      "Version": "0.9.1",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "tools",
-        "utils"
-      ],
-      "Hash": "481428983c19a7c443f7ea1beff0a2de"
-    },
     "pacman": {
       "Package": "pacman",
       "Version": "0.5.1",
@@ -1607,6 +1726,17 @@
         "qpdf"
       ],
       "Hash": "70a559fc1523ab9cdd554bbcc4e34ddc"
+    },
+    "permute": {
+      "Package": "permute",
+      "Version": "0.9-7",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "stats"
+      ],
+      "Hash": "abf0ca85c1c752e0d04f46334e635046"
     },
     "pillar": {
       "Package": "pillar",
@@ -1782,6 +1912,13 @@
       ],
       "Hash": "adfa41db3678b41bf9235c514c51799a"
     },
+    "qap": {
+      "Package": "qap",
+      "Version": "0.1-2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "21c4fc168ebf32add2db6a358ce4714c"
+    },
     "qpdf": {
       "Package": "qpdf",
       "Version": "1.3.0",
@@ -1810,23 +1947,6 @@
       ],
       "Hash": "b7d49f60ce945abad300246d4766326a"
     },
-    "quarto": {
-      "Package": "quarto",
-      "Version": "1.2",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "jsonlite",
-        "later",
-        "processx",
-        "rmarkdown",
-        "rsconnect",
-        "rstudioapi",
-        "utils",
-        "yaml"
-      ],
-      "Hash": "298a252816cabed120391c955aced484"
-    },
     "rappdirs": {
       "Package": "rappdirs",
       "Version": "0.3.3",
@@ -1851,6 +1971,17 @@
         "utils"
       ],
       "Hash": "8cf9c239b96df1bbb133b74aef77ad0a"
+    },
+    "registry": {
+      "Package": "registry",
+      "Version": "0.5-1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "utils"
+      ],
+      "Hash": "1c9935f4f14c6c096c9c9072ddee59f1"
     },
     "rematch": {
       "Package": "rematch",
@@ -1989,24 +2120,6 @@
       ],
       "Hash": "1de7ab598047a87bba48434ba35d497d"
     },
-    "rsconnect": {
-      "Package": "rsconnect",
-      "Version": "0.8.29",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Requirements": [
-        "R",
-        "curl",
-        "digest",
-        "jsonlite",
-        "openssl",
-        "packrat",
-        "rstudioapi",
-        "tools",
-        "yaml"
-      ],
-      "Hash": "fe178fc15af80952f546aafedf655b36"
-    },
     "rstudioapi": {
       "Package": "rstudioapi",
       "Version": "0.13",
@@ -2105,6 +2218,29 @@
         "stringr"
       ],
       "Hash": "3838071b66e0c566d55cc26bd6e27bf4"
+    },
+    "seriation": {
+      "Package": "seriation",
+      "Version": "1.5.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "MASS",
+        "R",
+        "TSP",
+        "ca",
+        "cluster",
+        "colorspace",
+        "foreach",
+        "gclus",
+        "grDevices",
+        "grid",
+        "qap",
+        "registry",
+        "stats",
+        "vegan"
+      ],
+      "Hash": "178b876c49bb35981b97d34eec0a3b47"
     },
     "shiny": {
       "Package": "shiny",
@@ -2396,6 +2532,21 @@
         "rlang"
       ],
       "Hash": "d0ef2856b83dc33ea6e255caf6229ee2"
+    },
+    "vegan": {
+      "Package": "vegan",
+      "Version": "2.6-4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "MASS",
+        "R",
+        "cluster",
+        "lattice",
+        "mgcv",
+        "permute"
+      ],
+      "Hash": "659fe7589b8e0b16baa49043a61a0ce0"
     },
     "vipor": {
       "Package": "vipor",

@@ -244,18 +244,18 @@ Figure_param_recov = function(){
                                  title_expr = latex2exp::TeX(r'($pi$)'))
   
   # Combine first colummn
-  p_1 = cowplot::plot_grid(p_rw_a, p_unc_a, p_val_an, p_surprise_l, p_val_unc_an, p_surprise_unc_l,
+  p_1 = cowplot::plot_grid(p_rw_a, p_unc_a, p_val_an, p_val_unc_an, p_surprise_l, p_surprise_unc_l,
                          ncol = 1,
                          rel_heights = c(1,1,1,1,1,1),
                          align = 'v',
                          axis = 'tb')
   # Second column
-  p_2 = cowplot::plot_grid(NULL, p_unc_pi, p_val_ap, p_surprise_s, p_val_unc_ap, p_surprise_unc_pi,
+  p_2 = cowplot::plot_grid(NULL, p_unc_pi, p_val_ap, p_val_unc_ap, p_surprise_s, p_surprise_unc_pi,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'v',
                            axis = 'tb')
-  p_3 = cowplot::plot_grid(NULL, NULL, NULL, p_surprise_u, p_val_unc_pi, p_surprise_unc_s,
+  p_3 = cowplot::plot_grid(NULL, NULL, NULL, p_val_unc_pi, p_surprise_u, p_surprise_unc_s,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'v',
@@ -296,9 +296,9 @@ Figure_param_recov = function(){
     est_cols = colnames(data_corr)[grep('est_', colnames(data_corr))]
     
     # Create correlation matrix to plot
-    corr_mat  = correlate(data_corr,
-                          method = "spearman",
-                          diagonal = 1) %>%
+    corr_mat  = corrr::correlate(data_corr,
+                                 method = "spearman",
+                                 diagonal = 1) %>%
       # Eliminate in vs. in & est vs. est
       corrr::focus(all_of(est_cols)) %>%
       as.data.table(.) %>%
@@ -475,7 +475,7 @@ Figure_param_recov = function(){
                      expand = c(0,0))
   
   # Combine to one column of plot
-  p_c = cowplot::plot_grid(p_c_rw, p_c_unc, p_c_val, p_c_sup, p_c_val_unc, p_c_sup_unc,
+  p_c = cowplot::plot_grid(p_c_rw, p_c_unc, p_c_val, p_c_val_unc, p_c_sup, p_c_sup_unc,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'vh',
@@ -576,7 +576,7 @@ Figure_param_recov = function(){
                      expand = c(0,0))
   
   # Combine to one column
-  p_c_est = cowplot::plot_grid(p_c_rw_est, p_c_unc_est, p_c_val_est, p_c_sup_est, p_c_val_unc_est, p_c_sup_unc_est,
+  p_c_est = cowplot::plot_grid(p_c_rw_est, p_c_unc_est, p_c_val_est, p_c_val_unc_est, p_c_sup_est, p_c_sup_unc_est,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'vh',
@@ -621,11 +621,11 @@ Figure_param_recov = function(){
   p_name_rw = Plot_name('RW')
   p_name_unc = Plot_name('Uncertainty')
   p_name_val = Plot_name('Valence')
+  p_name_val_unc = Plot_name('Unc+Valence')
   p_name_sup = Plot_name('Surprise')
-  p_name_val_unc = Plot_name('Valence + Unc')
-  p_name_sup_unc = Plot_name('Surprise + Unc')
+  p_name_sup_unc = Plot_name('Unc+Surprise')
   # COmbine all names to rightmost column
-  p_names = cowplot::plot_grid(p_name_rw, p_name_unc, p_name_val, p_name_sup, p_name_val_unc, p_name_sup_unc,
+  p_names = cowplot::plot_grid(p_name_rw, p_name_unc, p_name_val, p_name_val_unc, p_name_sup, p_name_sup_unc,
                            ncol = 1,
                            rel_heights = c(1,1,1,1,1,1),
                            align = 'vh',
