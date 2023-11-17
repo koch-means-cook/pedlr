@@ -18,7 +18,8 @@ Param_recov_wrapper = function(participant_id,
                                tau,
                                ips,
                                beta_weights,
-                               svs){
+                               svs,
+                               principle_mode){
   
 # participant_id = 'VVBU17E'
 # model = 'uncertainty_seplr'
@@ -31,12 +32,13 @@ Param_recov_wrapper = function(participant_id,
 # betas_ub = c(0.1, 0, 0.5, 0, 0.5)
 # algorithm = 'NLOPT_GN_DIRECT_L'
 # xtol_rel = 1.0e-5
-# maxeval = 1000
+# maxeval = 100
 # iterations = 3
 # tau = 0.2
 # ips = c(0.93, 0.42, 0.93, NA)
 # beta_weights = c(0, -0.2, 0.2, -0.1, 0.1)
 # svs = c(0.33, 0.27, 0.01, NA)
+# principle_mode = TRUE
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)
@@ -76,10 +78,19 @@ Param_recov_wrapper = function(participant_id,
     message(paste(svs, collapse = ' | '), appendLF = FALSE)
     message('\n', appendLF = FALSE)
   }
+  if(principle_mode == TRUE){
+    message(paste('   principle_mode active:\tBeta specifications will be ignored!', sep = ''), appendLF = FALSE)
+  }
 
   # Load own functions
   source(file.path(here::here(), 'code', 'parameter_recovery', 'Param_recov.R',
                    fsep = .Platform$file.sep))
+  
+  # If principle_mode is on, set betas to predefined values
+  if(principle_mode){
+    beta_weights = c(0, -1, 1, -2, 2)
+  }
+  
   
   # Function to check number of parameters for models
   Check_n_params = function(model,
@@ -426,6 +437,8 @@ Param_recov_wrapper = function(participant_id,
                     random_input_betas,
                     '_randsvs-',
                     random_starting_values,
+                    '_principle-',
+                    principle_mode,
                     '.tsv',
                     sep = '')
   
@@ -440,6 +453,8 @@ Param_recov_wrapper = function(participant_id,
                         random_input_betas,
                         '_randsvs-',
                         random_starting_values,
+                        '_principle-',
+                        principle_mode,
                         '.tsv',
                         sep = '')
   
@@ -452,6 +467,8 @@ Param_recov_wrapper = function(participant_id,
                              '_randbetas-',
                              random_input_betas,
                              '_randsvs-TRUE', # model recovery is based on random starting values for minimization
+                             '_principle-',
+                             principle_mode,
                              '.tsv',
                              sep = '')
   
@@ -610,7 +627,12 @@ option_list = list(
               type='character',
               default = NULL,
               help = 'series of values giving starting values for model fitting. Number of parameters unique to model: 1 = `rw`, 2 = `uncertainty`, 3 = `surprise`, 4 = `uncertainty_surprise`. Needs to be padded with NA to reach length = 4. E.g. `0.5,0.5,7,NA`. Ignored if `random_starting_values == TRUE`',
-              metavar = 'SVS'))
+              metavar = 'SVS'),
+  make_option(c('-X', '--principle_mode'),
+              type='character',
+              default = NULL,
+              help = 'if `TRUE`, beta weights for simulation will be set to values to demonstrate the priciple of models',
+              metavar = 'PRINCIPLE_MODE'))
 
 # provide options in list to be callable by script
 opt_parser = OptionParser(option_list = option_list)
@@ -633,6 +655,7 @@ Param_recov_wrapper(participant_id = opt$participant_id,
                     beta_weights = opt$beta_weights,
                     tau = opt$tau,
                     ips = opt$ips,
-                    svs = opt$svs)
+                    svs = opt$svs,
+                    principle_mode = opt$principle_mode)
 
-# Rscript Param_recov_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --random_input_params 'TRUE' --random_input_betas 'FALSE' --random_starting_values 'TRUE' --param_lb 0.01,0.01,-20,NA --param_ub 1,1,20,NA --betas_lb -0.2,-0.5,0,NA,NA --betas_ub -0.2,-0.5,0,NA,NA --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.0001 --maxeval 10 --iterations 3 --beta_weights 0,-0.1,0.1,NA,NA --tau 0.2 --ips 0.1,0.7,2,NA --svs 0.5,0.5,0,NA
+# Rscript Param_recov_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --random_input_params 'TRUE' --random_input_betas 'FALSE' --random_starting_values 'TRUE' --param_lb 0.01,0.01,-20,NA --param_ub 1,1,20,NA --betas_lb -0.2,-0.5,0,NA,NA --betas_ub -0.2,-0.5,0,NA,NA --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.0001 --maxeval 10 --iterations 3 --beta_weights 0,-0.1,0.1,NA,NA --tau 0.2 --ips 0.1,0.7,2,NA --svs 0.5,0.5,0,NA --principle_mode FALSE

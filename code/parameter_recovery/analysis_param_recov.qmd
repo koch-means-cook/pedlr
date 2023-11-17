@@ -42,6 +42,8 @@ base_path = file.path(here::here(),
                       fsep = .Platform$file.sep)
 source(file.path(base_path, 'utils', 'Neurocodify_plot.R',
                  fsep = .Platform$file.sep))
+source(file.path(base_path, 'utils', 'Prepare_data_for_plot.R',
+                 fsep = .Platform$file.sep))
 source(file.path(base_path, 'model_fitting', 'LRfunction.R',
                  fsep = .Platform$file.sep))
 ```
@@ -87,6 +89,21 @@ data = data.table::rbindlist(data_list) %>%
 1. Regression model gives probability of `choice == right` for each trial
 2. Returns `-sum(LL)` only from `low vs. mid` trials
 3. `-sum(LL)` is then adjusted using parameters of current model (AIC) or parameters of current model and number of `low vs. mid` trials (AICc)
+
+# Beta coefficients used for simulation
+
+```{r}
+data_betas = data %>%
+  .[variable == 'input_params' & params %in% c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'),] %>%
+  .[, .(value = unique(value)),
+    by = c('model', 'params')] %>%
+  data.table::dcast(model ~ params, value.var = 'value') %>%
+  data.table::setnames(old = c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'),
+                       new = c('b0', 'b1', 'b2', 'b3', 'b4')) %>%
+  data.table::setcolorder(neworder = c('model', 'b0', 'b1', 'b2', 'b3', 'b4')) %>%
+  Prepare_data_for_plot(.)
+```
+
 
 # Correlation: Input and recovered parameter
 

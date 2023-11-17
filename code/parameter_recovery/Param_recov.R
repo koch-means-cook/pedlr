@@ -36,8 +36,8 @@ Param_recov = function(data,
   #   model = 'uncertainty_surprise', input_params = c(0.1, 0.5, 0.7, 0.5) => Uncertainty+Surprise model => l = 0.1, u = 0.5, s = 0.7, pi = 0.5
   sim = Simulate(data = data,
                  x = input_params,
-                 tau = tau,
-                 model,
+                 tau = tau, 
+                 model = model,
                  beta_weights = beta_weights)
   
   # Replace participants choices with choices of model
@@ -150,10 +150,10 @@ Param_recov = function(data,
     .[variable != 'LRs',] %>%
     # Add info on generating process (model and parameters)
     .[, generating_model := generating_model] %>%
-    .[, ':='(generating_x1 = x0_pad[1],
-             generating_x2 = x0_pad[2],
-             generating_x3 = x0_pad[3],
-             generating_x4 = x0_pad[4],
+    .[, ':='(generating_x1 = input_params[1],
+             generating_x2 = input_params[2],
+             generating_x3 = input_params[3],
+             generating_x4 = input_params[4],
              generating_b0 = beta_weights[1],
              generating_b1 = beta_weights[2],
              generating_b2 = beta_weights[3],
