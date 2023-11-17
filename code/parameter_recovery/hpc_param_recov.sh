@@ -70,6 +70,8 @@ MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise
 RANDOM_INPUT_PARAMS="TRUE"
 RANDOM_INPUT_BETAS="FALSE"
 RANDOM_STARTING_VALUES="TRUE"
+#PRINCIPLE_MODE="FALSE"
+PRINCIPLE_MODE="TRUE"
 ALGORITHM="NLOPT_GN_DIRECT_L"
 XTOL_REL=0.00001
 MAXEVAL=10000
@@ -146,7 +148,7 @@ for DATA in ${DATA_LIST}; do
 		fi
 
 		# Get job name
-		JOB_NAME="recov-${PARTICIPANT_ID}_model-${MODEL}_randips-${RANDOM_INPUT_PARAMS}_randbetas-${RANDOM_INPUT_BETAS}_randsvs-${RANDOM_STARTING_VALUES}"
+		JOB_NAME="recov-${PARTICIPANT_ID}_model-${MODEL}_randips-${RANDOM_INPUT_PARAMS}_randbetas-${RANDOM_INPUT_BETAS}_randsvs-${RANDOM_STARTING_VALUES}_principle-${PRINCIPLE_MODE}"
 
 		# Create job file
 		echo "#!/bin/bash" > job.slurm
@@ -183,7 +185,8 @@ for DATA in ${DATA_LIST}; do
 		--tau=${TAU} \
 		--ips=${IPS} \
 		--beta_weights=${BETA_WEIGHTS} \
-		--svs=${SVS} >> job.slurm
+		--svs=${SVS} \
+		--principle_mode=${PRINCIPLE_MODE} >> job.slurm
 
 		# submit job to cluster queue and remove it to avoid confusion:
 		sbatch job.slurm

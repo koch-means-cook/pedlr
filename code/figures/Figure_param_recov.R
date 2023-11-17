@@ -43,7 +43,7 @@ Figure_param_recov = function(){
                         fsep = .Platform$file.sep)
   # Load data with fixed betas during simulation
   files = Sys.glob(file.path(load_path,
-                             'paramrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE.tsv',
+                             'paramrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE_principle-TRUE.tsv',
                              fsep = .Platform$file.sep))
   
   # Function to load text files (.tsv)

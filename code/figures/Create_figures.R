@@ -98,7 +98,7 @@ Create_figures = function(){
          width = 8,
          height = 9)
   
-  # Model parameter recovery
+  # Parameter recovery
   message("Creating parameter recovery figure...")
   p_pr = Figure_param_recov()
   #base_path = here::here()

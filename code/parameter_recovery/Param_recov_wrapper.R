@@ -87,8 +87,12 @@ Param_recov_wrapper = function(participant_id,
                    fsep = .Platform$file.sep))
   
   # If principle_mode is on, set betas to predefined values
-  if(principle_mode){
-    beta_weights = c(0, -1, 1, -2, 2)
+  if(principle_mode == TRUE){
+    if(model %in% c('rw', 'seplr', 'surprise')){
+      beta_weights = c(0, -1, 1, NA, NA)
+    } else{
+      beta_weights = c(0, -1, 1, -1, 1)
+    }
   }
   
   
@@ -658,4 +662,4 @@ Param_recov_wrapper(participant_id = opt$participant_id,
                     svs = opt$svs,
                     principle_mode = opt$principle_mode)
 
-# Rscript Param_recov_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --random_input_params 'TRUE' --random_input_betas 'FALSE' --random_starting_values 'TRUE' --param_lb 0.01,0.01,-20,NA --param_ub 1,1,20,NA --betas_lb -0.2,-0.5,0,NA,NA --betas_ub -0.2,-0.5,0,NA,NA --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.0001 --maxeval 10 --iterations 3 --beta_weights 0,-0.1,0.1,NA,NA --tau 0.2 --ips 0.1,0.7,2,NA --svs 0.5,0.5,0,NA --principle_mode FALSE
+# Rscript Param_recov_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty' --random_input_params 'TRUE' --random_input_betas 'FALSE' --random_starting_values 'TRUE' --param_lb 0.01,0.01,NA,NA --param_ub 1,1,NA,NA --betas_lb 0,0,0,0,0 --betas_ub 0,0,0,0,0 --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.0001 --maxeval 10 --iterations 3 --beta_weights 0,0,0,0,0 --tau 0.2 --ips 0.1,0.7,NA,NA --svs 0.5,0.5,NA,NA --principle_mode 'TRUE'

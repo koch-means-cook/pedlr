@@ -58,7 +58,7 @@ load_path = file.path(here::here(),
                       fsep = .Platform$file.sep)
 # Load data with fixed betas during simulation
 files = Sys.glob(file.path(load_path,
-                           'paramrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE.tsv',
+                           'paramrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE_principle-TRUE.tsv',
                            fsep = .Platform$file.sep))
 
 # Function to load text files (.tsv)
@@ -102,6 +102,7 @@ data_betas = data %>%
                        new = c('b0', 'b1', 'b2', 'b3', 'b4')) %>%
   data.table::setcolorder(neworder = c('model', 'b0', 'b1', 'b2', 'b3', 'b4')) %>%
   Prepare_data_for_plot(.)
+data_betas
 ```
 
 

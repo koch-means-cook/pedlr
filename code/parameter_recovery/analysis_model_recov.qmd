@@ -46,6 +46,9 @@ source(file.path(base_path, 'model_fitting', 'LRfunction.R',
                  fsep = .Platform$file.sep))
 ```
 
+
+# Model recovery (Principled Betas)
+
 ## Load data
 
 ```{r}
@@ -56,7 +59,7 @@ load_path = file.path(here::here(),
                       fsep = .Platform$file.sep)
 # Load data with fixed betas during simulation
 files = Sys.glob(file.path(load_path,
-                           'modelrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE.tsv',
+                           'modelrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE_principle-TRUE.tsv',
                            fsep = .Platform$file.sep))
 
 # Function to load text files (.tsv)
@@ -78,7 +81,7 @@ data = data.table::rbindlist(data_list) %>%
   data.table::setnames(., old = 'x', new = 'params')
 ```
 
-# Model recovery
+## Recovery
 
 ```{r}
 data_recovery = data %>%
@@ -473,6 +476,4 @@ p = ggplot(data = data_plot_cm,
   scale_fill_gradient(low = 'black', high = 'white')
 p
 ```
-
-
 
