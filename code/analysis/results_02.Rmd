@@ -1398,6 +1398,169 @@ p = ggplot(data = data_cbe_fit_surprise,
 Neurocodify_plot(p)
 ```
 
+## alpha*-analysis
+
+
+```{r}
+# Glob files based on naming pattern
+load_path = file.path(here::here(),
+                      'derivatives',
+                      'model_fitting',
+                      fsep = .Platform$file.sep)
+# Load data with fixed betas during simulation
+files = Sys.glob(file.path(load_path,
+                           'modeldata-*_sv-random.tsv',
+                           fsep = .Platform$file.sep))
+
+# Function to load text files (.tsv)
+Load_tsv = function(file_path){
+  tsv = data.table::fread(file_path,
+                          sep = '\t',
+                          na.strings = 'n/a')
+  return(tsv)
+}
+
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+data_alphastar = data.table::rbindlist(data_list) %>%
+  .[iter == 1,] %>%
+  .[model == 'surprise',] %>%
+  .[, c('participant_id', 'group', 'model', 'run') := lapply(.SD, factor), .SDcols = c('participant_id', 'group', 'model', 'run')] %>%
+  Apply_exclusion_criteria(., choice_based_exclusion = TRUE)
+
+# Get parameters of participants surprise model
+cols = c('participant_id', 'group', 'model', 'param_l', 'param_s', 'param_u')
+data_alphastar = data.table::merge.data.table(data_alphastar,
+                                              data_param_corr[, ..cols],
+                                              by = c('participant_id',
+                                                     'group',
+                                                     'model')) %>%
+  # Calculate alpha* on each trial
+  .[, alpha_star := LRfunction(low = param_l,
+                               up = param_u,
+                               slope = param_s,
+                               PE = pe),
+    by = c('participant_id', 'group', 'model', 'run', 'trial')] %>%
+  # Reduce to important information we need for windowrize analysis
+  .[, c('participant_id', 'group', 'model', 'run', 'trial', 'comp', 'pe',
+        'param_l', 'param_s', 'param_u', 'alpha_star')]
+
+# Load windowrize data
+file = file.path(base_path, 'derivatives', 'analysis', 'windowrize.tsv',
+                 fsep = .Platform$file.sep)
+data_windowrize_alphastar = data.table::fread(file, sep = '\t', na.strings = 'n/a') %>%
+  .[, c('participant_id', 'group', 'run', 'comp') := lapply(.SD, factor),
+    .SDcols = c('participant_id', 'group', 'run', 'comp')] %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  data.table::merge.data.table(., data_alphastar,
+                               by = c('participant_id', 'group', 'run', 'trial', 'comp')) %>%
+  data.table::setorder('participant_id', 'group', 'run', 'i_rare', 'window_relative')
+```
+
+```{r}
+data_pe_lr = data_alphastar[] %>%
+  # Exclude all trials without pe (no expectation, first three updates)
+  .[!is.na(pe),] %>%
+  # Label trials below or above absolute PE of 20
+  .[, geq_abs_20 := abs(pe) >= 20] %>%
+  # Get average alpha* by surprise model parameters
+  .[, .(mean_alpha_star = mean(alpha_star, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'geq_abs_20', 'param_l', 'param_s', 'param_u')] %>%
+  .[, log_mean_alpha_star := log(mean_alpha_star)] %>%
+  Prepare_data_for_plot(.)
+
+p = ggplot(data = data_pe_lr,
+           aes(x = geq_abs_20,
+               y = mean_alpha_star,
+               color = group,
+               fill = group)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.1,
+                                             jitter.height = 0,
+                                             dodge.width = 0.2,
+                                             seed = 666)) +
+  stat_summary(geom = 'point', fun = mean, shape = 23, fill = 'white', stroke = 1.5, size = 4, position = position_dodge(width = 0.2))
+p
+
+p = ggplot(data = data_pe_lr,
+           aes(x = geq_abs_20,
+               y = log_mean_alpha_star,
+               color = group,
+               fill = group)) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
+  geom_point(position = position_jitterdodge(jitter.width = 0.1,
+                                             jitter.height = 0,
+                                             dodge.width = 0.2,
+                                             seed = 666)) +
+  stat_summary(geom = 'point',
+               fun = mean,
+               shape = 23,
+               fill = 'white',
+               stroke = 1.5,
+               size = 4, 
+               position = position_dodge(width = 0.2))
+p
+```
+
+```{r}
+data_plot = data_windowrize_alphastar[window_relative %in% c(-1,0,1, 2),] %>%
+  .[, .(mean_alpha_star = mean(alpha_star, na.rm = TRUE),
+        mean_pe = mean(pe, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'window_relative', 'param_l', 'param_u', 'param_s')] %>%
+  Prepare_data_for_plot(.)
+
+p = ggplot(data = data_plot,
+           aes(x = window_relative, 
+               y = mean_alpha_star,
+               color = group)) +
+  geom_point(size = 0.5,
+             position = position_jitterdodge(jitter.width = 0.1,
+                                             jitter.height = 0,
+                                             dodge.width = 0.2,
+                                             seed = 666)) +
+  stat_summary(geom = 'point',
+               fun = mean,
+               shape = 23,
+               size = 3,
+               stroke = 1.5,
+               fill = 'white',
+               position = position_dodge(width = 0.2))
+p
+```
+
+```{r}
+bla = data_windowrize_alphastar[window_relative %in% c(-1,0,1, 2),] %>%
+  data.table::dcast(participant_id + group + run + i_rare ~ paste0('alphastar_at_', window_relative), value.var = 'alpha_star') %>%
+  .[, perc_change_0v1 := ((alphastar_at_1 - alphastar_at_0)/alphastar_at_0) * 100] %>%
+  .[, .(mean_perc_change = mean(perc_change_0v1, na.rm = TRUE)),
+    by = c('participant_id', 'group')] %>%
+  Prepare_data_for_plot(.)
+
+p = ggplot(data = bla,
+           aes(x = group,
+               y = mean_perc_change,
+               color = group)) + 
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0))
+p
+```
+```{r}
+file = file.path(base_path, 'derivatives', 'analysis', 'windowrize.tsv',
+                 fsep = .Platform$file.sep)
+data_windowrize = data.table::fread(file, sep = '\t', na.strings = 'n/a') %>%
+  .[, c('participant_id', 'group', 'run', 'comp') := lapply(.SD, factor),
+    .SDcols = c('participant_id', 'group', 'run', 'comp')] %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  .[window_relative == 0]
+```
+
+
 ------------------------------------------------------------------------
 
 # SEPLR model
