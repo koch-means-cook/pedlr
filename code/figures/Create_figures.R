@@ -50,7 +50,7 @@ Create_figures = function(){
   ggsave(filename = out_file,
          plot = p_pcrt,
          device = 'pdf',
-         width = 6,
+         width = 5,
          height = 8)
   
   # Behavioral data (rare influence and estimation)
@@ -89,7 +89,6 @@ Create_figures = function(){
   # Model surprise
   message("Creating surprise model figure...")
   p_ms = Figure_model_surprise()
-  #base_path = here::here()
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_ms.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
@@ -101,7 +100,6 @@ Create_figures = function(){
   # Parameter recovery
   message("Creating parameter recovery figure...")
   p_pr = Figure_param_recov()
-  #base_path = here::here()
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_pr.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
@@ -113,7 +111,6 @@ Create_figures = function(){
   # Model recovery
   message("Creating model recovery figure...")
   p_mr = Figure_model_recov()
-  #base_path = here::here()
   out_file = file.path(base_path, 'derivatives', 'figures', 'f_mr.pdf',
                        fsep = .Platform$file.sep)
   ggsave(filename = out_file,
@@ -121,6 +118,29 @@ Create_figures = function(){
          device = 'pdf',
          width = 7.5,
          height = 3.5)
+  
+  # Percentage correct trials 1-40
+  message("Creating trial 1-40 figure...")
+  p_pc40 = Figure_behav_pc_40()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_pc40.pdf',
+                       fsep = .Platform$file.sep)
+  ggsave(filename = out_file,
+         plot = p_pc40,
+         device = 'pdf',
+         width = 5,
+         height = 4)
+  
+  # Posterior predictive check
+  message("Creating posterior predictive check figure...")
+  p_ppc = Figure_ppc()
+  out_file = file.path(base_path, 'derivatives', 'figures', 'f_ppc.pdf',
+                       fsep = .Platform$file.sep)
+  ggsave(filename = out_file,
+         plot = p_ppc,
+         device = 'pdf',
+         width = 8,
+         height = 8)
+  
   
 }
 
