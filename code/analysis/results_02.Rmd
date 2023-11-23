@@ -1125,10 +1125,10 @@ p = ggplot(data = data_lrs,
 p
 ```
 
-$\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions
+Number of participants ith increasing LR function
 
 ```{r}
-# Chi-Sq with rising and falling
+# Count participants within rising and faling group
 data_rising = data_surprise_param %>%
   .[, .(n_rising = sum(param_uml_dicho),
         n = .N),
@@ -1137,7 +1137,15 @@ data_rising = data_surprise_param %>%
   .[, .SD, .SDcols = c('group', 'n_rising', 'n_falling')] %>%
   data.table::melt(measure.vars = c('n_rising', 'n_falling'))
 
-# Test
+# Display number of participants with rising LR-Functions
+data_rising[variable == 'n_rising',]
+```
+
+
+$\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions
+
+```{r}
+# Chi-Sq with rising
 c_sq = chisq.test(cbind(data_rising[group == 'younger']$value,
                         data_rising[group == 'older']$value))
 c_sq
