@@ -296,7 +296,8 @@ Figure_pc_overall = function(){
           axis.text.x = element_text(lineheight = 0.7),
           axis.title.x = element_text(size = 10,
                                       face = 'bold',
-                                      margin = margin(10,0,0,0,'pt')),
+                                      margin = margin(10,0,0,0,'pt'),
+                                      hjust = 1),
           axis.title.y = element_text(size = 10,
                                       face = 'bold',
                                       margin = margin(0,10,0,0,'pt')))
@@ -460,7 +461,8 @@ Figure_rt_overall = function(){
   p = Neurocodify_plot(p) +
     theme(axis.title.x = element_text(size = 10,
                                       face = 'bold',
-                                      margin = margin(10,0,0,0,'pt')),
+                                      margin = margin(10,0,0,0,'pt'),
+                                      hjust = 1),
           axis.title.y = element_text(size = 10,
                                       face = 'bold',
                                       margin = margin(0,10,0,0,'pt')),
