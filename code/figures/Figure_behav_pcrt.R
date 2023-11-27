@@ -296,7 +296,8 @@ Figure_pc_overall = function(){
           axis.text.x = element_text(lineheight = 0.7),
           axis.title.x = element_text(size = 10,
                                       face = 'bold',
-                                      margin = margin(10,0,0,0,'pt')),
+                                      margin = margin(10,0,0,0,'pt'),
+                                      hjust = 1),
           axis.title.y = element_text(size = 10,
                                       face = 'bold',
                                       margin = margin(0,10,0,0,'pt')))
@@ -460,7 +461,8 @@ Figure_rt_overall = function(){
   p = Neurocodify_plot(p) +
     theme(axis.title.x = element_text(size = 10,
                                       face = 'bold',
-                                      margin = margin(10,0,0,0,'pt')),
+                                      margin = margin(10,0,0,0,'pt'),
+                                      hjust = 1),
           axis.title.y = element_text(size = 10,
                                       face = 'bold',
                                       margin = margin(0,10,0,0,'pt')),
@@ -611,9 +613,14 @@ Figure_behav_pcrt = function(){
   
   # Get plots
   p_pc_learning = Figure_pc_learn() +
-    theme(plot.margin = margin(0,5,10,0,'pt'))
+    theme(plot.margin = margin(0,10,10,0,'pt'),
+          legend.direction = 'vertical',
+          legend.position = c(0.8,0.45),
+          legend.key.height = unit(5,'pt'),
+          axis.text.x = element_text(angle = 35,
+                                     hjust = 1))
   p_pc_run = Figure_pc_run() +
-    theme(plot.margin = margin(0,0,10,5,'pt'))
+    theme(plot.margin = margin(0,-10,10,15,'pt'))
   p_pc_overall = Figure_pc_overall() +
     theme(plot.margin = margin(10,0,10,0,'pt'))
   p_pc_diff = Figure_pc_diff() +
@@ -629,13 +636,14 @@ Figure_behav_pcrt = function(){
                                   p_rt_overall, p_rt_diff,
                                   ncol = 2,
                                   nrow = 3,
-                                  rel_widths = c(3,2),
+                                  rel_widths = c(1,1),
                                   rel_heights = c(1,1),
                                   axis = 'tb',
                                   align = 'h',
                                   labels = c('A','B', 'C', 'D', 'E', 'F'),
                                   label_x = 0,
-                                  label_y = 1)
+                                  label_y = 1) +
+    theme(plot.margin = margin(5,5,5,5,'pt'))
   
   return(behav_pcrt)
   

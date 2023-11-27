@@ -9,11 +9,11 @@ PATH_BASE="${HOME}/pedlr"
 # data directory
 PATH_DATA="${PATH_BASE}/data"
 # output directory
-PATH_OUT="${PATH_BASE}/derivatives/model_fitting"
+PATH_OUT="${PATH_BASE}/derivatives/posterior_pred_checks"
 # directory to save logs of HPC
-PATH_LOG="${PATH_BASE}/logs/model_fitting/$(date '+%Y%m%d_%H%M')"
+PATH_LOG="${PATH_BASE}/logs/posterior_pred_checks/$(date '+%Y%m%d_%H%M')"
 # Path to script to run
-PATH_CODE="${PATH_BASE}/code/model_fitting"
+PATH_CODE="${PATH_BASE}/code/posterior_pred_checks"
 # current path
 PATH_RETURN=$(pwd)
 
@@ -59,18 +59,9 @@ MEM_MB=1000
 # memory demand in *MB*
 #MEM_MB="$((${MEM_GB} * 1000))"
 
-# ===
-# Set fitting parameters
-# ===
-#STARTING_VALUES="fixed"
-STARTING_VALUES="random"
-ALGORITHM="NLOPT_GN_DIRECT_L"
-XTOL_REL=0.00001
-MAXEVAL=10000
-ITERATIONS=1
 
 # ===
-# Run model fitting
+# Run windowrization
 # ===
 # loop over all subjects:
 for DATA in ${DATA_LIST}; do
@@ -82,14 +73,14 @@ for DATA in ${DATA_LIST}; do
   PARTICIPANT_ID="${SUB_LABEL}"
 
 	# Get job name
-	JOB_NAME="fit-${PARTICIPANT_ID}_sv-${STARTING_VALUES}"
+	JOB_NAME="windowrize_postpred-${PARTICIPANT_ID}"
 
 	# Create job file
 	echo "#!/bin/bash" > job.slurm
 	# name of the job
 	echo "#SBATCH --job-name ${JOB_NAME}" >> job.slurm
 	# set the expected maximum running time for the job:
-	echo "#SBATCH --time 23:59:00" >> job.slurm
+	echo "#SBATCH --time 1:00:00" >> job.slurm
 	# determine how much RAM your operation needs:
 	echo "#SBATCH --mem ${MEM_MB}MB" >> job.slurm
 	# determine number of CPUs
@@ -100,13 +91,8 @@ for DATA in ${DATA_LIST}; do
 	# Load R module
 	echo "module unload R" >> job.slurm
 	echo "module load R/4.0" >> job.slurm
-	echo "Rscript ${PATH_CODE}/Fit_models_new_wrapper.R" \
-	--participant_id=${PARTICIPANT_ID} \
-	--starting_values=${STARTING_VALUES} \
-	--algorithm=${ALGORITHM} \
-	--xtol_rel=${XTOL_REL} \
-	--maxeval=${MAXEVAL} \
-	--iterations=${ITERATIONS} >> job.slurm
+	echo "Rscript ${PATH_CODE}/Windowrize_model_pred.R" \
+	--participant_id=${PARTICIPANT_ID} >> job.slurm
 
 	# submit job to cluster queue and remove it to avoid confusion:
 	sbatch job.slurm

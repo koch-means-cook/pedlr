@@ -1,7 +1,8 @@
 Compute_value = function(V,
                          x,
                          bandit,
-                         tau) {
+                         tau,
+                         model) {
   
   # Get index for all rewards relevant for current bandit
   idx = which(!is.na(V))
@@ -10,22 +11,32 @@ Compute_value = function(V,
   PE = rep(0, length(V))
   # Initialize LR vector
   LR = rep(NA, length(V))
-  # alpha_hat = x[1]
-  # w = x[2]
   
   # Allocate parameters
   # rw
-  if(is.na(x[2])){
+  if(model == 'rw'){
     alpha = x[1]
     pi = NA
     
     # Uncertainty model
-  } else if(is.na(x[3])){
+  } else if(model == 'uncertainty'){
     alpha = x[1]
     pi = x[2]
     
+    # Separate LR model
+  } else if(model == 'seplr'){
+    alpha_pos = x[1]
+    alpha_neg = x[2]
+    pi = NA
+    
+    # Separate LR + Uncertainty model
+  } else if(model == 'uncertainty_seplr'){
+    alpha_pos = x[1]
+    alpha_neg = x[2]
+    pi = x[3]
+    
     # Surprise model
-  } else if(is.na(x[4])){
+  } else if(model == 'surprise'){
     # l
     low = x[1]
     # u
@@ -35,7 +46,7 @@ Compute_value = function(V,
     pi = NA
     
     # Surprise+Uncertainty model
-  } else{
+  } else if(model == 'uncertainty_surprise'){
     # l
     low = x[1]
     # u
@@ -43,6 +54,12 @@ Compute_value = function(V,
     # s
     slope = x[3]
     pi = x[4]
+    
+    # Throw error if model unknown
+  } else{
+    stop(paste0("Specified model (\'",
+                model,
+                "\') not found."))
   }
   
   # allocate trailing surprise
@@ -52,16 +69,18 @@ Compute_value = function(V,
   for (i in 2:length(idx)){
     
     # Get reward in current trial
-    # note: before updating V[idx[i]] reflects the reward, not the value
+    # note: before updating, V[idx[i]] reflects the reward, not the value
     R = V[idx[i]]
     # Calculate PE from current outcome
     PE[idx[i]] = R-V[idx[i-1]]
     
-    # In case of surprise model (models that include l,u,s parameters) (rw = 1 para, uncertainty = 2 para)
-    if (!is.na(x[3])) {
-      #res = LRfunction(alpha_hat, w, PE[idx[i]], tau)
+    # Calculation of V
+    # Get LR to use for updating
+    # In case of surprise models (dynamic LRs based in parameters l,u,s)
+    if (model %in% c('surprise', 'uncertainty_surprise')) {
       
-      # Calculate LR (based on experienced PE and relationship between PE and LR, given by parameters l,u,s)
+      # Calculate LR (based on experienced PE and relationship between PE and
+      # LR, given by parameters l,u,s)
       res = LRfunction(low = low,
                        up = up,
                        slope = slope,
@@ -69,28 +88,52 @@ Compute_value = function(V,
                        tau = tau)
       alpha_star = res[[1]]
       
-    # In case of simple LR model
-    } else {
-      #alpha_star = alpha_hat
+      # In case of seplr model, use different LR depending on pos or neg PE
+    } else if(model %in% c('seplr', 'uncertainty_seplr')){
+      
+      # Positive PEs
+      if(PE[idx[i]] >= 0){
+        alpha_star = alpha_pos
+        
+      # Negative PEs
+      } else{
+        alpha_star = alpha_neg
+      }
+      
+      
+      # In case of RW and uncertainty model: use single, static LR (but updating
+      # process works identical)
+    } else if(model %in% c('rw', 'uncertainty')){
       
       # Set constant LR
       alpha_star = alpha
+      
+      # Throw error in case no conditions apply
+    } else{
+      stop(paste0("Specified model (\'",
+                  model,
+                  "\') not found."))
     }
     
-    # Calculate and enter current value 
-    # (based on previous value, LR, and current outcome; regular RW updating, V_1 = alpha * (V_0-R))
+    # Calculate and enter current value using single LR updating rule
+    # (based on previous value, LR, and current outcome; regular RW updating,
+    # V_1 = alpha * (V_0-R))
     V[idx[i]] = V[idx[i-1]]*(1-alpha_star) +  R*alpha_star
     # Safe current LR
     LR[idx[i]] = alpha_star
     
-    # Calculate and enter trailing surprise
+    # Check if there is an uncertainty module and (in case) calculate and
+    # enter trailing surprise
+    # Uncertainty module present: use trailing surprise
     if(!is.na(pi)){
+      
       # The higher pi, the less reliance on history
       S[idx[i]] = S[idx[i-1]]*(1-pi) + abs(PE[idx[i]])*pi
+      
+      # Uncertainty module absent (pi == NA): fill surprise with NA
     } else{
       S[idx[i]] = NA
     }
-    
     
     # Fill in values and PE for empty trials in which bandit was not chosen
     V[idx[i-1]:(idx[i]-1)] = V[idx[i-1]]
@@ -107,15 +150,3 @@ Compute_value = function(V,
   VPE = data.frame(V, PE, LR, S)
   return(VPE)
 }
-
-
-#comp_updates = function(x) {
-#  idx = which(abs(x) > 0)
-#  for (i in 2:length(idx)){
-#    if ((idx[i] - idx[i-1]) > 0) {
-#      x[idx[i-1]:(idx[i]-1)] = x[idx[i-1]]
-#    }
-#  }
-#  x[idx[i]:length(x)] = x[idx[i]]
-#  return(x)
-#}

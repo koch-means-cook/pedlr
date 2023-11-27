@@ -1,0 +1,241 @@
+---
+title: "Simulation Analysis"
+format: 
+  html:
+    theme:
+      light: yeti
+      dark: superhero
+    fontsize: small
+    grid:
+      sidebar-width: 15em
+    code-fold: true
+    toc: true
+    toc-location: left
+    toc-title: Contents
+    toc-depth: 3
+    toc-expand: true
+    embed-resources: true
+    html-math-method: katex
+editor: source
+---
+
+# Setup
+
+```{r}
+library(here)
+library(ggplot2)
+library(data.table)
+library(magrittr)
+library(parallel)
+library(viridis)
+
+base_path = here::here()
+
+source(file.path(base_path, 'code', 'utils', 'Add_comp.R',
+                 fsep = .Platform$file.sep))
+source(file.path(base_path, 'code', 'utils', 'Get_running_avg.R',
+                 fsep = .Platform$file.sep))
+source(file.path(base_path, 'code', 'utils', 'Neurocodify_plot.R',
+                 fsep = .Platform$file.sep))
+source(file.path(base_path, 'code', 'model_fitting', 'LRfunction.R',
+                 fsep = .Platform$file.sep))
+```
+
+# Simulation results: `surprise` model
+
+```{r}
+# Load data
+# Get paths of files to load
+pattern = file.path(base_path,
+                    'derivatives',
+                    'simulation',
+                    'modelsim_analysis-windowrize_base-*.tsv')
+files = Sys.glob(pattern)
+# Function to load text files (.tsv)
+Load_tsv = function(file_path){
+  tsv = data.table::fread(file_path,
+                          sep = '\t',
+                          na.strings = 'n/a')
+  return(tsv)
+}
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+data = data.table::rbindlist(data_list)
+```
+
+```{r}
+# Average over design bases ("participants")
+data_avg = data %>%
+  # Focus on surprise model
+  .[model == 'surprise',] %>%
+  # Focus on one trial before and two trials after
+  .[window_relative %in% c(-1,1,2)] %>%
+  # Rename parameters
+  setnames(old = c('x1', 'x2', 'x3'),
+           new = c('l', 'u', 's')) %>%
+  # Add variable for rising/falling LRfunction
+  .[, lmu_dicho := if(l-u < 0) 1 else 0,
+    by = c('para_id', 'design_base', 'model', 'run', 'window_relative')] %>%
+  .[, lmu_dicho := as.logical(lmu_dicho)] %>%
+  # Average over IDs and runs
+  .[, .(mean_accuracy = mean(mean_accuracy),
+        sd = sd(mean_accuracy),
+        l = unique(l),
+        u = unique(u),
+        s = unique(s),
+        lmu_dicho = unique(lmu_dicho),
+        n = .N),
+    by = c('para_id', 'model', 'window_relative')]
+
+```
+
+```{r}
+#| out-width: 100%
+
+# Dont plot l = u to avoid clutter
+p = ggplot(data = data_avg[!l == u,],
+       aes(x = window_relative,
+           y = mean_accuracy,
+           color = l,
+           group = l)) +
+  labs(x = '1v2 x trials after rare outcome',
+       y = 'Prob of choosing 2 in 1v2 trials') +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 0) +
+  #annotate(geom = 'label', x = 0, y = 0.85, label = 'Rare outcome', size = 3) +
+  scale_y_continuous(limits = c(0.7,0.9),
+                     breaks = c(0.7,0.9)) +
+  facet_grid(u~s, labeller = label_both)
+p
+```
+
+# Effect strength 
+
+```{r}
+data_effect = data %>%
+  # Focus on surprise model
+  .[model == 'surprise',] %>%
+  # Focus on one trial before and two trials after
+  .[window_relative %in% c(-1,1,2)] %>%
+  # Rename parameters
+  setnames(old = c('x1', 'x2', 'x3'),
+           new = c('l', 'u', 's')) %>%
+  # Add variable for rising/falling LRfunction
+  .[, lmu_dicho := if(l-u < 0) 1 else 0,
+    by = c('para_id', 'design_base', 'model', 'run', 'window_relative')] %>%
+  .[, lmu_dicho := as.logical(lmu_dicho)] %>%
+  # Long format to calculate difference between pre and post
+  data.table::dcast(para_id + design_base + model + run + l + u + s + lmu_dicho ~ paste0('mean_accuracy_', window_relative),
+                    value.var = c('mean_accuracy')) %>%
+  # Rename columns for simpler coding
+  data.table::setnames(old = c('mean_accuracy_-1', 'mean_accuracy_1'),
+                       new = c('mean_accuracy_pre', 'mean_accuracy_post')) %>%
+  .[, c('l','u','s') := lapply(.SD, factor), .SDcols = c('l','u','s')] %>%
+  # Recode dichotomization to labels (rather than TRUE and FALSE)
+  .[, lmu_dicho := factor(lmu_dicho, labels = c('falling', 'rising'))] %>%
+  # "Flat" level for l == u
+  .[l == u, lmu_dicho := 'flat'] %>%
+  # Get effect strength via difference post - pre (more negative numbers mean
+  # stronger effect)
+  .[,effect_post_m_pre := mean_accuracy_post - mean_accuracy_pre] %>%
+  # Average and SEM for easier plotting
+  .[, .(mean_effect_post_m_pre = mean(effect_post_m_pre),
+        sem_effect_post_m_pre = sd(effect_post_m_pre)/sqrt(.N)),
+    by = c('para_id', 'model', 'l', 'u', 's', 'lmu_dicho')]
+```
+
+```{r}
+p_1 = ggplot2::ggplot(data = data_effect,
+                aes(x = u,
+                    y = mean_effect_post_m_pre,
+                    ymin = mean_effect_post_m_pre - sem_effect_post_m_pre,
+                    ymax = mean_effect_post_m_pre + sem_effect_post_m_pre,
+                    fill = u)) +
+  scale_fill_viridis(option = 'D', discrete = TRUE) +
+  geom_hline(yintercept = 0,
+             color = 'black') +
+  geom_errorbar(width = 0.3,
+                color = 'black',
+                linewidth = 0.5) +
+  geom_point(shape = 23,
+             size = 1.5) +
+  facet_grid(l~s, labeller = label_both) +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1),
+        axis.text = element_text(size = 6),
+        legend.position = 'bottom',
+        aspect.ratio = 1,
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank())
+p_1 = Neurocodify_plot(p_1)
+```
+
+```{r}
+# Create artificial LR functions with varying 's' parameter (both for rising and
+# falling LR functions)
+lr_func = data_effect %>%
+  .[, .(pe = seq(1,60)),
+    by = c('s', 'l', 'u')] %>%
+  # Convert to double for LR function creation 
+  .[, c('s','l','u') := lapply(.SD, as.character), .SDcols = c('s','l','u')] %>%
+  .[, c('s','l','u') := lapply(.SD, as.double), .SDcols = c('s','l','u')] %>%
+  # Get LR function (LR based on PE) for fixed 'l' and 'u' but varying 's'
+  .[, .(pe = pe,
+        alpha_star = LRfunction(low = l,
+                                up = u,
+                                slope = s,
+                                PE = pe,
+                                tau = 0.2)[[1]],
+        pe_scaled = LRfunction(low = l,
+                               up = u,
+                               slope = s,
+                               PE = pe,
+                               tau = 0.2)[[2]]),
+    by = c('s', 'l', 'u')] %>%
+  .[, c('s','l','u') := lapply(.SD, factor), .SDcols = c('s','l','u')]
+
+# Plot LR functions for each value of 's'
+p_2 = ggplot(data = lr_func,
+       aes(x = pe,
+           y = alpha_star,
+           color = u)) +
+  geom_line() +
+  scale_y_continuous(limits = c(0,1)) +
+  scale_color_viridis(option = 'D',
+                      discrete = TRUE) +
+  facet_grid(l~s, labeller = label_both) +
+  theme(legend.position = 'bottom',
+        aspect.ratio = 1,
+        axis.text = element_text(size = 6),
+        axis.text.x = element_text(angle = 60, hjust = 1, vjust = 1),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank())
+p_2 = Neurocodify_plot(p_2)
+```
+
+```{r}
+#| out-width: 100%
+#| panel: fill
+p = cowplot::plot_grid(p_1, p_2,
+                       nrow = 1,
+                       align = 'hv',
+                       axis = 'tb')
+p
+```
+
+- **low `l`:**
+   - stronger `u` creates desired effect when `s < 5`
+   - higher `s` causes no increasing behavioral effect as `u` increases
+      - LR function changes too late to affect choices (most PEs are not high enough to have learning influenced by `u`)
+- **mid `l`:**
+   - Similar pattern to low `l`
+- **high `l`:**
+   - Effects might get stronger with higher `u`, even though it does not represent a rising LR function
+      - mostly noise?
+   - Also stronger effects with stronger `u` for `s >= 5`
+      - Interpretation: high `s` means that `l` controls the effect of rare outcomes (because LR changes very late)
+- Weird variance in `s == 10`

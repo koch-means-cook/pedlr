@@ -1,0 +1,478 @@
+---
+title: "Analysis: Parameter Recovery"
+format: 
+  html:
+    theme:
+      light: yeti
+      dark: superhero
+    fontsize: small
+    grid:
+      sidebar-width: 15em
+    code-fold: true
+    toc: true
+    toc-location: left
+    toc-title: Contents
+    toc-depth: 3
+    toc-expand: true
+    embed-resources: true
+    html-math-method: katex
+editor: source
+---
+
+# Setup
+
+## Libraries
+
+```{r}
+# Libraries
+library(here)
+library(data.table)
+library(parallel)
+library(magrittr)
+library(ggplot2)
+library(ggh4x)
+library(viridis)
+```
+
+## Source functions
+
+```{r}
+base_path = file.path(here::here(),
+                      'code',
+                      fsep = .Platform$file.sep)
+source(file.path(base_path, 'utils', 'Neurocodify_plot.R',
+                 fsep = .Platform$file.sep))
+source(file.path(base_path, 'utils', 'Prepare_data_for_plot.R',
+                 fsep = .Platform$file.sep))
+source(file.path(base_path, 'model_fitting', 'LRfunction.R',
+                 fsep = .Platform$file.sep))
+```
+
+## Load data
+
+```{r}
+# Glob files based on naming pattern
+load_path = file.path(here::here(),
+                      'derivatives',
+                      'parameter_recovery',
+                      fsep = .Platform$file.sep)
+# Load data with fixed betas during simulation
+files = Sys.glob(file.path(load_path,
+                           'paramrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE_principle-TRUE.tsv',
+                           fsep = .Platform$file.sep))
+
+# Function to load text files (.tsv)
+Load_tsv = function(file_path){
+  tsv = data.table::fread(file_path,
+                          sep = '\t',
+                          na.strings = 'n/a')
+  return(tsv)
+}
+
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+data = data.table::rbindlist(data_list) %>%
+  # Rename to avoid 'x' as column name
+  data.table::setnames(., old = 'x', new = 'params') %>%
+  # Delete betas based on z-scored predictor values from recovery (data can not
+  # be generated based these z_betas since they require a complete data set to
+  # be calculated)
+  .[!params %in% c('z_(Intercept)', 'z_V1', 'z_V2', 'z_V1u', 'z_V2u'),]
+```
+
+# Information on fitting process
+
+1. Regression model gives probability of `choice == right` for each trial
+2. Returns `-sum(LL)` only from `low vs. mid` trials
+3. `-sum(LL)` is then adjusted using parameters of current model (AIC) or parameters of current model and number of `low vs. mid` trials (AICc)
+
+# Beta coefficients used for simulation
+
+```{r}
+data_betas = data %>%
+  .[variable == 'input_params' & params %in% c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'),] %>%
+  .[, .(value = unique(value)),
+    by = c('model', 'params')] %>%
+  data.table::dcast(model ~ params, value.var = 'value') %>%
+  data.table::setnames(old = c('(Intercept)', 'V1', 'V2', 'V1u', 'V2u'),
+                       new = c('b0', 'b1', 'b2', 'b3', 'b4')) %>%
+  data.table::setcolorder(neworder = c('model', 'b0', 'b1', 'b2', 'b3', 'b4')) %>%
+  Prepare_data_for_plot(.)
+data_betas
+```
+
+
+# Correlation: Input and recovered parameter
+
+## RW
+
+```{r}
+# Isolate target model
+data_rw = data %>%
+  .[model == 'rw',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_rw_recov = data_rw %>%
+  .[params == 'alpha',] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_rw_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p  
+```
+
+Good Recovery of Standard RW.
+
+## Uncertainty
+
+```{r}
+# Isolate target model
+data_uncertainty = data %>%
+  .[model == 'uncertainty',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_uncertainty_recov = data_uncertainty %>%
+  .[params %in% c('alpha', 'pi'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_uncertainty_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p
+```
+
+## Valence model
+
+```{r}
+# Isolate target model
+data_seplr = data %>%
+  .[model == 'seplr',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_seplr_recov = data_seplr %>%
+  .[params %in% c('alpha_pos', 'alpha_neg'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_seplr_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p
+```
+
+```{r}
+data_corrplot = data_seplr_recov %>%
+  .[, sim_id := paste0(participant_id, '_', iter)] %>%
+  data.table::setnames(., old = c('coefs', 'input_params'),
+                       new = c('est', 'in'),
+                       skip_absent=TRUE) %>%
+  data.table::dcast(sim_id ~ params, value.var = c('est', 'in'))
+
+p_in = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[!colnames(data_corrplot) %in% c('sim_id', 'in_alpha_neg', 'in_alpha_pos')],
+                    title = 'Input parameters')
+p_in
+```
+
+```{r}
+p_est = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[!colnames(data_corrplot) %in% c('sim_id', 'est_alpha_neg', 'est_alpha_pos')],
+                    title = 'Input parameters')
+p_est
+```
+
+```{r}
+#| message: false
+  
+p = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[colnames(data_corrplot) != 'sim_id'],
+                    title = 'All parameters') +
+  theme_bw() +
+  theme(strip.background = element_rect(fill = NA,
+                                        color = NA),
+        strip.text.x = element_text(size = 15,
+                                  face = 'bold'),
+        strip.text.y = element_text(size = 15,
+                                  face = 'bold',
+                                  angle = 0,
+                                  hjust = 0),
+        panel.grid = element_blank())
+p
+```
+
+
+## Surprise
+
+```{r}
+# Isolate target model
+data_surprise = data %>%
+  .[model == 'surprise',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_surprise_recov = data_surprise %>%
+  .[params %in% c('l', 'u', 's'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+cutoffs = data.table::data.table(cbind(rep('s', 2),
+                                       c(1,7)))
+colnames(cutoffs) = c('params', 'x')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_surprise_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::geom_vline(data = cutoffs,
+                      aes(xintercept = as.numeric(x)),
+                      linetype = 'dashed') +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p
+```
+
+### s bound between 1-7
+
+```{r}
+# Restrict data to subset where 1 < s < 7
+data_surprise_recov_s = data_surprise_recov %>%
+  .[, input_s := input_params[params == 's'],
+   by = c('participant_id', 'model', 'iter')] %>%
+  .[, inbounds := data.table::between(input_s, 1, 7)]
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_surprise_recov_s,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+    ggplot2::geom_vline(data = cutoffs,
+                      aes(xintercept = as.numeric(x)),
+                      linetype = 'dashed') +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::geom_smooth(data = data_surprise_recov_s[inbounds == TRUE],
+                       method = 'lm',
+                       formula = y ~ x,
+                       color = 'yellow') +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+p = Neurocodify_plot(p)
+p
+```
+
+
+```{r}
+#| message: false
+
+data_corrplot = data_surprise_recov_s %>%
+  # Restrict simulation to 1 < s < 7
+  .[inbounds == TRUE, ] %>%
+  .[, sim_id := paste0(participant_id, '_', iter)] %>%
+  data.table::setnames(., old = c('coefs', 'input_params'),
+                       new = c('est', 'in'),
+                       skip_absent=TRUE) %>%
+  data.table::dcast(sim_id ~ params, value.var = c('est', 'in'))
+
+p_in = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[!colnames(data_corrplot) %in% c('sim_id', 'est_l', 'est_s', 'est_u')],
+                    title = 'Input parameters')
+p_in
+```
+
+```{r}
+#| message: false
+
+p_est = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[!colnames(data_corrplot) %in% c('sim_id', 'in_l', 'in_s', 'in_u')],
+                    title = 'Recovered parameters')
+p_est
+```
+
+
+```{r}
+#| message: false
+
+p = GGally::ggpairs(data = data_corrplot,
+                    lower = list(continuous = GGally::wrap("points",
+                                                           alpha = 0.3,
+                                                           size=0.1)),
+                    columns = colnames(data_corrplot)[colnames(data_corrplot) != 'sim_id'],
+                    title = 'All parameters') +
+  theme_bw() +
+  theme(strip.background = element_rect(fill = NA,
+                                        color = NA),
+        strip.text.x = element_text(size = 15,
+                                  face = 'bold'),
+        strip.text.y = element_text(size = 15,
+                                  face = 'bold',
+                                  angle = 0,
+                                  hjust = 0),
+        panel.grid = element_blank())
+p
+```
+
+## Uncertainty+Surprise
+
+```{r}
+# Isolate target model
+data_uncertainty_surprise = data %>%
+  .[model == 'uncertainty_surprise',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_uncertainty_surprise_recov = data_uncertainty_surprise %>%
+  .[params %in% c('l', 'u', 's', 'pi'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_uncertainty_surprise_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::geom_vline(data = cutoffs,
+                      aes(xintercept = as.numeric(x)),
+                      linetype = 'dashed') +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p
+```
+
+
+## Uncertainty+SEPLR
+
+```{r}
+# Isolate target model
+data_uncertainty_seplr = data %>%
+  .[model == 'uncertainty_seplr',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_uncertainty_seplr_recov = data_uncertainty_seplr %>%
+  .[params %in% c('alpha_pos', 'alpha_neg', 'pi'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_uncertainty_seplr_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p
+```

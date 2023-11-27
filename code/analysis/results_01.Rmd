@@ -3,7 +3,7 @@ title: "Results 01"
 output:
   html_document:
     toc: yes
-    self_contained: true
+    embed-resources: true
     toc_float:
       collapsed: true
       smooth_scroll: false
@@ -163,6 +163,8 @@ Neurocodify_plot(p_noc_diff_comp_line)
 
 ## Stats
 
+LMM correct choice probabilities (manuscript ll. 307)
+
 ```{r}
 # Assure data types
 check_noc$participant_id = as.factor(check_noc$participant_id)
@@ -182,6 +184,8 @@ papeR::prettify(Anova(lme_noc))
 
 ### Main effect run
 
+Manuscript ll. 308/310
+
 ```{r}
 emmeans::emmeans(lme_noc,
                  pairwise ~ run)
@@ -189,12 +193,16 @@ emmeans::emmeans(lme_noc,
 
 ### Main effect comp
 
+Manuscript ll. 308/311
+
 ```{r}
 emmeans::emmeans(lme_noc,
                  pairwise ~ comp)
 ```
 
 ### Robust regression (due to outliers)
+
+Manuscript ll. 320-323
 
 ```{r}
 # Get correct choices
@@ -336,7 +344,7 @@ res
 **Bisquare weights**
 
 ```{r}
-# Look at weights created by RR (low weights = "outlier-y behavior")
+# Look at weights created by RR (low weights = "outlier behavior")
 bweights = data_rr_mean_correct %>%
   .[, ':='(resid = rr.bisquare$resid,
            weight = rr.bisquare$w)] %>%
@@ -376,6 +384,8 @@ Neurocodify_plot(p) +
 ```
 
 **p-value of age group effect**
+
+Manuscript ll. 323
 
 ```{r}
 # Derive p-value from t-distribution and display
@@ -417,6 +427,8 @@ check_rt_mean = check_rt %>%
 
 ## Stats
 
+LMM log(RT), Manuscript ll. 324
+
 ```{r}
 # Assure data types
 check_rt_mean$participant_id = as.factor(check_rt_mean$participant_id)
@@ -435,12 +447,16 @@ papeR::prettify(Anova(lme_rt_comp))
 
 ### Main effect: Comp
 
+Manuscript ll. 325
+
 ```{r}
 emmeans::emmeans(lme_rt_comp,
                  pairwise ~ comp)
 ```
 
 ### Main effect: Age group
+
+Manuscript ll. 328
 
 ```{r}
 emmeans::emmeans(lme_rt_comp,
@@ -450,6 +466,8 @@ emmeans::emmeans(lme_rt_comp,
 
 ### Interaction effect: Group x Comp
 
+Manuscript ll. 328
+
 ```{r}
 em = emmeans::emmeans(lme_rt_comp,
                   pairwise ~ group | comp)
@@ -458,7 +476,20 @@ em
 summary(em, by = NULL, adjust = 'sidak')
 ```
 
+Comparison of age differences in 1v2 with other bandit comps (manuscript ll. 333-334)
+
+```{r}
+# Interaction (contrast of contrast, effect in younger - effect in older)
+# https://cran.r-project.org/web/packages/emmeans/vignettes/interactions.html (Section: "Simple contrasts")
+em_pairwise = emmeans::emmeans(lme_rt_comp,
+                               pairwise ~ comp | group)
+emmeans::contrast(em_pairwise, 'consec', simple = 'group', combine = TRUE)
+```
+
+
 ## Plot
+
+Saves to folder in datalad repository `derivatives`, `datalad unlock` folder `figures` in case it gives an access error
 
 ```{r}
 data_plot = Prepare_data_for_plot(check_rt_mean)
@@ -575,14 +606,15 @@ for(i_id in unique(data_ii$participant_id)){
    }
   }
 }
-
-# Summarize data
-window_data_run = window_data %>%
-  # Eliminate windows which extended across trial boundaries (<1 or >240)
+# Eliminate windows which extended across trial boundaries (<1 or >240)
+window_data = window_data %>%
   .[, relative_trial := as.numeric(as.character(window_center)) + as.numeric(as.character(window_relative))] %>%
   .[!(relative_trial < 1 | relative_trial > 240),] %>%
   # Sort by relative window
-  .[order(rank(group), rank(participant_id), rank(run), rank(window_relative)),] %>%
+  .[order(rank(group), rank(participant_id), rank(run), rank(window_relative)),]
+
+# Summarize data
+window_data_run = window_data %>%
   # Get mean accuracy across all relative window positions (-2 to +3)
   .[, .(mean_accuracy = mean(correct_choice, na.rm = TRUE),
         n_data = sum(!is.na(correct_choice))),
@@ -601,7 +633,22 @@ window_data_group = window_data_participant %>%
   .[order(rank(group), rank(window_relative)),]
 ```
 
-## Check: Average N of rare outcomes per group
+## Save windorized data to derivatives
+
+Saves to folder in datalad repository `derivatives`, `datalad unlock` folder `analysis` in case it gives an access error
+
+```{r}
+save_dir = file.path(base_path, 'derivatives', 'analysis',
+                     fsep = .Platform$file.sep)
+if(!dir.exists(save_dir)){
+  dir.create(save_dir)
+}
+file = file.path(save_dir, 'windowrize.tsv', fsep = .Platform$file.sep)
+data.table::fwrite(window_data, file = file, sep = '\t', na = 'n/a')
+```
+
+
+## Check: Average N of rare outcomes in each run
 
 ```{r}
 avg_n_rare = window_data %>%
@@ -612,43 +659,6 @@ avg_n_rare = window_data %>%
   .[, .(n_rare = max(i_rare)),
     by = c('participant_id', 'group', 'run')]
 
-data_plot = Prepare_data_for_plot(avg_n_rare)
-
-dodge_width = 0.075
-jitter_width = dodge_width/2
-
-p = ggplot(data = data_plot,
-       aes(x = group,
-           y = n_rare,
-           color = group,
-           fill = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitternudge(jitter.width = jitter_width,
-                                             jitter.height = 0,
-                                             nudge.x = dodge_width + jitter_width/2,
-                                             seed = 666),
-             alpha = 0.5) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black',
-               width = dodge_width/2) +
-  gghalves::geom_half_violin(color = NA,
-                             position = position_nudge(x = -dodge_width)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 3,
-               stroke = 0.5) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-
-```
-
-**Average number of rare outcomes in each run**
-
-```{r}
 # Average rare outcomes per run
 avg_n_rare_per_run = mean(avg_n_rare$n_rare)
 avg_n_rare_per_run
@@ -665,6 +675,8 @@ window_data_run[window_relative %in% c('-1', '1')] %>%
 
 ## Stats
 
+Manuscript ll. 338
+
 ```{r}
 # LME for immediate before, and immediate after rare outcome
 data_lme = window_data_run[window_relative %in% c('-1', '1')] %>%
@@ -680,11 +692,15 @@ papeR::prettify(res)
 
 ### Main effect: Window
 
+Manuscript ll. 345
+
 ```{r}
 emmeans::emmeans(lme, pairwise ~ window_relative)
 ```
 
 ### Interaction effect: Window X group
+
+Manuscript ll. 342-344
 
 ```{r}
 em = emmeans::emmeans(lme, pairwise ~ window_relative | group)
@@ -695,6 +711,8 @@ summary(em, by = NULL, adjust = 'sidak')
 ```
 
 ### Main effect: Run
+
+Manuscript ll. 347-348
 
 ```{r}
 emmeans::emmeans(lme, pairwise ~ run)
@@ -793,6 +811,8 @@ Neurocodify_plot(p) +
 
 # Immediate influence of events between 20th and 40th percentile
 
+Same analysis, but for low outcomes not from the lower mode of the mid distribution
+
 ```{r}
 window_data_normal = data.table()
 # For each participant & run
@@ -858,6 +878,8 @@ window_data_participant_normal = window_data_run_normal %>%
 ```
 
 ## Stats
+
+Manuscript ll. 352-356
 
 ```{r}
 data_lme = window_data_run_normal[window_relative %in% c('-1', '1')] %>%
@@ -973,6 +995,8 @@ Neurocodify_plot(p) +
 
 # Risk aversion (proportion of M choices)
 
+Manuscript ll. 348-349
+
 ```{r}
 check_risk = data %>%
   Add_comp() %>%
@@ -986,6 +1010,8 @@ check_risk = data %>%
 ```
 
 ## Stats
+
+Manuscript ll. 348-349
 
 ```{r}
 # Assure data types
@@ -1112,80 +1138,10 @@ check_mean_est_diff = check_est_diff %>%
     by = c('participant_id', 'group', 'run', 'half', 'est_stim')]
 ```
 
-## Plot
-
-```{r}
-data_plot = Prepare_data_for_plot(check_mean_est_diff)
-
-data_plot$half = as.factor(data_plot$half)
-levels(data_plot$half) = c('First Half', 'Second Half')
-data_plot$run = as.factor(data_plot$run)
-levels(data_plot$run) = c('Run 1', 'Run 2')
-
-p_check_mean_est_diff = ggplot(data = data_plot[half == 'Second Half'],
-                               aes(x = est_stim,
-                                   y = mean_diff_from_true,
-                                   fill = group,
-                                   color = group)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitterdodge(dodge.width = 0.6,
-                                             jitter.width = 0.2,
-                                             jitter.height = 0)) +
-  geom_boxplot(width = 0.5,
-               color = 'black',
-               outlier.shape = NA,
-               position = position_dodge(width = 0.6)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               inherit.aes = TRUE,
-               fill = 'white',
-               size = 1.5,
-               stroke = 0.5,
-               position = position_dodge(width = 0.6),
-               show.legend = FALSE)+
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  facet_grid(run ~ half)
-Neurocodify_plot(p_check_mean_est_diff)
-```
-
-```{r}
-data_plot = Prepare_data_for_plot(check_mean_est_diff)
-
-p_check_mean_est_diff = ggplot(data = data_plot[half == 2],
-                               aes(x = est_stim,
-                                   y = mean_diff_from_true,
-                                   fill = est_stim,
-                                   color = est_stim)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitterdodge(dodge.width = 0.6,
-                                             jitter.width = 0.2,
-                                             jitter.height = 0)) +
-  geom_boxplot(width = 0.5,
-               color = 'black',
-               outlier.shape = NA,
-               position = position_dodge(width = 0.6)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               inherit.aes = TRUE,
-               fill = 'white',
-               size = 1.5,
-               stroke = 0.5,
-               position = position_dodge(width = 0.6),
-               show.legend = FALSE)+
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides) +
-  theme(legend.position = 'None')
-Neurocodify_plot(p_check_mean_est_diff)
-```
 
 ## Actually different from zero?
+
+Manuscript ll. 362-364
 
 ```{r}
 data_test = check_mean_est_diff %>%
@@ -1205,42 +1161,6 @@ data_test = check_mean_est_diff %>%
 
 knitr::kable(data_test) %>%
   kableExtra::kable_styling()
-```
-
-
-```{r}
-data_plot = Prepare_data_for_plot(check_mean_est_diff)
-
-p_check_mean_est_diff = ggplot(data = data_plot[half == 2],
-                               aes(x = est_stim,
-                                   y = mean_diff_from_true,
-                                   fill = group,
-                                   color = group,
-                                   label = participant_id)) +
-  geom_hline(yintercept = 0,
-             size = 0.5) +
-  geom_point(position = position_jitterdodge(dodge.width = 0.6,
-                                             jitter.width = 0.2,
-                                             jitter.height = 0)) +
-  geom_boxplot(width = 0.5,
-               color = 'black',
-               outlier.shape = NA,
-               position = position_dodge(width = 0.6)) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               inherit.aes = TRUE,
-               fill = 'white',
-               size = 1.5,
-               stroke = 0.5,
-               position = position_dodge(width = 0.6),
-               show.legend = FALSE)+ 
-  # geom_text(size = 3,
-  #            color = 'black') +
-  scale_fill_manual(values = custom_guides) +
-  scale_color_manual(values = custom_guides)
-Neurocodify_plot(p_check_mean_est_diff)
 ```
 
 
@@ -1277,6 +1197,8 @@ check_est_dist = check_est %>%
 
 ## Stats
 
+Manuscript ll. 372-374
+
 ```{r}
 # Assure data types
 check_est_dist$participant_id = as.factor(check_est_dist$participant_id)
@@ -1300,12 +1222,16 @@ emmeans::emmeans(lme_diff_EmR,
 
 ### Interaction effect: Group X Variable
 
+Manuscript ll. 371-373 (see diff_EmR_2m1 in each age group; read variable name `diff_EmR_2m1` as "difference_Estimation-minus-Real_bandit2-minus-bandit1")
+
 ```{r}
 em = emmeans::emmeans(lme_diff_EmR,
                  pairwise ~ variable | group)
 # Accurate correction
 summary(em, by = NULL, adjust = 'sidak')
 ```
+
+Comparison of low vs. mid underestimation between age groups; Manuscript ll. 373
 
 ```{r}
 # Interaction (contrast of contrast, effect in younger - effect in older)

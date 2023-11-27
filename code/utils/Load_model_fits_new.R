@@ -14,7 +14,7 @@ Load_model_fits_new = function(){
                        fsep = .Platform$file.sep)
   # List of all files
   data_list = Sys.glob(file.path(data_dir,
-                                 '*_sv-*.tsv',
+                                 'fit-*_sv-*.tsv',
                                  fsep = .Platform$file.sep))
   
   # Load data
