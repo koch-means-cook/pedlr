@@ -41,18 +41,9 @@ source(file.path(source_path, 'utils', 'Neurocodify_plot.R', fsep = .Platform$fi
 source(file.path(source_path, 'utils', 'Prepare_data_for_plot.R', fsep = .Platform$file.sep))
 source(file.path(source_path, 'utils', 'Get_plot_guides.R', fsep = .Platform$file.sep))
 
+# Get own color/guide theme
 custom_guides = Get_plot_guides()
 
-
-# # Load data
-# files_pattern = file.path(base_path, 'derivatives', 'posterior_pred_checks', 'postpred-*_model-*.tsv',
-#                           fsep = .Platform$file.sep)
-# files = Sys.glob(files_pattern)
-# data = data.table::data.table()
-# for(file in files){
-#   temp = data.table::fread(file, sep = '\t', na.strings = 'n/a')
-#   data = rbind(data, temp)
-# }
 
 # Glob files based on naming pattern
 files_pattern = file.path(base_path, 'derivatives', 'posterior_pred_checks', 'postpred-*_model-*.tsv',
@@ -99,6 +90,7 @@ fit_params = data_fitting %>%
   .[, (c('participant_id', 'model', 'names')) := lapply(.SD, factor), .SDcols = c('participant_id', 'model', 'names')] %>%
   data.table::setnames(old = 'value', new = 'value_fit')
 
+# Get parameters used for simulation (model parameters and regression betas)
 sim_params = data %>%
   .[,.(x1 = unique(x1),
        x2 = unique(x2),
@@ -116,6 +108,8 @@ sim_params = data %>%
   data.table::setorder(participant_id, model, names) %>%
   data.table::setnames(old = 'value', new = 'value_sim')
 
+# Check if parameters used to simulate posterior predictive check match the
+# parameters that resulted from model fitting for each participant and model
 check = data.table::merge.data.table(fit_params,
                                      sim_params,
                                      by = c('participant_id', 'model', 'names')) %>%
@@ -123,7 +117,10 @@ check = data.table::merge.data.table(fit_params,
   .[, value_sim := round(value_sim, 5)] %>%
   .[, check := value_fit == value_sim]
 
+# Show all fails where simulation parameters do not match fit parameters
+# (should be empty table)
 fails = check[check != TRUE,]
+fails
 ```
 
 # Choice comparison
@@ -175,134 +172,7 @@ data_ppc = rbind(data_real, data_pred) %>%
 
 ---
 
-# Choice correctness
-
-```{r}
-# Add group information to ppc
-group_info = data_fitting %>%
-  .[, .(group = unique(group)),
-    by = 'participant_id']
-
-# Percentage of optimal choices
-check_noc = data[model %in% c('surprise', 'seplr')] %>%
-  # Add group information to ppc data
-  data.table::merge.data.table(., group_info, by = 'participant_id') %>%
-  # Add bandit comparison to ppc data
-  Add_comp(.) %>%
-  # Add trial variable
-  .[, trial := seq(.N),
-    by = c('participant_id', 'run', 'model')] %>%
-  # Select only free choices (no guided choices)
-  .[trial_type == 'choice',] %>%
-  # Set correct choice by selecting (on average) higher outcome bandit
-  .[, correct_choice := if(option_left > option_right) 'left' else 'right',
-    by = c('participant_id', 'run', 'model', 'trial')] %>%
-  .[, correct := correct_choice == choice] %>%
-  # Get percentage of correct choices (exclude timeouts from overall trials)
-  .[, .(perc_correct = sum(as.numeric(correct), na.rm = TRUE) / length(which(!is.na(as.numeric(correct))))),
-    by = c('participant_id', 'group', 'model', 'run', 'comp')] %>%
-  # Set data types
-  .[, c('participant_id', 'group', 'run', 'comp', 'model') := lapply(.SD, factor),
-    .SDcols = c('participant_id', 'group', 'run', 'comp', 'model')]
-```
-
-## Surprise model
-
-### Plot
-
-```{r}
-data_plot = Prepare_data_for_plot(check_noc[model == 'surprise'])
-p_noc_diff_comp_line = ggplot(data = data_plot,
-                              aes(x = comp,
-                                  y = perc_correct,
-                                  color = group,
-                                  fill = group)) +
-  geom_point(size = 0.2,
-             position = position_jitterdodge(dodge.width = 0.3,
-                                             jitter.width = 0.2,
-                                             jitter.height = 0)) +
-  geom_boxplot(width = 0.15,
-               color = 'black',
-               outlier.shape = NA,
-               position = position_dodge(width = 0.3),
-               show.legend = FALSE) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 1.5,
-               stroke = 0.5,
-               position = position_dodge(width = 0.3)) +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides) +
-  facet_grid( ~ run) +
-  theme(strip.text.y = element_text(angle = 0),
-        legend.position = 'none')
-Neurocodify_plot(p_noc_diff_comp_line)
-```
-
-### Stats
-
-```{r}
-# Model percent of correct choices by group, run, and bandit comparison
-lme_noc = lme4::lmer(data = check_noc[model == 'surprise'],
-                     perc_correct ~ group * run * comp + (1 | participant_id))
-
-# Display results
-papeR::prettify(car::Anova(lme_noc))
-```
-
-## Valence model
-
-### Plot
-
-```{r}
-data_plot = Prepare_data_for_plot(check_noc[model == 'seplr'])
-p_noc_diff_comp_line = ggplot(data = data_plot,
-                              aes(x = comp,
-                                  y = perc_correct,
-                                  color = group,
-                                  fill = group)) +
-  geom_point(size = 0.2,
-             position = position_jitterdodge(dodge.width = 0.3,
-                                             jitter.width = 0.2,
-                                             jitter.height = 0)) +
-  geom_boxplot(width = 0.15,
-               color = 'black',
-               outlier.shape = NA,
-               position = position_dodge(width = 0.3),
-               show.legend = FALSE) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               na.rm = TRUE,
-               shape = 23,
-               fill = 'white',
-               size = 1.5,
-               stroke = 0.5,
-               position = position_dodge(width = 0.3)) +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides) +
-  facet_grid( ~ run) +
-  theme(strip.text.y = element_text(angle = 0),
-        legend.position = 'none')
-Neurocodify_plot(p_noc_diff_comp_line)
-```
-
-### Stats
-
-```{r}
-# Model percent of correct choices by group, run, and bandit comparison
-lme_noc = lme4::lmer(data = check_noc[model == 'seplr'],
-                     perc_correct ~ group * run * comp + (1 | participant_id))
-
-# Display results
-papeR::prettify(car::Anova(lme_noc))
-```
-
----
-
-# CBE in predictions
+# Critical behavioral effect (CBE) in predictions
 
 ```{r}
 # Load windowrize data
@@ -343,7 +213,7 @@ data_plot = Prepare_data_for_plot(window_data_participant[window_relative != 0,]
 data_plot_mean = Prepare_data_for_plot(window_data_group[window_relative != 0,]) %>%
   .[, group := factor(group, levels = rev(levels(group)))]
 
-# Function to plot
+# Function to plot CBE
 Plot_windowrize = function(data_plot,
                            data_plot_mean,
                            plot_guides){
@@ -402,7 +272,7 @@ Plot_windowrize = function(data_plot,
 # Plot
 Plot_windowrize(data_plot = data_plot,
                 data_plot_mean = data_plot_mean,
-                plot_guides = plot_guides)
+                plot_guides = custom_guides)
 ```
 
 ## CBE plot (PXP-relevant models)
@@ -411,12 +281,14 @@ Plot_windowrize(data_plot = data_plot,
 # Plot only for PXP-relevant models
 Plot_windowrize(data_plot = data_plot[model %in% c('Valence', 'Surprise'),],
                 data_plot_mean = data_plot_mean[model %in% c('Valence', 'Surprise'),],
-                plot_guides = plot_guides)
+                plot_guides = custom_guides)
 ```
 
 ### CBE analysis for PXP-relevant models
 
 #### Surprise model
+
+Manuscript ll. 432-433
 
 ```{r}
 data_cbe_surprise = window_data_run[model == 'surprise']
@@ -433,7 +305,10 @@ res = Anova(lme)
 papeR::prettify(res)
 ```
 
+
 #### Valence model
+
+Manuscript ll. 432-433
 
 ```{r}
 data_cbe_valence = window_data_run[model == 'seplr']
@@ -496,8 +371,8 @@ p = ggplot(data = data_plot,
                color = 'black',
                stroke = 1,
                size = 2) +
-  scale_color_manual(values = plot_guides) +
-  scale_fill_manual(values = plot_guides) +
+  scale_color_manual(values = custom_guides) +
+  scale_fill_manual(values = custom_guides) +
   facet_wrap(~model)
 
 p = Neurocodify_plot(p) +
@@ -511,6 +386,8 @@ p
 
 ## Stats: Different age trajectories for PXP-relevant models
 
+Manuscript ll. 434-435
+
 ```{r}
 data_lme = data_cbe[model %in% c('surprise', 'seplr')] %>%
   .[, c('participant_id', 'group', 'model') := lapply(.SD, factor),
@@ -523,13 +400,15 @@ papeR::prettify(res)
 
 ### Interaction: Group X Model
 
+Manuscript ll. 435-440
+
 ```{r}
 em = emmeans::emmeans(lme,
                       pairwise ~ group | model)
 em
 ```
 
-### Statistical comparison: Predictions from which candidate model are closer to real behavioral data?
+### Comparison: Predictions from which candidate model are closer to real behavioral data?
 
 ```{r}
 # Load real behavioral data
@@ -603,24 +482,5 @@ p = ggplot(data = Prepare_data_for_plot(data_cbe_comp_all),
 p = Neurocodify_plot(p) +
   theme(panel.grid = element_blank())
 p
-```
-
-```{r}
-ggplot(data = data_cbe_comp_all[group == 'older'], 
-       aes(x = variable,
-           y = value)) +
-  geom_point()
-```
-
-
-```{r}
-p = ggplot(data = data_cbe_comp_diff,
-           aes(x = variable,
-               y = value)) +
-  geom_boxplot(outlier.shape = NA) +
-  geom_point(position=position_jitter(width = 0.1, height = 0, seed = 666)) +
-  stat_summary(fun = mean, geom = 'point', color = 'black', fill = 'white', shape = 23, stroke = 1.5, size = 3) +
-  facet_wrap(~group)
-Neurocodify_plot(p)
 ```
 

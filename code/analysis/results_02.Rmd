@@ -401,37 +401,43 @@ data_rw_beta = data_betas %>%
   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
 ```
 
-## Right bandit (beta_2)
+## right bandit (beta_2)
+
+Manuscript ll. 402-403
 
 ```{r}
-# Left bandit
+# right bandit
 # Younger
-b_left_ya = t.test(data_rw_beta[group == 'younger']$b_2,
+b_right_ya = t.test(data_rw_beta[group == 'younger']$b_2,
        mu = 0)
 # Older
-b_left_oa = t.test(data_rw_beta[group == 'older']$b_2,
-       mu = 0)
-
-b_left_ya
-b_left_oa
-```
-
-## Left bandit (beta_1)
-
-```{r}
-# Right bandit
-# Younger
-b_right_ya = t.test(data_rw_beta[group == 'younger']$b_1,
-       mu = 0)
-# Older
-b_right_oa = t.test(data_rw_beta[group == 'older']$b_1,
+b_right_oa = t.test(data_rw_beta[group == 'older']$b_2,
        mu = 0)
 
 b_right_ya
 b_right_oa
 ```
 
+## left bandit (beta_1)
+
+Manuscrip l. 404
+
+```{r}
+# left bandit
+# Younger
+b_left_ya = t.test(data_rw_beta[group == 'younger']$b_1,
+       mu = 0)
+# Older
+b_left_oa = t.test(data_rw_beta[group == 'older']$b_1,
+       mu = 0)
+
+b_left_ya
+b_left_oa
+```
+
 ## Correlation of betas with correct choice in low-mid
+
+Manuscript ll. 406-407
 
 ```{r}
 # Get correlation of betas with percentage correct (high betas mean less random behavior)
@@ -448,7 +454,9 @@ p_adjusted = p.adjust(c(c_b_left$p.value, c_b_right$p.value), method = 'holm')
 
 c_b_left
 c_b_right
-p_adjusted
+
+# Display p_values
+print(paste0('p-values (corr.): ' , p_adjusted))
 ```
 
 ------------------------------------------------------------------------
@@ -492,6 +500,8 @@ data_counts = data_model_comp %>%
 ```
 
 ## Across groups
+
+Manuscript ll. 422-425
 
 ```{r}
 # Count winning models across groups
@@ -580,22 +590,11 @@ p = Neurocodify_plot(p) +
 p
 ```
 
-## $\chi^2$-test of winning frequencies
-
-```{r}
-# Isolate winning model counts
-count_win_oa = data_counts_age[group == 'older' & variable == 'AICc']$n_winning
-count_win_ya = data_counts_age[group == 'younger' & variable == 'AICc']$n_winning
-# Chi-Sq of frequencies (models X age groups)
-cs_test = chisq.test(cbind(count_win_oa,
-                           count_win_ya))
-
-cs_test
-```
-
 ------------------------------------------------------------------------
 
 # Protected exceedance probability
+
+Manuscript ll. 412-416
 
 ```{r}
 # Set seed for sampling (for reproducibility)
@@ -641,62 +640,14 @@ p = Neurocodify_plot(p) +
 p
 ```
 
-## PXP split by group
-
-```{r}
-# Set seed for sampling (for reproducibility)
-set.seed(666)
-
-# PXP only for younger age group
-ep_younger = bmsR::VB_bms(as.matrix(data_ep[group == 'younger', .SD, .SDcols = levels(data_counts_all$model)]),
-                          n_samples = 100000)
-data_pxp_younger = data.table::data.table('model' = levels(data_counts_all$model),
-                                          'pxp' = ep_younger$pxp) %>%
-  .[, model := factor(model, levels = model)] %>%
-  .[, group := 'younger']
-
-# PXP only for older age group
-ep_older = bmsR::VB_bms(as.matrix(data_ep[group == 'older', .SD, .SDcols = levels(data_counts_all$model)]),
-                        n_samples = 100000)
-data_pxp_older = data.table::data.table('model' = levels(data_counts_all$model),
-                                        'pxp' = ep_older$pxp) %>%
-  .[, model := factor(model, levels = model)] %>%
-  .[, group := 'older']
-
-# Fuse PXP for both groups
-data_pxp_age = rbind(data_pxp_older,
-                     data_pxp_younger)
-
-# Re-initialize seed
-set.seed(NULL)
-```
-
-```{r}
-# Plot
-p = ggplot(data = data_pxp_age,
-           aes(x = model,
-               y = pxp,
-               fill = model)) +
-  geom_col() +
-  scale_y_continuous(limits = c(0,1)) +
-  facet_wrap(~group)
-
-p = Neurocodify_plot(p) +
-  theme(legend.position = 'none',
-        panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        axis.text.x = element_text(angle = 45,
-                                   hjust = 1,
-                                   vjust = 1),
-        axis.title.x = element_blank())
-p
-```
 
 ------------------------------------------------------------------------
 
 # Average AICc across models
 
 ## Across age groups
+
+Manuscript ll. 409-412
 
 ```{r}
 # Across all participants
@@ -800,130 +751,12 @@ p = cowplot::plot_grid(p1, p2,
 p
 ```
 
-## Withing age groups
-
-```{r}
-# Across all participants
-data_AICc_group = data_model_comp %>%
-  .[, .(mean_AICc = mean(AICc),
-        sd_AICc = sd(AICc),
-        sem_AICc = sd(AICc)/sqrt(.N)),
-    by = c('group', 'model')]
-
-# Display table
-table_AICc_group = Collapse_repeated_rows(data_AICc_group,
-                                          columns = 1,
-                                          replace = '') %>%
-  .[, c('mean_AICc', 'sd_AICc', 'sem_AICc') := lapply(.SD, as.numeric),
-    .SDcols = c('mean_AICc', 'sd_AICc', 'sem_AICc')] %>%
-  .[, c('mean_AICc', 'sd_AICc', 'sem_AICc') := lapply(.SD, round, 2),
-    .SDcols = c('mean_AICc', 'sd_AICc', 'sem_AICc')] %>%
-  kableExtra::kbl("html", align = 'l') %>%
-  kableExtra::kable_classic(full_width = FALSE) %>%
-  column_spec(1,
-              bold = TRUE) %>%
-  row_spec(row = 0,
-           bold = TRUE)
-table_AICc_group
-```
-
-```{r}
-# Plot
-data_plot = data_model_comp
-data_plot_mean = data_AICc_group
-data_plot_line = data_AICc_group %>%
-  .[, .(mean_AICc = min(mean_AICc)),
-    by = 'group']
-
-p1 = ggplot(data = data_plot,
-           aes(x = model,
-               y = AICc,
-               fill = model,
-               color = model)) +
-  geom_col(data = data_plot_mean,
-           inherit.aes = FALSE,
-           aes(x = model,
-               y = mean_AICc,
-               fill = model),
-           color = NA) + 
-  geom_point(position = position_jitter(width = 0.1,
-                                        height = 0),
-             size = 0.5,
-             alpha = 0.5,
-             color = 'black') +
-  geom_errorbar(data = data_plot_mean,
-                inherit.aes = FALSE,
-                aes(x = model,
-                    ymin = mean_AICc - sem_AICc,
-                    ymax = mean_AICc + sem_AICc),
-                color = 'black',
-                width = 0.3) +
-  facet_grid(group ~ .,
-             switch = 'y')
-
-p1 = Neurocodify_plot(p1) +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        legend.position = 'none',
-        axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 45,
-                                   hjust = 1,
-                                   vjust = 1),
-        strip.placement = 'outside')
-
-# Zoomed in version
-p2 = ggplot(data = data_plot,
-           aes(x = model,
-               y = AICc,
-               fill = model,
-               color = model)) +
-  geom_hline(data = data_plot_line,
-             aes(yintercept = mean_AICc),
-             color = 'black',
-             linetype = 'dashed',
-             linewidth = 0.3) +
-    geom_errorbar(data = data_plot_mean,
-                inherit.aes = FALSE,
-                aes(x = model,
-                    ymin = mean_AICc - sem_AICc,
-                    ymax = mean_AICc + sem_AICc),
-                color = 'black',
-                width = 0.3) +
-  geom_point(data = data_plot_mean,
-             inherit.aes = FALSE,
-             aes(x = model,
-                 y = mean_AICc,
-                 fill = model),
-             color = 'black',
-             size = 2,
-             shape = 23,
-             stroke = 1) +
-  scale_y_continuous(limits = c(100,130)) +
-  facet_grid(group ~ .)
-
-
-p2 = Neurocodify_plot(p2) +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        legend.position = 'none',
-        axis.title = element_blank(),
-        axis.text.x = element_text(angle = 45,
-                                   hjust = 1,
-                                   vjust = 1),
-        strip.text = element_blank())
-
-p = cowplot::plot_grid(p1, p2,
-                       ncol = 2,
-                       nrow = 1,
-                       axis = 'bt',
-                       align = 'h',
-                       rel_widths = c(2,1))
-p
-```
 
 ------------------------------------------------------------------------
 
 # Parametric AICc comparison
+
+Manuscript ll. 416-422
 
 ```{r}
 # Relative AICc to RW model
@@ -943,18 +776,6 @@ data_model_comp_rw = data_model_comp %>%
                                     'SmRW',
                                     'USmRW'))
 
-# All
-rel_model_comp_all = data_model_comp_rw %>%
-  .[, .(t = t.test(value, mu = 0)$statistic,
-        df = t.test(value, mu = 0)$parameter,
-        p = t.test(value, mu = 0)$p.value),
-    by = c('variable')] %>%
-  .[, p_adj := p.adjust(p, method = 'holm')] %>%
-  Prepare_data_for_plot(.) %>%
-  .[, group := 'all'] %>%
-  .[order(variable)] %>%
-  data.table::setcolorder(c('group', 'variable'))
-
 # Groups
 rel_model_comp_group = data_model_comp_rw %>%
   .[, .(t = t.test(value, mu = 0)$statistic,
@@ -967,8 +788,7 @@ rel_model_comp_group = data_model_comp_rw %>%
   data.table::setcolorder(c('group', 'variable'))
 
 # Display table
-table_rel_model_comp = rbind(rel_model_comp_all,
-                             rel_model_comp_group) %>%
+table_rel_model_comp = rel_model_comp_group %>%
   .[, t := round(t, 2)] %>%
   .[, c('p', 'p_adj') := lapply(.SD, round, 3), .SDcols = c('p', 'p_adj')] %>%
   Collapse_repeated_rows(.,
@@ -978,7 +798,7 @@ table_rel_model_comp = rbind(rel_model_comp_all,
   kableExtra::kable_classic(full_width = FALSE) %>%
   kableExtra::column_spec(1,
                           bold = TRUE) %>%
-  kableExtra::row_spec(row = length(unique(rel_model_comp_all$variable)),
+  kableExtra::row_spec(row = length(unique(rel_model_comp_group$variable)),
                        extra_css = "border-bottom: 2px solid;") %>%
   kableExtra::row_spec(row = 0,
                        bold = TRUE)
@@ -1025,7 +845,7 @@ Neurocodify_plot(p)
 # Surprise model
 
 ```{r}
-# Data for correlation between RW betas and performance
+# Data for correlation between betas and performance
 data_corr = data %>%
   .[variable == 'coefs' & model == 'surprise' & iter == 1] %>%
   data.table::dcast(participant_id + group + AIC ~ x, value.var = 'value') %>%
@@ -1033,6 +853,8 @@ data_corr = data %>%
 ```
 
 **Correlation between betas and correct 1v2 choices**
+
+Manuscript ll. 448-449
 
 ```{r}
 # V1 ~ performance
@@ -1078,6 +900,8 @@ knitr::kable(data_param_summary) %>%
 
 **Correlation matrix**
 
+see figure 6, panel A (right side)
+
 ```{r}
 # Correlations between parameters
 data_surprise[x == '(Intercept)']$x = 'intercept'
@@ -1096,6 +920,8 @@ cor_mat
 ```
 
 **Individual LR functions**
+
+see figure 6, panel B
 
 ```{r}
 # Get parameter difference
@@ -1125,7 +951,9 @@ p = ggplot(data = data_lrs,
 p
 ```
 
-Number of participants ith increasing LR function
+**Number of participants with increasing LR function**
+
+Manuscript ll. 462-463
 
 ```{r}
 # Count participants within rising and faling group
@@ -1144,6 +972,8 @@ data_rising[variable == 'n_rising',]
 
 $\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions
 
+Manuscript ll. 463-465
+
 ```{r}
 # Chi-Sq with rising
 c_sq = chisq.test(cbind(data_rising[group == 'younger']$value,
@@ -1152,6 +982,8 @@ c_sq
 ```
 
 **Parametric** $u-l$ analysis against 0
+
+Manuscript ll. 457-459
 
 ```{r}
 # t-test vs. 0
@@ -1169,6 +1001,8 @@ p.adjust(c(ty$p.value, to$p.value),
 ```
 
 **Parametric** $u-l$ analysis between age groups
+
+Manuscript ll. 464-465
 
 ```{r}
 # t-test between groups
@@ -1206,69 +1040,9 @@ p = ggplot(data = data_surprise_param,
 Neurocodify_plot(p)
 ```
 
-**Parametric** $u$ analysis between age groups
-
-```{r}
-# t-test between groups
-t.test(data_surprise_param[group == 'younger']$param_u,
-       data_surprise_param[group == 'older']$param_u)
-```
-
-```{r}
-# Continuous comparison
-p = ggplot(data = data_surprise_param,
-       aes(x = group,
-           y = param_u,
-           fill = group,
-           color = group)) +
-  geom_point(position = position_jitter(width = 0.1,
-                                        height = 0,
-                                        seed = 666)) +
-  geom_half_violin(data = data_surprise_param[group == 'younger'],
-                   side = 'r',
-                   position = position_nudge(x=-0.49,
-                                             y = 0),
-                   width = 0.5,
-                   alpha = 0.8,
-                   color = NA) +
-  geom_half_violin(data = data_surprise_param[group == 'older'],
-                   side = 'l',
-                   position = position_nudge(x=0.49,
-                                             y = 0),
-                   width = 0.5,
-                   alpha = 0.8,
-                   color = NA) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-
-# log space
-p = ggplot(data = data_surprise_param,
-       aes(x = group,
-           y = log(param_u),
-           fill = group,
-           color = group)) +
-  geom_point(position = position_jitter(width = 0.1,
-                                        height = 0,
-                                        seed = 666)) +
-  geom_half_violin(data = data_surprise_param[group == 'younger'],
-                   side = 'r',
-                   position = position_nudge(x=-0.49,
-                                             y = 0),
-                   width = 0.5,
-                   alpha = 0.8,
-                   color = NA) +
-  geom_half_violin(data = data_surprise_param[group == 'older'],
-                   side = 'l',
-                   position = position_nudge(x=0.49,
-                                             y = 0),
-                   width = 0.5,
-                   alpha = 0.8,
-                   color = NA) +
-  theme(legend.position = 'none')
-Neurocodify_plot(p)
-```
-
 **Slope parameter** $s$ between age groups
+
+Manuscript ll. 465-466
 
 ```{r}
 # Slope parameter
@@ -1350,358 +1124,12 @@ m1 = lm(cbe ~ param_uml * group,
 summary(m1)
 ```
 
+Manuscript ll. 454-456
+
 ```{r}
 # Simple Pearson correlation
 cor(x = data_cbe_fit$param_uml,
     y = data_cbe_fit$cbe,
     method = 'pearson')
 ```
-
-
-$u$ vs. immediate influence of surprising outcomes
-
-```{r}
-# model u (continuous) and group
-m1 = lm(cbe ~ param_u * group,
-        data = data_cbe_fit)
-summary(m1)
-```
-
-```{r}
-p = ggplot(data = data_cbe_fit,
-       aes(x = param_u,
-           y = cbe,
-           color = group)) +
-  geom_point() +
-  facet_wrap(~group)
-Neurocodify_plot(p)
-```
-
-## Focus on participants in which suprise model fits best
-
-```{r}
-data_winning_AICc = data_counts %>%
-  .[, c('participant_id', 'group', 'winning_model')]
-
-# Add winning model to critical behavioral effect data
-data_cbe_fit_surprise = data.table::merge.data.table(data_cbe_fit,
-                                                     data_winning_AICc) %>%
-  # Only look at participants in which surprise model won
-  .[winning_model == 'surprise',]
-```
-
-```{r}
-p = ggplot(data = data_cbe_fit_surprise,
-       aes(x = param_u,
-           y = cbe,
-           color = group)) +
-  geom_point()
-Neurocodify_plot(p)
-
-p = ggplot(data = data_cbe_fit_surprise,
-       aes(x = log(param_u),
-           y = cbe,
-           color = group)) +
-  geom_point()
-Neurocodify_plot(p)
-```
-
-## alpha*-analysis
-
-
-```{r}
-# Glob files based on naming pattern
-load_path = file.path(here::here(),
-                      'derivatives',
-                      'model_fitting',
-                      fsep = .Platform$file.sep)
-# Load data with fixed betas during simulation
-files = Sys.glob(file.path(load_path,
-                           'modeldata-*_sv-random.tsv',
-                           fsep = .Platform$file.sep))
-
-# Function to load text files (.tsv)
-Load_tsv = function(file_path){
-  tsv = data.table::fread(file_path,
-                          sep = '\t',
-                          na.strings = 'n/a')
-  return(tsv)
-}
-
-# Get list of all text files using parallel processing
-data_list = parallel::mclapply(X = files,
-                               FUN = Load_tsv,
-                               mc.cores = 4)
-# Bind individual list entries (loaded text files) to single data frame
-# (using optimized bind function by data.table package)
-data_alphastar = data.table::rbindlist(data_list) %>%
-  .[iter == 1,] %>%
-  .[model == 'surprise',] %>%
-  .[, c('participant_id', 'group', 'model', 'run') := lapply(.SD, factor), .SDcols = c('participant_id', 'group', 'model', 'run')] %>%
-  Apply_exclusion_criteria(., choice_based_exclusion = TRUE)
-
-# Get parameters of participants surprise model
-cols = c('participant_id', 'group', 'model', 'param_l', 'param_s', 'param_u')
-data_alphastar = data.table::merge.data.table(data_alphastar,
-                                              data_param_corr[, ..cols],
-                                              by = c('participant_id',
-                                                     'group',
-                                                     'model')) %>%
-  # Calculate alpha* on each trial
-  .[, alpha_star := LRfunction(low = param_l,
-                               up = param_u,
-                               slope = param_s,
-                               PE = pe),
-    by = c('participant_id', 'group', 'model', 'run', 'trial')] %>%
-  # Reduce to important information we need for windowrize analysis
-  .[, c('participant_id', 'group', 'model', 'run', 'trial', 'comp', 'pe',
-        'param_l', 'param_s', 'param_u', 'alpha_star')]
-
-# Load windowrize data
-file = file.path(base_path, 'derivatives', 'analysis', 'windowrize.tsv',
-                 fsep = .Platform$file.sep)
-data_windowrize_alphastar = data.table::fread(file, sep = '\t', na.strings = 'n/a') %>%
-  .[, c('participant_id', 'group', 'run', 'comp') := lapply(.SD, factor),
-    .SDcols = c('participant_id', 'group', 'run', 'comp')] %>%
-  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
-  data.table::merge.data.table(., data_alphastar,
-                               by = c('participant_id', 'group', 'run', 'trial', 'comp')) %>%
-  data.table::setorder('participant_id', 'group', 'run', 'i_rare', 'window_relative')
-```
-
-```{r}
-data_pe_lr = data_alphastar[] %>%
-  # Exclude all trials without pe (no expectation, first three updates)
-  .[!is.na(pe),] %>%
-  # Label trials below or above absolute PE of 20
-  .[, geq_abs_20 := abs(pe) >= 20] %>%
-  # Get average alpha* by surprise model parameters
-  .[, .(mean_alpha_star = mean(alpha_star, na.rm = TRUE)),
-    by = c('participant_id', 'group', 'geq_abs_20', 'param_l', 'param_s', 'param_u')] %>%
-  .[, log_mean_alpha_star := log(mean_alpha_star)] %>%
-  Prepare_data_for_plot(.)
-
-p = ggplot(data = data_pe_lr,
-           aes(x = geq_abs_20,
-               y = mean_alpha_star,
-               color = group,
-               fill = group)) +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides) +
-  geom_point(position = position_jitterdodge(jitter.width = 0.1,
-                                             jitter.height = 0,
-                                             dodge.width = 0.2,
-                                             seed = 666)) +
-  stat_summary(geom = 'point', fun = mean, shape = 23, fill = 'white', stroke = 1.5, size = 4, position = position_dodge(width = 0.2))
-p
-
-p = ggplot(data = data_pe_lr,
-           aes(x = geq_abs_20,
-               y = log_mean_alpha_star,
-               color = group,
-               fill = group)) +
-  scale_color_manual(values = custom_guides) +
-  scale_fill_manual(values = custom_guides) +
-  geom_point(position = position_jitterdodge(jitter.width = 0.1,
-                                             jitter.height = 0,
-                                             dodge.width = 0.2,
-                                             seed = 666)) +
-  stat_summary(geom = 'point',
-               fun = mean,
-               shape = 23,
-               fill = 'white',
-               stroke = 1.5,
-               size = 4, 
-               position = position_dodge(width = 0.2))
-p
-```
-
-```{r}
-data_plot = data_windowrize_alphastar[window_relative %in% c(-1,0,1, 2),] %>%
-  .[, .(mean_alpha_star = mean(alpha_star, na.rm = TRUE),
-        mean_pe = mean(pe, na.rm = TRUE)),
-    by = c('participant_id', 'group', 'window_relative', 'param_l', 'param_u', 'param_s')] %>%
-  Prepare_data_for_plot(.)
-
-p = ggplot(data = data_plot,
-           aes(x = window_relative, 
-               y = mean_alpha_star,
-               color = group)) +
-  geom_point(size = 0.5,
-             position = position_jitterdodge(jitter.width = 0.1,
-                                             jitter.height = 0,
-                                             dodge.width = 0.2,
-                                             seed = 666)) +
-  stat_summary(geom = 'point',
-               fun = mean,
-               shape = 23,
-               size = 3,
-               stroke = 1.5,
-               fill = 'white',
-               position = position_dodge(width = 0.2))
-p
-```
-
-```{r}
-bla = data_windowrize_alphastar[window_relative %in% c(-1,0,1, 2),] %>%
-  data.table::dcast(participant_id + group + run + i_rare ~ paste0('alphastar_at_', window_relative), value.var = 'alpha_star') %>%
-  .[, perc_change_0v1 := ((alphastar_at_1 - alphastar_at_0)/alphastar_at_0) * 100] %>%
-  .[, .(mean_perc_change = mean(perc_change_0v1, na.rm = TRUE)),
-    by = c('participant_id', 'group')] %>%
-  Prepare_data_for_plot(.)
-
-p = ggplot(data = bla,
-           aes(x = group,
-               y = mean_perc_change,
-               color = group)) + 
-  geom_point(position = position_jitter(width = 0.1,
-                                        height = 0))
-p
-```
-```{r}
-file = file.path(base_path, 'derivatives', 'analysis', 'windowrize.tsv',
-                 fsep = .Platform$file.sep)
-data_windowrize = data.table::fread(file, sep = '\t', na.strings = 'n/a') %>%
-  .[, c('participant_id', 'group', 'run', 'comp') := lapply(.SD, factor),
-    .SDcols = c('participant_id', 'group', 'run', 'comp')] %>%
-  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
-  .[window_relative == 0]
-```
-
-
-------------------------------------------------------------------------
-
-# SEPLR model
-
-## Parameter details
-
-```{r}
-data_seplr = data[model %in% c('seplr', 'uncertainty_seplr')] %>%
-  # Only focus on fitted params
-  .[variable == 'coefs' & x %in% c('alpha_pos', 'alpha_neg', 'pi')] %>%
-  # Sort order of parameters for better plot display
-  .[, x := factor(x, levels = c('alpha_pos',
-                                              'alpha_neg',
-                                              'pi'))] %>%
-  .[order(x),]
-```
-
-```{r}
-# Across all participants
-data_seplr_all = data_seplr %>%
-  .[, .(mean = mean(value),
-        sd = sd(value),
-        n = .N),
-    by = c('model', 'x')] %>%
-  .[, group := 'all']
-
-# Within groups
-data_seplr_group = data_seplr %>%
-  .[, .(mean = mean(value),
-        sd = sd(value),
-        n = .N),
-    by = c('model', 'group', 'x')]
-
-# Display table
-table_seplr = rbind(data_seplr_all,
-                    data_seplr_group) %>%
-  .[, c('mean', 'sd') := lapply(.SD, round, 3), .SDcols = c('mean', 'sd')] %>%
-  .[order(model, group, x)] %>%
-  data.table::setcolorder(c('model', 'group', 'x')) %>%
-  Collapse_repeated_rows(x = .,
-                         columns = c(1,2),
-                         replace = '') %>%
-  kableExtra::kbl() %>%
-  kableExtra::kable_classic(full_width = FALSE) %>%
-  kableExtra::row_spec(row = 0,
-                       bold = TRUE) %>%
-  kableExtra::row_spec(row = 6,
-                       extra_css = "border-bottom: 2px solid;")
-table_seplr
-```
-
-```{r}
-# Plot
-p = ggplot(data = data_seplr,
-           aes(x = x,
-               y = value,
-               fill = x)) +
-  geom_point(size = 0.5,
-             alpha = 0.5,
-             position = sdamr::position_jitternudge(jitter.width = 0.1,
-                                                    jitter.height = 0,
-                                                    nudge.x = -0.15,
-                                                    nudge.y = 0)) +
-  gghalves::geom_half_violin(side = 'r',
-                             alpha = 0.8,
-                             width = 0.5,
-                             color = NA,
-                             position = position_nudge(x = 0.15,
-                                                       y = 0)) +
-  geom_boxplot(outlier.shape = NA,
-               width = 0.1,
-               alpha = 0.8) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               shape = 23,
-               fill = 'white',
-               size = 1.5,
-               stroke = 0.5) +
-  facet_grid(. ~ model,
-             scales = 'free_x',
-             space = 'free_x') +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        axis.title.x = element_blank(),
-        legend.position = 'none')
-Neurocodify_plot(p)
-```
-
-## Relationship between LRs within-person
-
-```{r}
-# Compare LRs within-person
-data_seplr_pos_neg = data_seplr %>%
-  # Long format for parameter comparison
-  data.table::dcast(participant_id + group + age + starting_values + iter + model + AIC + AICc ~ x,
-                    value.var = 'value') %>%
-  # Difference between alpha_pos and alpha_neg
-  .[, pos_m_neg := alpha_pos - alpha_neg] %>%
-  Prepare_data_for_plot(.)
-
-# Plot
-p = ggplot(data = data_seplr_pos_neg,
-           aes(x = group,
-               y = pos_m_neg,
-               fill = group)) +
-  geom_hline(yintercept = 0,
-             linewidth = 0.2) +
-  geom_point(size = 0.5,
-             alpha = 0.5,
-             position = sdamr::position_jitternudge(jitter.width = 0.1,
-                                                    jitter.height = 0,
-                                                    nudge.x = -0.15,
-                                                    nudge.y = 0)) +
-  gghalves::geom_half_violin(side = 'r',
-                             alpha = 0.8,
-                             width = 0.5,
-                             color = NA,
-                             position = position_nudge(x = 0.15,
-                                                       y = 0)) +
-  geom_boxplot(outlier.shape = NA,
-               width = 0.1,
-               alpha = 0.8) +
-  stat_summary(fun = 'mean',
-               geom = 'point',
-               shape = 23,
-               fill = 'white',
-               size = 2,
-               stroke = 0.5) +
-  scale_fill_manual(values = custom_guides) +
-  facet_grid(. ~ model) +
-  theme(legend.position = 'none',
-        axis.title.x = element_blank())
-Neurocodify_plot(p)
-```
-
 
