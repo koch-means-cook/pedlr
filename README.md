@@ -5,6 +5,12 @@ scientists are Christoph Koch, Ondrej Zika, Rasmus Bruckner, and Nicolas W. Schu
 
 ---
 
+## DOI
+
+[![DOI](https://zenodo.org/badge/426637607.svg)](https://zenodo.org/doi/10.5281/zenodo.10211238)
+
+---
+
 ## Structure
 
 ```
