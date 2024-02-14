@@ -8,7 +8,7 @@ Make_choice = function(model,
   # predictors = c(1, 5, 20, 4, 6)
   
   # Safety checks
-  if(model %in% c('rw', 'seplr', 'surprise')){
+  if(model %in% c('rw', 'seplr', 'surprise', 'seplr_surprise')){
     # Exclude uncertainty in models that don't have an uncertainty module
     beta_weights = beta_weights[1:3]
     predictors = predictors[1:3]

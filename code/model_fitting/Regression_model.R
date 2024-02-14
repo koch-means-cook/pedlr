@@ -8,8 +8,8 @@ Regression_model = function(x,
   # Allocate matrices to store important variables
   values = updates = fupdates = alphas = surprise = matrix(NA, 3, 240*2)
   
-  # Pad x with NA (to always be length = 4)
-  x = c(x, rep(NA, 4-length(x)))
+  # Pad x (parameter vector) with NA (to always be length = 6)
+  x = c(x, rep(NA, 6-length(x)))
   
   # Loop over runs
   for (run_count in 1:2) {
