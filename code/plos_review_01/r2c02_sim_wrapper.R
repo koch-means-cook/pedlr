@@ -426,7 +426,7 @@ opt_parser = OptionParser(option_list = option_list)
 opt = parse_args(opt_parser)
 
 # Cal wrapper with command line inputs
-Param_recov_wrapper(model = opt$model,
+r2c02_sim_wrapper(model = opt$model,
                     random_input_params = opt$random_input_params,
                     param_lb = opt$param_lb,
                     param_ub = opt$param_ub,
