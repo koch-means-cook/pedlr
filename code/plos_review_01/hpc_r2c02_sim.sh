@@ -57,8 +57,6 @@ TAU=0.2
 # No specific betas needed because of principle_mode (sets betas to
 # [0,-1,1,NA,NA] if no uncertainty module or [0,-1,1,-1,1] if uncertainty
 # module)
-BETAS_LB='NA,NA,NA,NA,NA'
-BETAS_UB='NA,NA,NA,NA,NA'
 
 # ===
 # Run model fitting
@@ -145,8 +143,6 @@ for CONDITION in ${CONDITION_LIST}; do
 	--random_input_params=${RANDOM_INPUT_PARAMS} \
 	--param_lb=${PARAM_LB} \
 	--param_ub=${PARAM_UB} \
-	--betas_lb=${BETAS_LB} \
-	--betas_ub=${BETAS_UB} \
 	--iterations=${ITERATIONS} \
 	--tau=${TAU} \
 	--ips=${IPS} \

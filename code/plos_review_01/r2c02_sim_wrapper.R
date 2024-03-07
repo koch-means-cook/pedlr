@@ -6,8 +6,6 @@ r2c02_sim_wrapper = function(model,
                              random_input_params,
                              param_lb,
                              param_ub,
-                             betas_lb,
-                             betas_ub,
                              iterations,
                              tau,
                              ips,
@@ -19,8 +17,6 @@ r2c02_sim_wrapper = function(model,
   # random_input_params = TRUE
   # param_lb = c(0.1, 0.7, 2, 0.7, 0.1, 2)
   # param_ub = c(0.2, 0.8, 4, 0.8, 0.2, 4)
-  # betas_lb = c(-0.1, -0.5, 0, NA, NA)
-  # betas_ub = c(0.1, 0, 0.5, NA, NA)
   # iterations = 1
   # tau = 0.2
   # ips = c(0.93, 0.42, 5, 0.1, 0.7, 3)
@@ -50,8 +46,6 @@ r2c02_sim_wrapper = function(model,
                             corr_n_betas,
                             param_lb,
                             param_ub,
-                            betas_lb,
-                            betas_ub,
                             ips,
                             beta_weights){
     
@@ -66,9 +60,7 @@ r2c02_sim_wrapper = function(model,
                  ').',
                  sep = ''))
       # Check if number of beta weights fits model
-    } else if(any(length(beta_weights[!is.na(beta_weights)]) != corr_n_betas,
-                  length(betas_lb[!is.na(betas_lb)]) != corr_n_betas,
-                  length(betas_ub[!is.na(betas_ub)]) != corr_n_betas)){
+    } else if(length(beta_weights[!is.na(beta_weights)]) != corr_n_betas){
       stop(paste('Specified model (',
                  model,
                  ') does not fit number of specified beta weights in betas_lb/betas_ub/beta_weights (',
@@ -131,8 +123,6 @@ r2c02_sim_wrapper = function(model,
                        corr_n_betas = 3,
                        param_lb = param_lb,
                        param_ub = param_ub,
-                       betas_lb = betas_lb,
-                       betas_ub = betas_ub,
                        ips = ips,
                        beta_weights = beta_weights)
         
@@ -153,8 +143,6 @@ r2c02_sim_wrapper = function(model,
                        corr_n_betas = 5,
                        param_lb = param_lb,
                        param_ub = param_ub,
-                       betas_lb = betas_lb,
-                       betas_ub = betas_ub,
                        ips = ips,
                        beta_weights = beta_weights)
         
@@ -176,8 +164,6 @@ r2c02_sim_wrapper = function(model,
                        corr_n_betas = 3,
                        param_lb = param_lb,
                        param_ub = param_ub,
-                       betas_lb = betas_lb,
-                       betas_ub = betas_ub,
                        ips = ips,
                        beta_weights = beta_weights)
         
@@ -198,8 +184,6 @@ r2c02_sim_wrapper = function(model,
                        corr_n_betas = 5,
                        param_lb = param_lb,
                        param_ub = param_ub,
-                       betas_lb = betas_lb,
-                       betas_ub = betas_ub,
                        ips = ips,
                        beta_weights = beta_weights)
         
@@ -220,8 +204,6 @@ r2c02_sim_wrapper = function(model,
                        corr_n_betas = 3,
                        param_lb = param_lb,
                        param_ub = param_ub,
-                       betas_lb = betas_lb,
-                       betas_ub = betas_ub,
                        ips = ips,
                        beta_weights = beta_weights)
         
@@ -242,8 +224,6 @@ r2c02_sim_wrapper = function(model,
                        corr_n_betas = 5,
                        param_lb = param_lb,
                        param_ub = param_ub,
-                       betas_lb = betas_lb,
-                       betas_ub = betas_ub,
                        ips = ips,
                        beta_weights = beta_weights)
         
@@ -264,8 +244,6 @@ r2c02_sim_wrapper = function(model,
                        corr_n_betas = 3,
                        param_lb = param_lb,
                        param_ub = param_ub,
-                       betas_lb = betas_lb,
-                       betas_ub = betas_ub,
                        ips = ips,
                        beta_weights = beta_weights)
       }
@@ -372,20 +350,6 @@ option_list = list(
               default = NULL,
               help = 'series of values giving upper bound of parameters. E.g. `1,1,20,NA`',
               metavar = 'PARAM_UB'),
-  make_option(c('-L', '--betas_lb'),
-              action = 'callback',
-              callback = split_list,
-              type='character',
-              default = NULL,
-              help = 'series of values giving lower bound of beta weights. E.g. `-0.1,-0.5,0,NA,NA`',
-              metavar = 'BETAS_LB'),
-  make_option(c('-U', '--betas_ub'),
-              action = 'callback',
-              callback = split_list,
-              type='character',
-              default = NULL,
-              help = 'series of values giving upper bound of beta weights E.g. `0.1,0,0.5,NA,NA`',
-              metavar = 'BETAS_UB'),
   make_option(c('-i', '--iterations'),
               type='numeric',
               default = NULL,
@@ -427,17 +391,15 @@ opt = parse_args(opt_parser)
 
 # Cal wrapper with command line inputs
 r2c02_sim_wrapper(model = opt$model,
-                    random_input_params = opt$random_input_params,
-                    param_lb = opt$param_lb,
-                    param_ub = opt$param_ub,
-                    betas_lb = opt$betas_lb,
-                    betas_ub = opt$betas_ub,
-                    iterations = opt$iterations,
-                    beta_weights = opt$beta_weights,
-                    tau = opt$tau,
-                    ips = opt$ips,
-                    principle_mode = opt$principle_mode,
-                    condition = opt$condition)
+                  random_input_params = opt$random_input_params,
+                  param_lb = opt$param_lb,
+                  param_ub = opt$param_ub,
+                  iterations = opt$iterations,
+                  beta_weights = opt$beta_weights,
+                  tau = opt$tau,
+                  ips = opt$ips,
+                  principle_mode = opt$principle_mode,
+                  condition = opt$condition)
 
 # Example command line prompt
-# Rscript r2c02_sim_wrapper.R --model 'uncertainty' --random_input_params 'TRUE' --param_lb 0.01,0.01,NA,NA --param_ub 1,1,NA,NA --betas_lb 0,0,0,0,0 --betas_ub 0,0,0,0,0 --iterations 3 --beta_weights 0,0,0,0,0 --tau 0.2 --ips 0.1,0.7,NA,NA --principle_mode 'TRUE' --condition 'HighPi'
+# Rscript r2c02_sim_wrapper.R --model 'uncertainty' --random_input_params 'TRUE' --param_lb 0.01,0.01,NA,NA --param_ub 1,1,NA,NA --iterations 3 --beta_weights 0,0,0,0,0 --tau 0.2 --ips 0.1,0.7,NA,NA --principle_mode 'TRUE' --condition 'HighPi'
