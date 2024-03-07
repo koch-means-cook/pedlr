@@ -22,23 +22,23 @@ Param_recov_wrapper = function(participant_id,
                                principle_mode){
   
 # participant_id = 'VVBU17E'
-# model = 'uncertainty_seplr'
+# model = 'seplr_surprise'
 # random_input_params = FALSE
 # random_input_betas = FALSE
 # random_starting_values = FALSE
-# param_lb = c(0.01, 0.01, 0.01, NA)
-# param_ub = c(1, 1, 1, NA)
-# betas_lb = c(-0.1, -0.5, 0, -0.5, 0)
-# betas_ub = c(0.1, 0, 0.5, 0, 0.5)
+# param_lb = c(0.01, 0.01, 1, 0.01, 0.01, 1)
+# param_ub = c(1, 1, 7, 1, 1, 7)
+# betas_lb = c(-0.1, -0.5, 0, NA, NA)
+# betas_ub = c(0.1, 0, 0.5, NA, NA)
 # algorithm = 'NLOPT_GN_DIRECT_L'
 # xtol_rel = 1.0e-5
 # maxeval = 100
 # iterations = 3
 # tau = 0.2
-# ips = c(0.93, 0.42, 0.93, NA)
-# beta_weights = c(0, -0.2, 0.2, -0.1, 0.1)
-# svs = c(0.33, 0.27, 0.01, NA)
-# principle_mode = TRUE
+# ips = c(0.93, 0.42, 5, 0.1, 0.7, 3)
+# beta_weights = c(0, -0.2, 0.2, NA, NA)
+# svs = c(0.5, 0.5, 3, 0.5, 0.5, 3)
+# principle_mode = FALSE
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)
@@ -88,7 +88,7 @@ Param_recov_wrapper = function(participant_id,
   
   # If principle_mode is on, set betas to predefined values
   if(principle_mode == TRUE){
-    if(model %in% c('rw', 'seplr', 'surprise')){
+    if(model %in% c('rw', 'seplr', 'surprise', 'seplr_surprise')){
       beta_weights = c(0, -1, 1, NA, NA)
     } else{
       beta_weights = c(0, -1, 1, -1, 1)
@@ -163,6 +163,8 @@ Param_recov_wrapper = function(participant_id,
         ips = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
                 NA,
                 NA,
+                NA,
+                NA,
                 NA)
       }
       if(random_input_betas == TRUE){
@@ -174,6 +176,8 @@ Param_recov_wrapper = function(participant_id,
       }
       if(random_starting_values == TRUE){
         svs = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
+                NA,
+                NA,
                 NA,
                 NA,
                 NA)
@@ -197,6 +201,8 @@ Param_recov_wrapper = function(participant_id,
         ips = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
                 runif(n = 1, min = param_lb[2], max = param_ub[2]),
                 NA,
+                NA,
+                NA,
                 NA)
       }
       if(random_input_betas == TRUE){
@@ -209,6 +215,8 @@ Param_recov_wrapper = function(participant_id,
       if(random_starting_values == TRUE){
         svs = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
                 runif(n = 1, min = param_lb[2], max = param_ub[2]),
+                NA,
+                NA,
                 NA,
                 NA)
       }
@@ -232,6 +240,8 @@ Param_recov_wrapper = function(participant_id,
       ips = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
               runif(n = 1, min = param_lb[2], max = param_ub[2]),
               NA,
+              NA,
+              NA,
               NA)
     }
     if(random_input_betas == TRUE){
@@ -244,6 +254,8 @@ Param_recov_wrapper = function(participant_id,
     if(random_starting_values == TRUE){
       svs = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
               runif(n = 1, min = param_lb[2], max = param_ub[2]),
+              NA,
+              NA,
               NA,
               NA)
     }
@@ -266,6 +278,8 @@ Param_recov_wrapper = function(participant_id,
       ips = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
               runif(n = 1, min = param_lb[2], max = param_ub[2]),
               runif(n = 1, min = param_lb[3], max = param_ub[3]),
+              NA,
+              NA,
               NA)
     }
     if(random_input_betas == TRUE){
@@ -279,6 +293,8 @@ Param_recov_wrapper = function(participant_id,
       svs = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
               runif(n = 1, min = param_lb[2], max = param_ub[2]),
               runif(n = 1, min = param_lb[3], max = param_ub[3]),
+              NA,
+              NA,
               NA)
     }
     
@@ -300,6 +316,8 @@ Param_recov_wrapper = function(participant_id,
       ips = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
               runif(n = 1, min = param_lb[2], max = param_ub[2]),
               runif(n = 1, min = param_lb[3], max = param_ub[3]),
+              NA,
+              NA,
               NA)
     }
     if(random_input_betas == TRUE){
@@ -313,6 +331,8 @@ Param_recov_wrapper = function(participant_id,
       svs = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
               runif(n = 1, min = param_lb[2], max = param_ub[2]),
               runif(n = 1, min = param_lb[3], max = param_ub[3]),
+              NA,
+              NA,
               NA)
     }
     
@@ -334,7 +354,9 @@ Param_recov_wrapper = function(participant_id,
         ips = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
                 runif(n = 1, min = param_lb[2], max = param_ub[2]),
                 runif(n = 1, min = param_lb[3], max = param_ub[3]),
-                runif(n = 1, min = param_lb[4], max = param_ub[4]))
+                runif(n = 1, min = param_lb[4], max = param_ub[4]),
+                NA,
+                NA)
       }
       if(random_input_betas == TRUE){
         beta_weights = c(runif(n = 1, min = betas_lb[1], max = betas_ub[1]),
@@ -347,13 +369,53 @@ Param_recov_wrapper = function(participant_id,
         svs = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
                 runif(n = 1, min = param_lb[2], max = param_ub[2]),
                 runif(n = 1, min = param_lb[3], max = param_ub[3]),
-                runif(n = 1, min = param_lb[4], max = param_ub[4]))
+                runif(n = 1, min = param_lb[4], max = param_ub[4]),
+                NA,
+                NA)
       }
       
       # Check if number of parameters is correct for model
       Check_n_params(model = model,
                      corr_n_params = 4,
                      corr_n_betas = 5,
+                     param_lb = param_lb,
+                     param_ub = param_ub,
+                     betas_lb = betas_lb,
+                     betas_ub = betas_ub,
+                     ips = ips,
+                     svs = svs,
+                     beta_weights = beta_weights)
+      
+      # seplr_surprise
+    } else if(model == 'seplr_surprise'){
+      if(random_input_params == TRUE){
+        ips = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
+                runif(n = 1, min = param_lb[2], max = param_ub[2]),
+                runif(n = 1, min = param_lb[3], max = param_ub[3]),
+                runif(n = 1, min = param_lb[4], max = param_ub[4]),
+                runif(n = 1, min = param_lb[5], max = param_ub[5]),
+                runif(n = 1, min = param_lb[6], max = param_ub[6]))
+      }
+      if(random_input_betas == TRUE){
+        beta_weights = c(runif(n = 1, min = betas_lb[1], max = betas_ub[1]),
+                         runif(n = 1, min = betas_lb[2], max = betas_ub[2]),
+                         runif(n = 1, min = betas_lb[3], max = betas_ub[3]),
+                         NA,
+                         NA)
+      }
+      if(random_starting_values == TRUE){
+        svs = c(runif(n = 1, min = param_lb[1], max = param_ub[1]),
+                runif(n = 1, min = param_lb[2], max = param_ub[2]),
+                runif(n = 1, min = param_lb[3], max = param_ub[3]),
+                runif(n = 1, min = param_lb[4], max = param_ub[4]),
+                runif(n = 1, min = param_lb[5], max = param_ub[5]),
+                runif(n = 1, min = param_lb[6], max = param_ub[6]))
+      }
+      
+      # Check if number of parameters is correct for model
+      Check_n_params(model = model,
+                     corr_n_params = 6,
+                     corr_n_betas = 3,
                      param_lb = param_lb,
                      param_ub = param_ub,
                      betas_lb = betas_lb,
@@ -515,8 +577,6 @@ Param_recov_wrapper = function(participant_id,
   message(paste('\nSaving output to: ', file, '...\n', sep = ''), appendLF = FALSE)
   message(paste('...Well done Superperson!', sep = ''), appendLF = FALSE)
   message('\n')
-  
-  # Write analysis script for param recov
 
   }
 
@@ -662,4 +722,5 @@ Param_recov_wrapper(participant_id = opt$participant_id,
                     svs = opt$svs,
                     principle_mode = opt$principle_mode)
 
+# Example command line prompt
 # Rscript Param_recov_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty' --random_input_params 'TRUE' --random_input_betas 'FALSE' --random_starting_values 'TRUE' --param_lb 0.01,0.01,NA,NA --param_ub 1,1,NA,NA --betas_lb 0,0,0,0,0 --betas_ub 0,0,0,0,0 --algorithm 'NLOPT_GN_DIRECT_L' --xtol_rel 0.0001 --maxeval 10 --iterations 3 --beta_weights 0,0,0,0,0 --tau 0.2 --ips 0.1,0.7,NA,NA --svs 0.5,0.5,NA,NA --principle_mode 'TRUE'

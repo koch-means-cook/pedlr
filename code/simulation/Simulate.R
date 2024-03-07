@@ -177,6 +177,8 @@ Simulate = function(data,
   model_information$x2 = x[2]
   model_information$x3 = x[3]
   model_information$x4 = x[4]
+  model_information$x5 = x[5]
+  model_information$x6 = x[6]
   model_information$tau = tau
   model_information$b0 = beta_weights[1]
   model_information$b1 = beta_weights[2]
@@ -188,7 +190,7 @@ Simulate = function(data,
   simulated_data = cbind(data, model_information)
   
   # Set surprise to NA if uncertainty not relevant for model (RW, surprise, & seplr)
-  if(model %in% c('rw', 'surprise', 'seplr')){
+  if(model %in% c('rw', 'surprise', 'seplr', 'seplr_surprise')){
     simulated_data$s_b_1 = NA
     simulated_data$s_b_2 = NA
     simulated_data$s_b_3 = NA

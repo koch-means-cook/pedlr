@@ -86,7 +86,8 @@ data$model = factor(data$model, levels = c('rw',
                                            'seplr',
                                            'uncertainty_seplr',
                                            'surprise',
-                                           'uncertainty_surprise'))
+                                           'uncertainty_surprise',
+                                           'seplr_surprise'))
 
 # Load choice data
 data_behav = Load_data() %>%
@@ -140,7 +141,7 @@ data_betas = data %>%
 ```{r}
 data_plot = data_betas
 
-p_3betas = ggplot(data = data_plot[model %in% c('rw', 'surprise', 'seplr')],
+p_3betas = ggplot(data = data_plot[model %in% c('rw', 'surprise', 'seplr', 'seplr_surprise')],
            aes(x = x,
                y = value,
                fill = model)) +
@@ -274,7 +275,7 @@ data_betas_z = data %>%
 ```{r}
 data_plot = data_betas_z
 
-p_3betas = ggplot(data = data_plot[model %in% c('rw', 'surprise', 'seplr')],
+p_3betas = ggplot(data = data_plot[model %in% c('rw', 'surprise', 'seplr', 'seplr_surprise')],
            aes(x = x,
                y = value,
                fill = model)) +
@@ -767,14 +768,16 @@ data_model_comp_rw = data_model_comp %>%
            SEPLRmRW = AICc_seplr - AICc_rw,
            UmRW = AICc_uncertainty - AICc_rw,
            USEPLRmRW = AICc_uncertainty_seplr - AICc_rw,
-           USmRW = AICc_uncertainty_surprise - AICc_rw),
+           USmRW = AICc_uncertainty_surprise - AICc_rw,
+           SEPLRSmRW = AICc_seplr_surprise - AICc_rw),
     by = c('participant_id', 'group')] %>%
   data.table::melt(id.vars = c('participant_id', 'group'),
                    measure.vars = c('UmRW',
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW'))
+                                    'USmRW',
+                                    'SEPLRSmRW'))
 
 # Groups
 rel_model_comp_group = data_model_comp_rw %>%
@@ -812,7 +815,8 @@ data_plot = data_model_comp_rw %>%
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW'))] %>%
+                                    'USmRW',
+                                    'SEPLRSmRW'))] %>%
   .[order(variable),]
 
 data_plot_mean = data_model_comp_rw %>%
@@ -826,7 +830,8 @@ data_plot_mean = data_model_comp_rw %>%
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW'))] %>%
+                                    'USmRW',
+                                    'SEPLRSmRW'))] %>%
   .[order(variable),]
 
 p = ggplot(data = data_model_comp_rw,
@@ -1133,3 +1138,64 @@ cor(x = data_cbe_fit$param_uml,
     method = 'pearson')
 ```
 
+---
+
+# Valence + Surprise model
+
+```{r}
+# Get parameters and dicho uml for seplr+surprise model (pos and neg)
+data_seplr_surprise = data[model == 'seplr_surprise' & variable == 'coefs'] %>%
+  .[x %in% c('l_pos', 'u_pos', 's_pos', 'l_neg', 'u_neg', 's_neg')] %>%
+  data.table::dcast(participant_id + group + model + AIC + AICc ~ paste0('param_', x),
+                    value.var = 'value') %>%
+  .[, ':='(uml_dicho_neg = param_u_neg > param_l_neg,
+           uml_dicho_pos = param_u_pos > param_l_pos)] %>%
+  .[, ':='(uml_dicho_neg = factor(uml_dicho_neg, labels = c('falling', 'rising')),
+           uml_dicho_pos = factor(uml_dicho_pos, labels = c('falling', 'rising')))]
+
+# Get individual LR functions for seplr+surprise model
+data_lrs = data[model == 'seplr_surprise' & variable == 'LRs' & !is.na(value)] %>%
+  .[, .SD, .SDcols = c('participant_id', 'group', 'model', 'AICc', 'variable',
+                       'x', 'value')] %>%
+  # Fuse encountered LRs with uml
+  data.table::merge.data.table(., data_seplr_surprise,
+                               by = c('participant_id', 'group', 'model', 'AICc')) %>%
+  .[, x := as.numeric(x)] %>%
+  # Add variable of LR function for different PE valence
+  .[x < 0, valence := 'neg'] %>%
+  .[x > 0, valence := 'pos']
+```
+
+```{r}
+# Neg
+p = ggplot(data_lrs[valence == 'neg'],
+           aes(x = x,
+               y = value,
+               group = participant_id,
+               color = group)) +
+  geom_line(alpha = 0.2) +
+  scale_x_continuous(limits = c(-(max(abs(data_lrs$x))), 0)) +
+  labs(x = 'PE',
+       y = 'alpha*') +
+  facet_wrap(~group + uml_dicho_neg) +
+  annotate('text', x = -50, y = 0.5, label = 'u_neg', size = 3, hjust = 0) +
+  annotate('text', x = 0, y = 0.5, label = 'l_neg', size = 3, hjust = 1)
+Neurocodify_plot(p)
+```
+
+```{r}
+# pos
+p = ggplot(data_lrs[valence == 'pos'],
+           aes(x = x,
+               y = value,
+               group = participant_id,
+               color = group)) +
+  geom_line(alpha = 0.2) +
+  labs(x = 'PE',
+       y = 'alpha*') +
+  scale_x_continuous(limits = c(0, max(abs(data_lrs$x)))) +
+  annotate('text', x = 0, y = 0.5, label = 'l_pos', size = 3, hjust = 0) +
+  annotate('text', x = 50, y = 0.5, label = 'u_pos', size = 3, hjust = 1) +
+  facet_wrap(~group + uml_dicho_pos)
+Neurocodify_plot(p)
+```

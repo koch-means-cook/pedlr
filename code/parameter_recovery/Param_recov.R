@@ -101,13 +101,12 @@ Param_recov = function(data,
   # Fuse input_params to results
   res = rbind(res, add)
   
-  # Add recovered parameters to model data, with NA padding to max of 4 parameters
+  # Add recovered parameters to model data, with NA padding to max of 6 parameters
   recov_params = res[variable == 'coefs'] %>%
-    # ADD c(x1,x2,x3,x4) and c(b0,b1,b2,b3,b4)
-    # Get values of recovered parameters
+    # Get values of recovered parameters c(x1,x2,x3,x4,x5,x6)
     .[!x %in% c('z_(Intercept)', 'z_V1', 'z_V2', 'z_V1u', 'z_V2u',
                 '(Intercept)', 'V1', 'V2', 'V1u', 'V2u'), ]
-  add_params = rep(NA, 4)
+  add_params = rep(NA, 6)
   add_params[1:nrow(recov_params)] = recov_params$value
   add_params = as.numeric(add_params)
   # Add recovered beta weights, with NA padding to max of 5 betas
@@ -124,6 +123,8 @@ Param_recov = function(data,
              recov_x2 = add_params[2],
              recov_x3 = add_params[3],
              recov_x4 = add_params[4],
+             recov_x5 = add_params[5],
+             recov_x6 = add_params[6],
              recov_b0 = add_betas[1],
              recov_b1 = add_betas[2],
              recov_b2 = add_betas[3],
@@ -154,6 +155,8 @@ Param_recov = function(data,
              generating_x2 = input_params[2],
              generating_x3 = input_params[3],
              generating_x4 = input_params[4],
+             generating_x5 = input_params[5],
+             generating_x6 = input_params[6],
              generating_b0 = beta_weights[1],
              generating_b1 = beta_weights[2],
              generating_b2 = beta_weights[3],

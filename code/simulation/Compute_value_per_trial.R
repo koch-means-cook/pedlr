@@ -56,15 +56,28 @@ Compute_value_per_trial = function(V,
     slope = x[3]
     pi = x[4]
     
+    # seplr_surprise model
+  } else if(model == 'seplr_surprise'){
+    # l_pos
+    low_pos = x[1]
+    # u_pos
+    up_pos = x[2]
+    # s_pos
+    slope_pos = x[3]
+    # l_neg
+    low_neg = x[1]
+    # u_neg
+    up_neg = x[2]
+    # s_neg
+    slope_neg = x[3]
+    pi = NA
+    
     # Throw error if model unknown
   } else{
     stop(paste0("Specified model (\'",
                 model,
                 "\') not found."))
   }
-  
-  # allocate trailing surprise
-  #S = V*0
   
   # Value before reward
   V = V
@@ -95,6 +108,28 @@ Compute_value_per_trial = function(V,
       # Negative PEs
     } else{
       alpha_star = alpha_neg
+    }
+    
+    # In case of mixture of PE valence and surprise model
+  } else if(model == 'seplr_surprise'){
+    
+    # Positive PEs
+    if(PE >= 0){
+      res = LRfunction(low = low_pos,
+                       up = up_pos,
+                       slope = slope_pos,
+                       PE = PE,
+                       tau = tau)
+      alpha_star = res[[1]]
+      
+      # Negative PEs
+    } else{
+      res = LRfunction(low = low_neg,
+                       up = up_neg,
+                       slope = slope_neg,
+                       PE = PE,
+                       tau = tau)
+      alpha_star = res[[1]]
     }
     
     # In case of RW and uncertainty model: use single, static LR (but updating

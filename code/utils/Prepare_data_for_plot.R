@@ -21,7 +21,8 @@ Prepare_data_for_plot = function(data){
        'seplr' %in% data[,col] |
        'uncertainty_seplr' %in% data[,col] |
        'surprise' %in% data[,col] |
-       'uncertainty_surprise' %in% data[,col]){
+       'uncertainty_surprise' %in% data[,col] |
+       'seplr_surprise' %in% data[,col]){
       
       #rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise
       
@@ -31,13 +32,15 @@ Prepare_data_for_plot = function(data){
                  'seplr',
                  'uncertainty_seplr',
                  'surprise',
-                 'uncertainty_surprise')
+                 'uncertainty_surprise',
+                 'seplr_surprise')
       model_names_new = c('RW',
                           'Uncertainty',
                           'Valence',
                           'Unc+Valence',
                           'Surprise',
-                          'Unc+Surprise')
+                          'Unc+Surprise',
+                          'Valence+Surprise')
       
       # Raise error if you find a new model
       for(i_model in unique(data[,col])){
@@ -59,6 +62,7 @@ Prepare_data_for_plot = function(data){
       data[data[,col] == 'uncertainty_seplr', col] = 'Unc+Valence'
       data[data[,col] == 'surprise', col] = 'Surprise'
       data[data[,col] == 'uncertainty_surprise', col] = 'Unc+Surprise'
+      data[data[,col] == 'seplr_surprise', col] = 'Valence+Surprise'
       
       # Set factor order
       data[,col] = factor(data[,col],
@@ -82,7 +86,13 @@ Prepare_data_for_plot = function(data){
        'alpha_neg' %in% data[,col] |
        'l' %in% data[,col] |
        'u' %in% data[,col] |
-       's' %in% data[,col]){
+       's' %in% data[,col] |
+       'l_pos' %in% data[,col] |
+       'u_pos' %in% data[,col] |
+       's_pos' %in% data[,col] |
+       'l_neg' %in% data[,col] |
+       'u_neg' %in% data[,col] |
+       's_neg' %in% data[,col]){
       
       # Set all parameters
       paras = c('z_(Intercept)',
@@ -101,7 +111,13 @@ Prepare_data_for_plot = function(data){
                 'alpha_neg',
                 'l',
                 'u',
-                's')
+                's',
+                'l_pos',
+                'u_pos',
+                's_pos',
+                'l_neg',
+                'u_neg',
+                's_neg')
       paras_names_new = c('\\beta_0 (z)',
                           '\\beta_1 (z)',
                           '\\beta_2 (z)',
@@ -118,7 +134,13 @@ Prepare_data_for_plot = function(data){
                           '\\alpha_-',
                           'l',
                           'u',
-                          's')
+                          's',
+                          '\\l_+',
+                          '\\u_+',
+                          '\\s_+',
+                          '\\l_-',
+                          '\\u_-',
+                          '\\s_-')
       # Raise error if you find a new parameter
       # for(i_para in unique(data[,col])){
       #   if(!i_para %in% paras){
