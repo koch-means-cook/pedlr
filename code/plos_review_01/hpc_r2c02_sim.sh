@@ -44,8 +44,8 @@ MEM_MB=200
 # ===
 # Set list of conditions to simulate (specific to model)
 # ===
-#CONDITION_LIST='rwLow rwHigh uncLowPi uncHighPi valLowPos valLowNeg surpriseInc surpriseDec'
-CONDITION_LIST='surpriseInc surpriseDec'
+CONDITION_LIST='rwLow rwHigh uncLowPi uncHighPi valLowPos valLowNeg surpriseInc surpriseDec'
+#CONDITION_LIST='surpriseInc surpriseDec'
 
 # ===
 # Set recov parameters
