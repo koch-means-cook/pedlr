@@ -251,6 +251,8 @@ Fit_models_new = function(data,
     n = length(cidx)
     AICs = 2*k - 2*b2_logLik
     AICc = AICs + ((2*(k^2) + 2*k) / (n - k - 1))
+    # BIC
+    BIC = k*log(n) - 2*b2_logLik
     # x0
     x0_vals = as.data.table(cbind(para_names, x0_model))
     colnames(x0_vals) = c('x', 'value')
@@ -260,6 +262,7 @@ Fit_models_new = function(data,
     temp = data.table(rbind(LRs, coefs, x0_vals))
     temp$AIC = AICs
     temp$AICc = AICc
+    temp$BIC = BIC
     temp$p_V1 = ps['V1']
     temp$p_V2 = ps['V2']
     # Add model
@@ -299,7 +302,8 @@ Fit_models_new = function(data,
     temp_model_data$b2_ll = b2_logLik
     temp_model_data$AIC = AICs
     temp_model_data$AICc = AICc
-    temp_model_data = setcolorder(temp_model_data, c('model', 'b2_ll', 'AIC', 'AICc'))
+    temp_model_data$BIC = BIC
+    temp_model_data = setcolorder(temp_model_data, c('model', 'b2_ll', 'AIC', 'AICc', 'BIC'))
     
     # Add behavioral data to modeling output
     temp_model_data = cbind(data, temp_model_data)
