@@ -242,6 +242,7 @@ Fit_models_new = function(data,
     # Only take low/mid bandit comparisons
     cidx = which((cres$norm[[2]]$bandit == '12' | cres$norm[[2]]$bandit == '21'))
     cidx_my = cidx
+    # Log likelihood of relevant trials
     b2_logLik = sum(probs[cidx])
     b2_logLik_my = b2_logLik
     #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0_model)) + 2*b2_logLik
@@ -253,6 +254,12 @@ Fit_models_new = function(data,
     AICc = AICs + ((2*(k^2) + 2*k) / (n - k - 1))
     # BIC
     BIC = k*log(n) - 2*b2_logLik
+    # chance-level log likelihood for pseudo-r2 (50/50 choice probability in
+    # each relevant trial)
+    b2_logLik_chance = n * log(.5)
+    # Pseudo-r2 (Cramerer & Ho 1999; Daw 2011)
+    # 1 - L/R = 1 - logLik under model/loglik under chance
+    pseudorsq = 1 - (b2_logLik/b2_logLik_chance)
     # x0
     x0_vals = as.data.table(cbind(para_names, x0_model))
     colnames(x0_vals) = c('x', 'value')
@@ -263,6 +270,9 @@ Fit_models_new = function(data,
     temp$AIC = AICs
     temp$AICc = AICc
     temp$BIC = BIC
+    temp$b2_loglik = b2_logLik
+    temp$b2_loglik_chance = b2_logLik_chance
+    temp$pseudorsq = pseudorsq
     temp$p_V1 = ps['V1']
     temp$p_V2 = ps['V2']
     # Add model
@@ -299,11 +309,13 @@ Fit_models_new = function(data,
       .[, c('trial', 'updated_bandit', 'pe', 'value_low', 'value_mid', 'value_high')]
     # Add relevant information for output
     temp_model_data$model = model_name
-    temp_model_data$b2_ll = b2_logLik
+    temp_model_data$b2_loglik = b2_logLik
+    temp_model_data$b2_loglik_chance = b2_logLik_chance
+    temp_model_data$pseudorsq = pseudorsq
     temp_model_data$AIC = AICs
     temp_model_data$AICc = AICc
     temp_model_data$BIC = BIC
-    temp_model_data = setcolorder(temp_model_data, c('model', 'b2_ll', 'AIC', 'AICc', 'BIC'))
+    temp_model_data = setcolorder(temp_model_data, c('model', 'b2_loglik', 'b2_loglik_chance', 'pseudorsq', 'AIC', 'AICc', 'BIC'))
     
     # Add behavioral data to modeling output
     temp_model_data = cbind(data, temp_model_data)
