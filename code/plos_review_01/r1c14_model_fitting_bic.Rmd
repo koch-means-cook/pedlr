@@ -1137,3 +1137,20 @@ cor(x = data_cbe_fit$param_uml,
     method = 'pearson')
 ```
 
+---
+
+# Pseudo-R2
+
+```{r}
+data_prs = data %>%
+  .[iter == 1] %>%
+  .[, .(prs = unique(pseudorsq)),
+    by = c('participant_id', 'group', 'model')] %>%
+  # Highest pseudo-r2 offers best fit compared to chance
+  .[, ':='(highest = max(prs),
+           loc_winning = prs == max(prs),
+           # Name of winning model
+           winning_model = model[prs == max(prs)]),
+    by = c('participant_id', 'group')]
+```
+
