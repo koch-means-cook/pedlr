@@ -24,8 +24,6 @@ Prepare_data_for_plot = function(data){
        'uncertainty_surprise' %in% data[,col] |
        'seplr_surprise' %in% data[,col]){
       
-      #rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise
-      
       # Set different models
       models = c('rw',
                  'uncertainty',
