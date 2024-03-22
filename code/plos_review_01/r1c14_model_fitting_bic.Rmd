@@ -533,6 +533,7 @@ table_counts_all
 
 ```{r}
 data_plot = Prepare_data_for_plot(data_counts_all)
+guides = Get_plot_guides()
 
 # Plot
 p = ggplot(data = data_plot,
@@ -540,15 +541,21 @@ p = ggplot(data = data_plot,
                y = n_winning,
                fill = model)) +
   geom_col() +
-  facet_wrap(~variable, ncol = 2)
+  scale_fill_manual(values = guides) +
+  facet_wrap(~variable, ncol = 2) +
+  labs(y = 'Number of best fits')
 p = Neurocodify_plot(p) +
   theme(legend.position = 'none',
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1),
-        axis.title.x = element_blank())
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12),
+        strip.text = element_text(size = 15),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 15, face = 'bold'))
 p
 ```
 
@@ -578,20 +585,26 @@ table_counts_age
 
 ```{r}
 # Plot
-p = ggplot(data = data_counts_age,
+p = ggplot(data = Prepare_data_for_plot(data_counts_age),
            aes(x = model,
                y = n_winning,
                fill = model)) +
   geom_col() +
-  facet_wrap(group~variable, ncol = 2)
+  scale_fill_manual(values = guides) +
+  facet_wrap(group~variable, ncol = 2) +
+  labs(y = 'Number of best fits')
 p = Neurocodify_plot(p) +
   theme(legend.position = 'none',
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1),
-        axis.title.x = element_blank())
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12),
+        strip.text = element_text(size = 15),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 15, face = 'bold'))
 p
 ```
 
@@ -627,11 +640,13 @@ data_pxp
 
 ```{r}
 # Plot
-p = ggplot(data = data_pxp,
+p = ggplot(data = Prepare_data_for_plot(data_pxp),
            aes(x = model,
                y = pxp,
                fill = model)) +
   geom_col() +
+  labs(y = 'Protected exceedance probability') +
+  scale_fill_manual(values = guides) +
   scale_y_continuous(limits = c(0,1))
 
 p = Neurocodify_plot(p) +
@@ -640,8 +655,12 @@ p = Neurocodify_plot(p) +
         panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1),
-        axis.title.x = element_blank())
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12),
+        strip.text = element_text(size = 15),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 15, face = 'bold'))
 p
 ```
 
