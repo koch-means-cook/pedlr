@@ -1,0 +1,107 @@
+---
+title: "r1c06_repeated_surprise"
+format: html
+editor: visual
+---
+
+```{r}
+#| message: false
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#| message: false
+
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(sdamr)
+library(gghalves)
+library(lme4)
+library(emmeans)
+library(papeR)
+library(ggridges)
+library(bmsR)
+library(fabricatr)
+library(mlisi)
+```
+
+```{r}
+#| message: false
+
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+
+source_path = file.path(base_path, 'code', 'model_fitting', 'LRfunction.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
+
+
+# Get plot colors/linetypes for plots
+custom_guides = Get_plot_guides()
+```
+
+```{r}
+# Get single instance of all used schedules
+unique_schedules = Load_data() %>%
+  # List participants for each schedule
+  .[, .(ids = unique(participant_id)),
+    by = c('name_design_r1')] %>%
+  .[order(rank(name_design_r1)),] %>%
+  # Only take first participant to get single instance of each used schedule
+  .[, .(ids = ids[1]),
+    by = 'name_design_r1']
+
+# Only look at unique schedules
+data = Load_data() %>%
+  # Add trial counter
+  .[, trial := seq(.N),
+    by = c('participant_id')] %>%
+  # Only look at outcomes experiences in the mid bandit
+  .[option_choice == 2,] %>%
+  # Limit columns to important for analysis
+  .[, c('participant_id', 'name_design_r1', 'option_left', 'option_right',
+        'trial_type', 'forced_left', 'forced_right','block_n', 'run', 'choice',
+        'outcome', 'option_choice', 'group', 'is_rare',  'trial')] %>%
+  .[, ':='(prev_rare = data.table::shift(is_rare, n = 1),
+           prev_trial = data.table::shift(trial, n = 1)),
+    by = c('participant_id', 'run')] %>%
+  # # Make sure back-to-back rare outcomes do not get counted across runs
+  # .[trial == 241, ':='(prev_rare = 0,
+  #                      prev_trial = NA)] %>%
+  # indicate back-to-back rare outcomes by 2 (back-to-back here means seeing two
+  # rare outcomes in the 2. bandit without seeing a non-rare outcome in the 2.
+  # bandit in between
+  # there could be choices of bandit 1 or 3 between these back-to-back rare
+  # outcomes in 2 )
+  .[, ':='(btb_rare = is_rare + prev_rare,
+           n_trials_between = trial - prev_trial),
+    by = c('participant_id', 'run')]
+
+# Analyze data
+data_btb = data %>%
+  # out of all choices of bandit 2, how many of them were btb rare?
+  .[, .(n_btb_rare = sum(btb_rare == 2, na.rm = TRUE),
+        # How many choices of bandit 2 were there?
+        n_choices_2 = .N,
+        # How many choices of bandit 2 were there that gave a rare outcome?
+        n_rare_outcome = sum(is_rare == 1),
+        # How many trials were in between btb rare outcomes of 2 on average?
+        avg_trials_between = mean(n_trials_between[btb_rare == 2], na.rm = TRUE)),
+    by = c('participant_id', 'name_design_r1')]
+```
+
