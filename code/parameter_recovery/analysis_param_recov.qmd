@@ -476,3 +476,41 @@ p = ggplot2::ggplot(data = data_uncertainty_seplr_recov,
 p = Neurocodify_plot(p)
 p
 ```
+
+
+## Surprise+SEPLR
+
+```{r}
+# Isolate target model
+data_sepsurprise = data %>%
+  .[model == 'seplr_surprise',]
+
+# Get parameters used in simulation (input_params) and estimate of model
+# fitting (coefs) for each fitted parameter of model
+data_sepsurprise_recov = data_sepsurprise %>%
+  .[params %in% c('l_pos', 'u_pos', 's_pos', 'l_neg', 'u_neg', 's_neg'),] %>%
+  .[variable %in% c('coefs', 'input_params')] %>%
+  data.table::dcast(.,
+                    participant_id + model + AIC + AICc + iter + params ~ variable,
+                    value.var = 'value') %>%
+  data.table::setorder(., 'participant_id', 'iter', 'params')
+
+# Plot correlation between true parameter and recovered parameter
+p = ggplot2::ggplot(data = data_sepsurprise_recov,
+                    ggplot2::aes(x = input_params,
+                                 y = coefs)) +
+  ggplot2::geom_point(alpha = 0.3, size = 0.4) +
+  ggplot2::geom_smooth(method = 'lm',
+                       formula = y ~ x) +
+  ggplot2::facet_wrap(~ params,
+                      scales = 'free',
+                      nrow = 1) +
+  labs(x = 'Input (Simulation)',
+       y = 'Estimate (Recovery)') +
+  theme(aspect.ratio = 1)
+
+# Set Neurocode style
+p = Neurocodify_plot(p)
+p
+```
+

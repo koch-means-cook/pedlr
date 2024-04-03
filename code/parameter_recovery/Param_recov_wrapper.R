@@ -23,9 +23,9 @@ Param_recov_wrapper = function(participant_id,
   
 # participant_id = 'VVBU17E'
 # model = 'seplr_surprise'
-# random_input_params = FALSE
+# random_input_params = TRUE
 # random_input_betas = FALSE
-# random_starting_values = FALSE
+# random_starting_values = TRUE
 # param_lb = c(0.01, 0.01, 1, 0.01, 0.01, 1)
 # param_ub = c(1, 1, 7, 1, 1, 7)
 # betas_lb = c(-0.1, -0.5, 0, NA, NA)
@@ -38,7 +38,7 @@ Param_recov_wrapper = function(participant_id,
 # ips = c(0.93, 0.42, 5, 0.1, 0.7, 3)
 # beta_weights = c(0, -0.2, 0.2, NA, NA)
 # svs = c(0.5, 0.5, 3, 0.5, 0.5, 3)
-# principle_mode = FALSE
+# principle_mode = TRUE
   
   # Give message to user
   message(paste('Starting ID ', participant_id, '...\n', sep = ''), appendLF = FALSE)

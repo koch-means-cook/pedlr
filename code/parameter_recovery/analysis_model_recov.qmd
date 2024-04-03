@@ -44,6 +44,8 @@ source(file.path(base_path, 'utils', 'Neurocodify_plot.R',
                  fsep = .Platform$file.sep))
 source(file.path(base_path, 'model_fitting', 'LRfunction.R',
                  fsep = .Platform$file.sep))
+source(file.path(base_path, 'utils', 'Prepare_data_for_plot.R',
+                 fsep = .Platform$file.sep))
 ```
 
 
@@ -94,7 +96,9 @@ data_recovery = data %>%
            'generating_x1',
            'generating_x2',
            'generating_x3',
-           'generating_x4')] %>%
+           'generating_x4',
+           'generating_x5',
+           'generating_x6')] %>%
   # Get winning model of recovery (lowest AICc)
   .[, recovered_model := model[which(AICc == min(AICc))],
     by = c('participant_id',
@@ -113,6 +117,8 @@ data_recovery = data %>%
 ```{r}
 # Plot recovery as histogram
 data_plot = data_recovery %>%
+  # Detailed model names for plot
+  Prepare_data_for_plot(.) %>%
   # Reduce to row for each attempted recovery
   .[, .(recovered_model = unique(recovered_model)),
     by = c('participant_id', 'generating_model', 'iter')] %>%
@@ -152,6 +158,8 @@ Supplement Manuscript ll. 30-45
 ```{r}
 # Plot recovery as CM
 data_plot = data_recovery %>%
+  # Detailed model names for plot
+  Prepare_data_for_plot(.) %>%
   # Reduce to row for each attempted recovery
   .[, .(recovered_model = unique(recovered_model)),
     by = c('participant_id', 'generating_model', 'iter')] %>%
