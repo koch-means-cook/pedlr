@@ -1,0 +1,306 @@
+---
+title: "r1c16_outlier_detail"
+format: html
+editor: visual
+---
+
+```{r}
+#| message: false
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#| message: false
+
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(sdamr)
+library(gghalves)
+library(lme4)
+library(emmeans)
+library(papeR)
+library(ggridges)
+library(bmsR)
+library(fabricatr)
+library(mlisi)
+```
+
+# Setup
+
+```{r}
+#| message: false
+
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+
+source_path = file.path(base_path, 'code', 'model_fitting', 'LRfunction.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
+
+
+# Get plot colors/linetypes for plots
+custom_guides = Get_plot_guides()
+```
+
+# Get behavioral data
+
+```{r}
+data_rr = Load_data() %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  Add_comp() %>%
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  .[trial_type == 'choice', correct := if(option_left > option_right) 'left' else 'right',
+    by = c('participant_id', 'run', 'trial')] %>%
+  .[trial_type == 'forced', correct := forced,
+    by = c('participant_id', 'run', 'trial')] %>%
+  # Exclude time-out trials
+  .[!is.na(outcome), correct_choice := choice == correct,
+    by = c('participant_id', 'run', 'trial')]
+
+# Average correct choices
+data_rr_mean_correct = data_rr %>%
+  # Only consider free choices
+  .[trial_type == 'choice', ] %>%
+  # Average over runs
+  .[, .(mean_correct = mean(correct_choice, na.rm = TRUE),
+        sd_correct = sd(correct_choice, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run', 'comp')] %>%
+  # Sort for easier checks
+  .[order(rank(comp)),] %>%
+  # Wide format to calculate differences
+  data.table::dcast(participant_id + group + run ~ paste0('comp_', comp),
+                    value.var = 'mean_correct') %>%
+  # Get difference between critical comparisons
+  .[, bandit_effect := comp_2v3 - comp_1v2] %>%
+  # Average over runs
+  .[, .(mean_bandit_effect = mean(bandit_effect, na.rm = TRUE)),
+    by = c('participant_id', 'group')] %>%
+  # Convert group to factor
+  .[, ':='(group = as.factor(group),
+           participant_id = as.factor(participant_id))]
+
+# Get data of lower older adults
+outlier_ids = data_rr_mean_correct %>%
+  # Sort data by lowest values
+  .[order(rank(mean_bandit_effect)),] %>%
+  # Select only data with lowest values
+  .[c(1,2),]
+
+# Get full behavioral data of outliers
+outlier_data = data %>%
+  .[participant_id %in% outlier_ids$participant_id, ]
+```
+
+# Get estimation data
+
+```{r}
+# State melt columns (to align data types to avoid warnings)
+measure_cols = c('est_1_reward',
+                 'est_1_range',
+                 'avg_1_running',
+                 'est_2_reward',
+                 'est_2_range',
+                 'avg_2_running',
+                 'est_3_reward',
+                 'est_3_range',
+                 'avg_3_running')
+
+# Get estimation data
+check_est = data %>%
+  # Exclude: estimation specific
+  Apply_exclusion_criteria(., choice_based_exclusion = FALSE) %>%
+  # Get running average of chosen rewards
+  .[, ':='(avg_1_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 1),
+           avg_2_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 2),
+           avg_3_running = Get_running_avg(choice_option = option_choice,
+                                     choice_outcome = outcome,
+                                     stim = 3)),
+    by = c('participant_id', 'run')] %>%
+  # Column to mark guided choices of mid bandit that produce a rare outcome
+  .[, forced_rare := as.numeric(as.logical(is_rare) & trial_type == 'forced' & (comp == '1v2' | comp == '2v3'))] %>%
+  .[!is.na(est_1_reward),] %>%
+  # Get count for estimation trials
+  .[, est_trial := seq(.N), by = c('participant_id', 'run')] %>%
+  # Unify data types of measure columns
+  .[, (measure_cols) := lapply(.SD, as.double), .SDcols = measure_cols] %>%
+  data.table::melt(.,
+                   id.vars = c('participant_id',
+                               'group',
+                               'run',
+                               'est_trial',
+                               'forced_rare'),
+                   measure.vars = measure_cols) %>%
+  # Isolate bandit from variable name to use as variable
+  .[, est_stim := substr(variable, 5, 5)] %>%
+  # Isolate type of value (participants estimate of reward, running average, participants estimate of range/dispersion)
+  .[, type := substr(variable, 7, 9)] %>%
+  .[type == 'rew', type := 'reward'] %>%
+  .[type == 'ran', type := 'range'] %>%
+  .[type == 'run', type := 'r_avg']
+
+
+# Merge true means with estimation
+check_est_diff = check_est %>%
+  # Wide format to compare true running avg reward and estimate
+  data.table::dcast(., participant_id + group + run + est_trial + forced_rare + est_stim ~ type,
+                    value.var = 'value') %>%
+  # Get difference between estimation and true mean
+  .[, diff_from_true := reward - r_avg]
+
+# Get mean estimation accuracy across estimation trials
+check_mean_est_diff = check_est_diff %>%
+  .[, half := rep(x = c(1,2), each = (max(est_trial)/2)),
+    by = c('participant_id', 'group', 'run', 'est_stim')] %>%
+  .[, .(mean_diff_from_true = mean(diff_from_true, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'run', 'half', 'est_stim')]
+```
+
+# Correlate bandit_effect with estimation accuracy
+
+```{r}
+data_perf_est = check_mean_est_diff %>%
+  # Focus estimation on second half, as we did in other estimation analyses
+  .[half == 2,] %>%
+  # Average estimation over runs, similar to bandit effect
+  .[, .(mean_diff_from_true = mean(mean_diff_from_true)),
+    by = c('participant_id', 'group', 'est_stim')] %>%
+  data.table::dcast(participant_id + group ~ paste0('est_stim_', est_stim),
+                    value.var = 'mean_diff_from_true') %>%
+  data.table::merge.data.table(., data_rr_mean_correct) %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  Apply_exclusion_criteria(choice_based_exclusion = FALSE)
+
+# LM predicting performance from estimation accuracy of bandit 1
+lm_est_1 = lm(est_stim_1 ~ mean_bandit_effect,
+              data = data_perf_est)
+summary(lm_est_1)
+
+# LM predicting performance from estimation accuracy of bandit 2
+lm_est_2 = lm(est_stim_2 ~ mean_bandit_effect,
+              data = data_perf_est)
+summary(lm_est_2)
+
+# LM predicting performance from estimation accuracy of bandit 3
+lm_est_3 = lm(est_stim_3 ~ mean_bandit_effect,
+              data = data_perf_est)
+summary(lm_est_3)
+```
+
+## Plot estimation bandit 2 vs. bandit effect
+
+```{r}
+ggplot(data = data_perf_est,
+       aes(x = est_stim_2,
+           y = mean_bandit_effect)) +
+  geom_point() +
+  geom_smooth(method = 'lm', 
+              formula = y ~ x)
+```
+
+One outlier did not deliver reliable estimation results (8TYYUVQ).
+Bandit effect is stronger above 0 (meaning more errors in low-mid than mid-high) the stronger we underestimate bandit 2.
+
+## Plot estimation bandit 3 vs. bandit effect
+
+```{r}
+ggplot(data = data_perf_est,
+       aes(x = est_stim_3,
+           y = mean_bandit_effect)) +
+  geom_point() +
+  geom_smooth(method = 'lm',
+              formula = y ~ x)
+```
+
+# Estimation accuracy of outlier
+
+```{r}
+data_est_outlier = data_perf_est %>%
+  .[, older_outlier := participant_id %in% outlier_ids$participant_id] %>%
+  data.table::melt(id.vars = c('participant_id', 'group', 'older_outlier'),
+                   measure.vars = c('est_stim_1', 'est_stim_2', 'est_stim_3')) %>%
+  .[order(rank(participant_id)),]
+  
+
+ggplot(data = data_est_outlier,
+       aes(x = variable,
+           y = value,
+           fill = older_outlier)) +
+  scale_fill_manual(values = c('black', 'yellow')) +
+  geom_boxplot(outlier.shape = NA, color = 'black', fill = 'white') +
+  geom_point(shape = 21,
+             size = 2,
+             color = 'black',
+             position = position_jitter(seed = 666,width = 0.05, height = 0))
+```
+
+Performance-based outlier that was not excluded from estimates performs worst in estimates.
+
+# Valence model fit vs. performance
+
+```{r}
+# Load model fit data
+data_fits = Load_model_fits_new() %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  # Restrinct data to random starting values and 1 iteration
+  .[starting_values == 'random' & iter == 1,] %>%
+  # restrict data to valence model
+  .[model %in% c('seplr', 'surprise'),] %>%
+  # restrict to fitted parameters
+  .[variable == 'coefs' & x %in% c('alpha_pos', 'alpha_neg', 'l', 'u', 's'),] %>%
+  # Add variable of performance
+  data.table::merge.data.table(., data_rr_mean_correct)
+
+# Plot
+ggplot(data = data_fits,
+       aes(x = value,
+           y = mean_bandit_effect)) +
+  geom_point() +
+  geom_smooth(method = lm,
+              formula = y ~ x) +
+  facet_grid(.~model+x, scales = 'free_x')
+```
+
+## Analysis
+
+### Alpha_neg vs. performance
+
+```{r}
+# LM alpha_negative predicting effect
+data_lm = data_fits[model == 'seplr' & x == 'alpha_neg',]
+lm_an = lm(data = data_lm,
+           mean_bandit_effect ~ value)
+summary(lm_an)
+```
+
+### u vs. performance
+
+```{r}
+# LM alpha_negative predicting effect
+data_lm = data_fits[model == 'surprise' & x == 'u',]
+lm_u = lm(data = data_lm,
+           mean_bandit_effect ~ value)
+summary(lm_u)
+```
+
+Idea of reviewer that effect is related to higher alpha_neg is true (more weight of neg events on learning means more mistakes in low-mid trials than mid-high trials).
+But same is true for u (more overweighting of extreme outcomes leads to more mistakes in low-mid trials than mid-high trials)
