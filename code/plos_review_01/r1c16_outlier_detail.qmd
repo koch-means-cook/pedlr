@@ -103,7 +103,7 @@ outlier_ids = data_rr_mean_correct %>%
   .[c(1,2),]
 
 # Get full behavioral data of outliers
-outlier_data = data %>%
+outlier_data = data_rr %>%
   .[participant_id %in% outlier_ids$participant_id, ]
 ```
 
@@ -122,7 +122,7 @@ measure_cols = c('est_1_reward',
                  'avg_3_running')
 
 # Get estimation data
-check_est = data %>%
+check_est = data_rr %>%
   # Exclude: estimation specific
   Apply_exclusion_criteria(., choice_based_exclusion = FALSE) %>%
   # Get running average of chosen rewards
@@ -175,36 +175,87 @@ check_mean_est_diff = check_est_diff %>%
     by = c('participant_id', 'group', 'run', 'half', 'est_stim')]
 ```
 
+## Were outlier participants excluded in estimation?
+
+```{r}
+excl = Get_exclusions() %>%
+  .[participant_id %in% outlier_ids$participant_id]
+```
+
+- Both runs of 8TYYUVQ were excluded because of no variance in estimation
+- 2nd run of 456LJD0 was excluded because bandit 1 and 3 were estimated as same outcome over entire run
+
 # Correlate bandit_effect with estimation accuracy
 
 ```{r}
-data_perf_est = check_mean_est_diff %>%
+# Get participants that miss at least one estimation run to exclude
+# Because reported behavioral measure reviewer mentioned is result of average
+# over runs we want two runs of valid estimation data per parrticipant
+est_excl = Get_exclusions() %>%
+  .[mod == 'rating_performance',]
+est_excl = unique(est_excl$participant_id)
+
+data_perf_est_run = check_mean_est_diff %>%
   # Focus estimation on second half, as we did in other estimation analyses
   .[half == 2,] %>%
+  # Exclude participants based on estimation accuracy but allow single runs to
+  # be kept (for later use)
+  Apply_exclusion_criteria(choice_based_exclusion = FALSE)
+
+data_perf_est = data_perf_est_run %>%
   # Average estimation over runs, similar to bandit effect
   .[, .(mean_diff_from_true = mean(mean_diff_from_true)),
     by = c('participant_id', 'group', 'est_stim')] %>%
   data.table::dcast(participant_id + group ~ paste0('est_stim_', est_stim),
                     value.var = 'mean_diff_from_true') %>%
   data.table::merge.data.table(., data_rr_mean_correct) %>%
-  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
-  Apply_exclusion_criteria(choice_based_exclusion = FALSE)
+  # Exclude participants who did not meet choice and estimation criterion in
+  # both runs
+  Apply_exclusion_criteria(., choice_based_exclusion = TRUE) %>%
+  .[!participant_id %in% est_excl,]
 
+# Sample stats
+sample = data_perf_est %>%
+  .[, .(count = .N),
+    by = 'group'] %>%
+  .[, overall_n := sum(count)]
+```
+
+
+```{r}
 # LM predicting performance from estimation accuracy of bandit 1
 lm_est_1 = lm(est_stim_1 ~ mean_bandit_effect,
               data = data_perf_est)
 summary(lm_est_1)
+cor.test(data_perf_est$mean_bandit_effect, data_perf_est$est_stim_1)
 
 # LM predicting performance from estimation accuracy of bandit 2
 lm_est_2 = lm(est_stim_2 ~ mean_bandit_effect,
               data = data_perf_est)
 summary(lm_est_2)
+cor.test(data_perf_est$mean_bandit_effect, data_perf_est$est_stim_2)
 
 # LM predicting performance from estimation accuracy of bandit 3
 lm_est_3 = lm(est_stim_3 ~ mean_bandit_effect,
               data = data_perf_est)
 summary(lm_est_3)
+cor.test(data_perf_est$mean_bandit_effect, data_perf_est$est_stim_3)
 ```
+
+Significant linear model of behavior using estimation accuracy in bandit 1 and 2
+
+## Plot estimation bandit 1 vs. bandit effect
+
+```{r}
+ggplot(data = data_perf_est,
+       aes(x = est_stim_1,
+           y = mean_bandit_effect)) +
+  geom_point() +
+  geom_smooth(method = 'lm', 
+              formula = y ~ x)
+```
+
+The more we overestimate lower bandit, the more mistakes are made in low-mid.
 
 ## Plot estimation bandit 2 vs. bandit effect
 
@@ -217,27 +268,22 @@ ggplot(data = data_perf_est,
               formula = y ~ x)
 ```
 
-One outlier did not deliver reliable estimation results (8TYYUVQ).
-Bandit effect is stronger above 0 (meaning more errors in low-mid than mid-high) the stronger we underestimate bandit 2.
-
-## Plot estimation bandit 3 vs. bandit effect
-
-```{r}
-ggplot(data = data_perf_est,
-       aes(x = est_stim_3,
-           y = mean_bandit_effect)) +
-  geom_point() +
-  geom_smooth(method = 'lm',
-              formula = y ~ x)
-```
+The more we under-estimate mid bandit, the more mistakes are made in low-mid.
 
 # Estimation accuracy of outlier
 
 ```{r}
-data_est_outlier = data_perf_est %>%
-  .[, older_outlier := participant_id %in% outlier_ids$participant_id] %>%
-  data.table::melt(id.vars = c('participant_id', 'group', 'older_outlier'),
-                   measure.vars = c('est_stim_1', 'est_stim_2', 'est_stim_3')) %>%
+data_est_outlier = data_perf_est_run %>%
+  data.table::dcast(participant_id + group + run ~ paste0('mean_diff_from_true_stim_', est_stim),
+                    value.var = 'mean_diff_from_true') %>%
+  # Exclude participants who did not meet choice and estimation criterion in
+  # both runs
+  Apply_exclusion_criteria(., choice_based_exclusion = FALSE) %>%
+   .[, older_outlier := participant_id %in% outlier_ids$participant_id] %>%
+  data.table::melt(id.vars = c('participant_id', 'group', 'run', 'older_outlier'),
+                   measure.vars = c('mean_diff_from_true_stim_1',
+                                    'mean_diff_from_true_stim_2',
+                                    'mean_diff_from_true_stim_3')) %>%
   .[order(rank(participant_id)),]
   
 
@@ -253,7 +299,9 @@ ggplot(data = data_est_outlier,
              position = position_jitter(seed = 666,width = 0.05, height = 0))
 ```
 
-Performance-based outlier that was not excluded from estimates performs worst in estimates.
+Participant 456LJD0 had valid estimation data for the first run.
+Performance is very inaccurate and shows strong overestimation in all stimuli.
+
 
 # Valence model fit vs. performance
 
@@ -290,6 +338,7 @@ data_lm = data_fits[model == 'seplr' & x == 'alpha_neg',]
 lm_an = lm(data = data_lm,
            mean_bandit_effect ~ value)
 summary(lm_an)
+cor.test(data_lm$value, data_lm$mean_bandit_effect)
 ```
 
 ### u vs. performance
@@ -300,7 +349,7 @@ data_lm = data_fits[model == 'surprise' & x == 'u',]
 lm_u = lm(data = data_lm,
            mean_bandit_effect ~ value)
 summary(lm_u)
+cor.test(data_lm$value, data_lm$mean_bandit_effect)
 ```
 
-Idea of reviewer that effect is related to higher alpha_neg is true (more weight of neg events on learning means more mistakes in low-mid trials than mid-high trials).
-But same is true for u (more overweighting of extreme outcomes leads to more mistakes in low-mid trials than mid-high trials)
+Idea of reviewer that effect is related to higher alpha_neg is true (more weight of neg events on learning means more mistakes in low-mid trials than mid-high trials). But same is true for u (more overweighting of extreme outcomes leads to more mistakes in low-mid trials than mid-high trials)

@@ -696,8 +696,8 @@ table_BIC_all
 
 ```{r}
 # Plot
-data_plot = data_model_comp
-data_plot_mean = data_BIC
+data_plot = Prepare_data_for_plot(data_model_comp)
+data_plot_mean = Prepare_data_for_plot(data_BIC)
 
 p1 = ggplot(data = data_plot,
            aes(x = model,
@@ -721,7 +721,8 @@ p1 = ggplot(data = data_plot,
                     ymin = mean_BIC - sem_BIC,
                     ymax = mean_BIC + sem_BIC),
                 color = 'black',
-                width = 0.3)
+                width = 0.3) +
+  scale_fill_manual(values = custom_guides)
 
 p1 = Neurocodify_plot(p1) +
   theme(panel.grid.major.x = element_blank(),
@@ -754,7 +755,8 @@ p2 = ggplot(data = data_plot,
              size = 4,
              shape = 23,
              stroke = 1) +
-  scale_y_continuous(limits = c(110,125))
+  scale_y_continuous(limits = c(125,150)) +
+  scale_fill_manual(values = custom_guides)
 
 
 p2 = Neurocodify_plot(p2) +

@@ -536,14 +536,17 @@ p = ggplot(data = data_plot,
                y = n_winning,
                fill = model)) +
   geom_col() +
-  facet_wrap(~variable, ncol = 2)
+  facet_wrap(~variable, ncol = 2) +
+  scale_fill_manual(values = custom_guides)
 p = Neurocodify_plot(p) +
   theme(legend.position = 'none',
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1),
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12),
         axis.title.x = element_blank())
 p
 ```
@@ -673,8 +676,8 @@ table_AICc_all
 
 ```{r}
 # Plot
-data_plot = data_model_comp
-data_plot_mean = data_AICc
+data_plot = Prepare_data_for_plot(data_model_comp)
+data_plot_mean = Prepare_data_for_plot(data_AICc)
 
 p1 = ggplot(data = data_plot,
            aes(x = model,
@@ -698,7 +701,8 @@ p1 = ggplot(data = data_plot,
                     ymin = mean_AICc - sem_AICc,
                     ymax = mean_AICc + sem_AICc),
                 color = 'black',
-                width = 0.3)
+                width = 0.3) +
+  scale_fill_manual(values = custom_guides)
 
 p1 = Neurocodify_plot(p1) +
   theme(panel.grid.major.x = element_blank(),
@@ -707,7 +711,9 @@ p1 = Neurocodify_plot(p1) +
         axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1))
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12))
 
 # Zoomed in version
 p2 = ggplot(data = data_plot,
@@ -731,7 +737,8 @@ p2 = ggplot(data = data_plot,
              size = 4,
              shape = 23,
              stroke = 1) +
-  scale_y_continuous(limits = c(110,125))
+  scale_y_continuous(limits = c(110,125)) +
+  scale_fill_manual(values = custom_guides)
 
 
 p2 = Neurocodify_plot(p2) +
@@ -741,15 +748,50 @@ p2 = Neurocodify_plot(p2) +
         axis.title = element_blank(),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1))
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12))
 
 p = cowplot::plot_grid(p1, p2,
                        ncol = 2,
                        nrow = 1,
                        axis = 'bt',
                        align = 'h',
-                       rel_widths = c(2,1))
+                       rel_widths = c(2,1.5))
 p
+```
+
+```{r}
+p1 = ggplot(data = data_plot,
+           aes(x = model,
+               y = AICc,
+               fill = model,
+               color = model)) +
+  geom_boxplot(outlier.shape = NA,
+               color = 'black') + 
+  geom_point(position = position_jitter(width = 0.1,
+                                        height = 0),
+             size = 0.5,
+             alpha = 0.5,
+             color = 'black') +
+  stat_summary(geom = 'point',
+               fun = mean,
+               shape = 23,
+               fill = 'white',
+               color = 'black',
+               size = 3,
+               stroke = 1.5) +
+  scale_fill_manual(values = custom_guides)
+
+p1 = Neurocodify_plot(p1) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none',
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1))
+p1
 ```
 
 
