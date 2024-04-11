@@ -1256,13 +1256,15 @@ data = data.table::rbindlist(data_list) %>%
   data.table::setnames(., old = 'x', new = 'params')
 ```
 
+---
+
 ## Recovery
 
 ```{r}
 data_recovery = data %>%
   # Exclude seplr_surprise model
-  .[model != 'seplr_surprise',] %>%
-  .[generating_model != 'seplr_surprise'] %>%
+  #.[model != 'seplr_surprise',] %>%
+  #.[generating_model != 'seplr_surprise'] %>%
   # For each model that generated data, get AICc for all fitted models
   .[, .(BIC = unique(BIC)),
     by = c('participant_id',
