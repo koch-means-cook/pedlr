@@ -91,7 +91,7 @@ data = Load_data() %>%
   # there could be choices of bandit 1 or 3 between these back-to-back rare
   # outcomes in 2 )
   .[, ':='(btb_rare = is_rare + prev_rare,
-           n_trials_between = trial - prev_trial),
+           n_trials_between = trial - prev_trial - 1),
     by = c('participant_id', 'run')] %>%
   .[order(rank(participant_id)),]
 
@@ -106,7 +106,31 @@ data_btb = data %>%
         # How many trials were in between btb rare outcomes of 2 on average?
         avg_trials_between = mean(n_trials_between[btb_rare == 2], na.rm = TRUE)),
     by = c('participant_id', 'name_design_r1')]
+data_btb
 ```
+
+# Statistics about BTB events
+
+```{r}
+# percentage of btb rare outcomes in all choices made for option 2
+perc_btb_all2 = sum(data_btb$n_btb_rare)/sum(data_btb$n_choices_2) * 100
+perc_btb_all_rare = sum(data_btb$n_btb_rare)/sum(data_btb$n_rare_outcome) * 100
+# Average number of trials between btb rare outcomes
+avg_trials_between_btb = mean(data_btb$avg_trials_between)
+# Get data for "real" btb trials, so no choices of other bandits in between 
+data_n_real_btb = data %>%
+  # combine index vector of btb rare outcomes with no trials in between
+  .[, BTBandNotrials := (btb_rare == 2) + (n_trials_between == 0)] %>%
+  # Mark trials that were btb rare outcomes with no trials in between
+  .[, real_btb := as.numeric(BTBandNotrials == 2)] %>%
+  # Count for each participant
+  .[, .(n_real_btb = sum(real_btb, na.rm = TRUE)),
+    by = 'participant_id']
+# Average number of btb outcomes with no trials in between
+avg_n_real_btb = mean(data_n_real_btb$n_real_btb)
+perc_real_btb_alltrials = avg_n_real_btb/480 * 100
+```
+
 
 # Exclude btb rare outcomes from windorrize data
 
@@ -255,4 +279,3 @@ p = ggplot(data = data_plot,
 Neurocodify_plot(p) +
   theme(panel.grid = element_blank())
 ```
-
