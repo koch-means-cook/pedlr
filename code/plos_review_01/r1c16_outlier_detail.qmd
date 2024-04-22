@@ -1,7 +1,7 @@
 ---
 title: "r1c16_outlier_detail"
 format: html
-editor: visual
+editor: source
 ---
 
 ```{r}
@@ -182,8 +182,8 @@ excl = Get_exclusions() %>%
   .[participant_id %in% outlier_ids$participant_id]
 ```
 
-- Both runs of 8TYYUVQ were excluded because of no variance in estimation
-- 2nd run of 456LJD0 was excluded because bandit 1 and 3 were estimated as same outcome over entire run
+-   Both runs of 8TYYUVQ were excluded because of no variance in estimation
+-   2nd run of 456LJD0 was excluded because bandit 1 and 3 were estimated as same outcome over entire run
 
 # Correlate bandit_effect with estimation accuracy
 
@@ -220,7 +220,6 @@ sample = data_perf_est %>%
     by = 'group'] %>%
   .[, overall_n := sum(count)]
 ```
-
 
 ```{r}
 # LM predicting performance from estimation accuracy of bandit 1
@@ -284,24 +283,46 @@ data_est_outlier = data_perf_est_run %>%
                    measure.vars = c('mean_diff_from_true_stim_1',
                                     'mean_diff_from_true_stim_2',
                                     'mean_diff_from_true_stim_3')) %>%
-  .[order(rank(participant_id)),]
+  .[order(rank(participant_id)),] %>%
+  # Rename x
+  .[variable == 'mean_diff_from_true_stim_1', variable := 'Low'] %>%
+  .[variable == 'mean_diff_from_true_stim_2', variable := 'Mid'] %>%
+  .[variable == 'mean_diff_from_true_stim_3', variable := 'High'] %>%
+  Prepare_data_for_plot()
   
 
-ggplot(data = data_est_outlier,
+p = ggplot(data = data_est_outlier,
        aes(x = variable,
            y = value,
            fill = older_outlier)) +
+  labs(x = 'Bandit',
+       y = 'Difference between true\naverage outcome and estimate') +
   scale_fill_manual(values = c('black', 'yellow')) +
   geom_boxplot(outlier.shape = NA, color = 'black', fill = 'white') +
   geom_point(shape = 21,
+             alpha = 0.6,
              size = 2,
              color = 'black',
              position = position_jitter(seed = 666,width = 0.05, height = 0))
+
+p = Neurocodify_plot(p) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 15,
+                                  face = 'bold'),
+        legend.position = 'none')
+p
+
+file = file.path(base_path, 'derivatives', 'plos_review_01', 'figures', 'r1c16',
+                 fsep = .Platform$file.sep)
+ggsave(filename = paste0(file, '.pdf'), plot = p, device = 'pdf', width = 4,
+       height = 4)
+ggsave(filename = paste0(file, '.png'), plot = p, device = 'png', width = 4,
+       height = 4, dpi = 300)
 ```
 
-Participant 456LJD0 had valid estimation data for the first run.
-Performance is very inaccurate and shows strong overestimation in all stimuli.
-
+Participant 456LJD0 had valid estimation data for the first run. Performance is very inaccurate and shows strong overestimation in all stimuli.
 
 # Valence model fit vs. performance
 
