@@ -79,6 +79,30 @@ data_list = parallel::mclapply(X = files,
                                mc.cores = 4)
 # Bind individual list entries (loaded text files) to single data frame
 # (using optimized bind function by data.table package)
-data = data.table::rbindlist(data_list)
+data = data.table::rbindlist(data_list) %>%
+  # Get surprise in each updated bandit to correlate PE and U
+  .[, u := c(u_low, u_mid, u_high)[updated_bandit],
+    by = c('participant_id', 'run', 'model', 'trial')]
+```
+
+# Get average trial-by-trial correlation between PE and U
+
+```{r}
+data_corr = data %>%
+   # Restrict analysis to uncertainty model
+  .[model == 'uncertainty', ] %>%
+  .[, .(cor_pe_u = cor(abs(pe), u, use = 'complete.obs', method = 'pearson')),
+    by = 'participant_id']
+
+# Combine with pi parameter
+data_pi = Load_model_fits_new() %>%
+  .[starting_values == 'random' & model == 'uncertainty' & variable == 'coefs' 
+    & x == 'pi',] %>%
+  .[, .(pi = unique(value)),
+    by = 'participant_id'] %>%
+  data.table::merge.data.table(., data_corr)
+
+avg_corr_pe_u = mean(data_pi$cor_pe_u)
+avg_corr_pe_u
 ```
 

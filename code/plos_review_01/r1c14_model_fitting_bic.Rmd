@@ -1339,15 +1339,19 @@ data_plot = data_recovery %>%
   # Reduce to row for each attempted recovery
   .[, .(recovered_model = unique(recovered_model)),
     by = c('participant_id', 'generating_model', 'iter')] %>%
-  .[, .(count = .N),
-    by = c('recovered_model', 'generating_model')] %>%
+  # count recoveries (including 0s)
+  .[, .(recovered_model = levels(recovered_model),
+        count = c(table(recovered_model))),
+    by = c('generating_model')] %>%
   data.table::setorder('generating_model') %>%
   .[, perc := count/sum(count),
     by = 'generating_model'] %>%
   .[, sum_perc := sum(perc),
     by = 'generating_model'] %>%
   .[, label_short := substr(format(round(perc, 2), nsmall = 2), 2,4)] %>%
-  .[, is_low := perc < 0.4]
+  .[, is_low := perc < 0.4] %>%
+  .[, recovered_model := factor(recovered_model,
+                                levels = levels(generating_model))]
 
 p = ggplot(data = data_plot,
            aes(x = recovered_model,
