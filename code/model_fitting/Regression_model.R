@@ -119,12 +119,14 @@ Regression_model = function(x,
                          z_cdf,
                          updates,
                          alphas,
-                         values),
+                         values,
+                         supdates),
              no_norm = list(cglm,
                             cdf,
                             updates,
                             alphas,
-                            values))
+                            values,
+                            supdates))
   
   # Return regression results
   return(out)

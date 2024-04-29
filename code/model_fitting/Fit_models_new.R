@@ -305,8 +305,12 @@ Fit_models_new = function(data,
         by = 'trial'] %>%
       # Add current value of each bandit for every trial
       cbind(., vals) %>%
+      # Add uncertainty values
+      .[, ':='(u_low = cres$norm[[6]][1,],
+               u_mid = cres$norm[[6]][2,],
+               u_high = cres$norm[[6]][3,])] %>%
       # Select only neccessary columns
-      .[, c('trial', 'updated_bandit', 'pe', 'value_low', 'value_mid', 'value_high')]
+      .[, c('trial', 'updated_bandit', 'pe', 'value_low', 'value_mid', 'value_high', 'u_low', 'u_mid', 'u_high')]
     # Add relevant information for output
     temp_model_data$model = model_name
     temp_model_data$b2_loglik = b2_logLik

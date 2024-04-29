@@ -112,9 +112,11 @@ data_btb
 # Statistics about BTB events
 
 ```{r}
-# percentage of btb rare outcomes in all choices made for option 2
-perc_btb_all2 = sum(data_btb$n_btb_rare)/sum(data_btb$n_choices_2) * 100
-perc_btb_all_rare = sum(data_btb$n_btb_rare)/sum(data_btb$n_rare_outcome) * 100
+# percentage of btb rare outcomes in all trials used in surprise analysis
+data_btb = data_btb %>%
+  .[, perc_btb := (n_btb_rare / n_rare_outcome) * 100]
+avg_perc_btb = mean(data_btb$perc_btb)
+
 # Average number of trials between btb rare outcomes
 avg_trials_between_btb = mean(data_btb$avg_trials_between)
 # Get data for "real" btb trials, so no choices of other bandits in between 
@@ -126,11 +128,32 @@ data_n_real_btb = data %>%
   # Count for each participant
   .[, .(n_real_btb = sum(real_btb, na.rm = TRUE)),
     by = 'participant_id']
-# Average number of btb outcomes with no trials in between
-avg_n_real_btb = mean(data_n_real_btb$n_real_btb)
-perc_real_btb_alltrials = avg_n_real_btb/480 * 100
+
+# Load windowrized data
+load_file = file.path(base_path, 'derivatives', 'analysis', 'windowrize.tsv',
+                      fsep = .Platform$file.sep)
+data_window_raw = data.table::fread(load_file, sep = '\t', na.strings = 'n/a') %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  .[order(rank(participant_id)),]
+
+# Get number of trials in surprise analysis for each participant
+n_trials_window = data_window_raw %>%
+  .[window_relative == 0,] %>%
+  # Count number of trials used in analysis (across runs)
+  .[, .(n_trials_in_analysis = .N),
+    by = 'participant_id'] %>%
+  # Add data about real btb events
+  data.table::merge.data.table(., data_n_real_btb, by = 'participant_id') %>%
+  # Get percentage per participant
+  .[, perc_real_btb := (n_real_btb / n_trials_in_analysis) * 100]
+avg_perc_real_btb = mean(n_trials_window$perc_real_btb)
 ```
 
+**Among all trials used for surprise analysis:**
+
+Percentage of back-to-back surprising outcomes (allowing trials of other bandits in between): `r avg_perc_btb`
+
+Percentage of true back-to-back surprising outcomes (no trials in between): `r avg_perc_real_btb`
 
 # Exclude btb rare outcomes from windorrize data
 
@@ -139,13 +162,8 @@ perc_real_btb_alltrials = avg_n_real_btb/480 * 100
 data_btb_trials = data %>%
   .[btb_rare == 2,]
 
-# Load windowrized data
-load_file = file.path(base_path, 'derivatives', 'analysis', 'windowrize.tsv',
-                      fsep = .Platform$file.sep)
-data_window = data.table::fread(load_file, sep = '\t', na.strings = 'n/a') %>%
-  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
-  .[order(rank(participant_id)),] %>%
-  # Mark btb-2 trials in windowrized data
+# Mark btb-2 trials in windowrized data
+data_window = data_window_raw %>%
   .[, is_btb := window_center %in% 
       data_btb_trials$trial[which(data_btb_trials$participant_id == participant_id &
                         data_btb_trials$run == run)],
@@ -153,6 +171,7 @@ data_window = data.table::fread(load_file, sep = '\t', na.strings = 'n/a') %>%
   # Exclude all btb-2 trials
   .[is_btb == FALSE,]
 ```
+
 
 # Repeat windowrize analysis with excluded btb rare outcomes
 
