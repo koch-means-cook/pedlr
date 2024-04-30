@@ -69,7 +69,7 @@ data = data.table::rbindlist(data_list)
 
 ```{r}
 # Average over design bases ("participants")
-data_avg = data %>%
+data_avg_surprise = data %>%
   # Focus on surprise model
   .[model == 'surprise',] %>%
   # Focus on one trial before and two trials after
@@ -90,14 +90,13 @@ data_avg = data %>%
         lmu_dicho = unique(lmu_dicho),
         n = .N),
     by = c('para_id', 'model', 'window_relative')]
-
 ```
 
 ```{r}
 #| out-width: 100%
 
 # Dont plot l = u to avoid clutter
-p = ggplot(data = data_avg[!l == u,],
+p = ggplot(data = data_avg_surprise[!l == u,],
        aes(x = window_relative,
            y = mean_accuracy,
            color = l,
@@ -108,8 +107,8 @@ p = ggplot(data = data_avg[!l == u,],
   geom_line() +
   geom_vline(xintercept = 0) +
   #annotate(geom = 'label', x = 0, y = 0.85, label = 'Rare outcome', size = 3) +
-  scale_y_continuous(limits = c(0.7,0.9),
-                     breaks = c(0.7,0.9)) +
+  scale_y_continuous(limits = c(0.7, 0.95),
+                     breaks = c(0.7, 0.95)) +
   facet_grid(u~s, labeller = label_both)
 p
 ```
@@ -239,3 +238,85 @@ p
    - Also stronger effects with stronger `u` for `s >= 5`
       - Interpretation: high `s` means that `l` controls the effect of rare outcomes (because LR changes very late)
 - Weird variance in `s == 10`
+
+# Uncertainty model
+
+```{r}
+# Average over design bases ("participants")
+data_avg_unc = data %>%
+  # Focus on surprise model
+  .[model == 'uncertainty',] %>%
+  # Focus on one trial before and two trials after
+  .[window_relative %in% c(-1,1,2)] %>%
+  # Rename parameters
+  setnames(old = c('x1', 'x2'),
+           new = c('alpha', 'pi')) %>%
+  # Average over IDs and runs
+  .[, .(mean_accuracy = mean(mean_accuracy),
+        sd = sd(mean_accuracy),
+        alpha = unique(alpha),
+        pi = unique(pi),
+        n = .N),
+    by = c('para_id', 'model', 'window_relative')]
+```
+
+```{r}
+#| out-width: 100%
+
+# Dont plot l = u to avoid clutter
+p = ggplot(data = data_avg_unc,
+       aes(x = window_relative,
+           y = mean_accuracy,
+           color = alpha,
+           group = pi)) +
+  labs(x = '1v2 x trials after rare outcome',
+       y = 'Prob of choosing 2 in 1v2 trials') +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 0) +
+  scale_y_continuous(limits = c(0.7, 0.95),
+                     breaks = c(0.7, 0.95)) +
+  facet_grid(alpha~pi, labeller = label_both)
+p
+```
+
+# Valence model
+
+```{r}
+# Average over design bases ("participants")
+data_avg_sep = data %>%
+  # Focus on surprise model
+  .[model == 'seplr',] %>%
+  # Focus on one trial before and two trials after
+  .[window_relative %in% c(-1,1,2)] %>%
+  # Rename parameters
+  setnames(old = c('x1', 'x2'),
+           new = c('alpha_pos', 'alpha_neg')) %>%
+  # Average over IDs and runs
+  .[, .(mean_accuracy = mean(mean_accuracy),
+        sd = sd(mean_accuracy),
+        alpha_pos = unique(alpha_pos),
+        alpha_neg = unique(alpha_neg),
+        n = .N),
+    by = c('para_id', 'model', 'window_relative')]
+```
+
+```{r}
+#| out-width: 100%
+
+# Dont plot l = u to avoid clutter
+p = ggplot(data = data_avg_sep,
+       aes(x = window_relative,
+           y = mean_accuracy,
+           color = alpha_pos,
+           group = alpha_neg)) +
+  labs(x = '1v2 x trials after rare outcome',
+       y = 'Prob of choosing 2 in 1v2 trials') +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 0) +
+  scale_y_continuous(limits = c(0.7, 0.95),
+                     breaks = c(0.7, 0.95)) +
+  facet_grid(alpha_pos~alpha_neg, labeller = label_both)
+p
+```
