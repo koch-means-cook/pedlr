@@ -65,7 +65,6 @@ MODEL_LIST='surprise'
 #MODEL_LIST='rw'
 #MODEL_LIST='seplr'
 #MODEL_LIST='uncertainty_seplr'
-TEMPERATURE=7
 TAU=0.2
 
 # ===
@@ -98,6 +97,7 @@ for DATA in ${DATA_LIST}; do
 			X4_LOW=0
 			X4_HIGH=0
 			X4_N=0
+			BETA_WEIGHTS='0,-1,1,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty' ]]
 		then
 			X1_LOW=0.1
@@ -112,6 +112,22 @@ for DATA in ${DATA_LIST}; do
 			X4_LOW=0
 			X4_HIGH=0
 			X4_N=0
+			BETA_WEIGHTS='0,-1,1,-1,1'
+		elif [[ ${MODEL} == 'seplr' ]]
+		then
+			X1_LOW=0.1
+			X1_HIGH=0.7
+			X1_N=5
+			X2_LOW=0.1
+			X2_HIGH=0.7
+			X2_N=5
+			X3_LOW=0
+			X3_HIGH=0
+			X3_N=0
+			X4_LOW=0
+			X4_HIGH=0
+			X4_N=0
+			BETA_WEIGHTS='0,-1,1,NA,NA'
 		elif [[ ${MODEL} == 'surprise' ]]
 		then
 			X1_LOW=0.1
@@ -126,6 +142,7 @@ for DATA in ${DATA_LIST}; do
 			X4_LOW=0
 			X4_HIGH=0
 			X4_N=0
+			BETA_WEIGHTS='0,-1,1,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty_surprise' ]]
 		then
 			X1_LOW=0.1
@@ -140,22 +157,10 @@ for DATA in ${DATA_LIST}; do
 			X4_LOW=0.1
 			X4_HIGH=0.7
 			X4_N=5
+			BETA_WEIGHTS='0,-1,1,-1,1'
 		else
 			echo 'No condition applied'
 		fi
-
-		# echo ${X1_LOW}
-		# echo ${X1_HIGH}
-		# echo ${X1_N}
-		# echo ${X2_LOW}
-		# echo ${X2_HIGH}
-		# echo ${X2_N}
-		# echo ${X3_LOW}
-		# echo ${X3_HIGH}
-		# echo ${X3_N}
-		# echo ${X4_LOW}
-		# echo ${X4_HIGH}
-		# echo ${X4_N}
 
 		# Get job name
 		JOB_NAME="modelsim_base-${PARTICIPANT_ID}_model-${MODEL}"
@@ -184,8 +189,8 @@ for DATA in ${DATA_LIST}; do
 		--x2_low=${X2_LOW} --x2_high=${X2_HIGH} --x2_n=${X2_N} \
 		--x3_low=${X3_LOW} --x3_high=${X3_HIGH} --x3_n=${X3_N} \
 		--x4_low=${X4_LOW} --x4_high=${X4_HIGH} --x4_n=${X4_N} \
-		--temperature=${TEMPERATURE} \
-		--tau ${TAU}" >> job.slurm
+		--tau ${TAU}" \
+		--beta_weights ${BETA_WEIGHTS} >> job.slurm
 
 		# submit job to cluster queue and remove it to avoid confusion:
 		sbatch job.slurm

@@ -34,7 +34,7 @@ Simulation_wrapper = function(participant_id,
   # x4_high = NA
   # x4_n = NA
   # tau = 0.2
-  # beta_weights = c(1, -0.2, 0.2, NA, NA)
+  # beta_weights = c(0, -1, 1, NA, NA)
   
   # Load own functions
   source(file.path(here::here(), 'code', 'simulation', 'Simulate.R', fsep = .Platform$file.sep))
@@ -286,5 +286,6 @@ Simulation_wrapper(participant_id = opt$participant_id,
 
 # Rscript Simulation_wrapper.R --participant_id '1SLA8RA' --model 'rw' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0 --x2_high 0 --x2_n 0 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --tau 0.2 --beta_weights 1,-0.5,0.5,NA,NA
 # Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --tau 0.2 --beta_weights 1,-0.5,0.5,-0.1,0.1
+# Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'seplr' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low 0 --x3_high 0 --x3_n 0 --x4_low 0 --x4_high 0 --x4_n 0 --tau 0.2 --beta_weights 0,-1,1,NA,NA
 # Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'surprise' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low -10 --x3_high 10 --x3_n 5 --x4_low 0 --x4_high 0 --x4_n 0 --tau 0.2 --beta_weights 1,-0.5,0.5,NA,NA
 # Rscript Simulation_wrapper.R --participant_id '09RI1ZH' --model 'uncertainty_surprise' --x1_low 0.1 --x1_high 0.7 --x1_n 5 --x2_low 0.1 --x2_high 0.7 --x2_n 5 --x3_low -10 --x3_high 10 --x3_n 5 --x4_low 0.1 --x4_high 0.7 --x4_n 5 --tau 0.2 --beta_weights 1,-0.5,0.5,-0.1,0.1
