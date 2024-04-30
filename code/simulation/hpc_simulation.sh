@@ -60,8 +60,8 @@ MEM_MB=1000
 # ===
 # Set fitting parameters
 # ===
-#MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
-MODEL_LIST='surprise'
+MODEL_LIST='uncertainty seplr surprise'
+#MODEL_LIST='surprise'
 #MODEL_LIST='rw'
 #MODEL_LIST='seplr'
 #MODEL_LIST='uncertainty_seplr'
@@ -97,7 +97,7 @@ for DATA in ${DATA_LIST}; do
 			X4_LOW=0
 			X4_HIGH=0
 			X4_N=0
-			BETA_WEIGHTS='0,-1,1,NA,NA'
+			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty' ]]
 		then
 			X1_LOW=0.1
@@ -112,7 +112,7 @@ for DATA in ${DATA_LIST}; do
 			X4_LOW=0
 			X4_HIGH=0
 			X4_N=0
-			BETA_WEIGHTS='0,-1,1,-1,1'
+			BETA_WEIGHTS='0,-0.17,0.17,-0.05,0.05'
 		elif [[ ${MODEL} == 'seplr' ]]
 		then
 			X1_LOW=0.1
@@ -127,7 +127,7 @@ for DATA in ${DATA_LIST}; do
 			X4_LOW=0
 			X4_HIGH=0
 			X4_N=0
-			BETA_WEIGHTS='0,-1,1,NA,NA'
+			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 		elif [[ ${MODEL} == 'surprise' ]]
 		then
 			X1_LOW=0.1
@@ -136,13 +136,13 @@ for DATA in ${DATA_LIST}; do
 			X2_LOW=0.1
 			X2_HIGH=0.7
 			X2_N=5
-			X3_LOW=0
-			X3_HIGH=10
+			X3_LOW=1
+			X3_HIGH=7
 			X3_N=5
 			X4_LOW=0
 			X4_HIGH=0
 			X4_N=0
-			BETA_WEIGHTS='0,-1,1,NA,NA'
+			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty_surprise' ]]
 		then
 			X1_LOW=0.1
