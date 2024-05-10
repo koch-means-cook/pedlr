@@ -162,7 +162,6 @@ p_recov_count
 
 ## Confusion matrix
 
-Supplement Manuscript ll. 30-45
 
 ```{r}
 # Plot recovery as CM

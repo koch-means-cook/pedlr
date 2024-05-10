@@ -80,7 +80,10 @@ data_list = parallel::mclapply(X = files,
 # (using optimized bind function by data.table package)
 data = data.table::rbindlist(data_list) %>%
   # Rename to avoid 'x' as column name
-  data.table::setnames(., old = 'x', new = 'params')
+  data.table::setnames(., old = 'x', new = 'params') %>%
+  # Exclude seplr_surprise model from main results
+  .[model != 'seplr_surprise'] %>%
+  .[generating_model != 'seplr_surprise']
 ```
 
 ## Recovery
@@ -152,8 +155,6 @@ Neurocodify_plot(p) +
 ```
 
 ## Confusion matrix
-
-Supplement Manuscript ll. 30-45
 
 ```{r}
 # Plot recovery as CM

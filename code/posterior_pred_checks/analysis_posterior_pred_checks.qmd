@@ -288,8 +288,6 @@ Plot_windowrize(data_plot = data_plot[model %in% c('Valence', 'Surprise'),],
 
 #### Surprise model
 
-Manuscript ll. 432-433
-
 ```{r}
 data_cbe_surprise = window_data_run[model == 'surprise']
 
@@ -307,8 +305,6 @@ papeR::prettify(res)
 
 
 #### Valence model
-
-Manuscript ll. 432-433
 
 ```{r}
 data_cbe_valence = window_data_run[model == 'seplr']
@@ -386,8 +382,6 @@ p
 
 ## Stats: Different age trajectories for PXP-relevant models
 
-Manuscript ll. 434-435
-
 ```{r}
 data_lme = data_cbe[model %in% c('surprise', 'seplr')] %>%
   .[, c('participant_id', 'group', 'model') := lapply(.SD, factor),
@@ -399,8 +393,6 @@ papeR::prettify(res)
 ```
 
 ### Interaction: Group X Model
-
-Manuscript ll. 435-440
 
 ```{r}
 em = emmeans::emmeans(lme,

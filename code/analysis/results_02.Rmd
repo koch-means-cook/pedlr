@@ -79,15 +79,16 @@ data = Load_model_fits_new() %>%
   .[, ':='(participant_id = as.factor(participant_id),
            group = as.factor(group),
            sex = as.factor(sex),
-           starting_values = as.factor(starting_values))]
+           starting_values = as.factor(starting_values))] %>%
+  # Exclude seplr_surprise for main manuscript
+  .[model != 'seplr_surprise',]
 # Sort model levels by number of parameters
 data$model = factor(data$model, levels = c('rw',
                                            'uncertainty',
                                            'seplr',
                                            'uncertainty_seplr',
                                            'surprise',
-                                           'uncertainty_surprise',
-                                           'seplr_surprise'))
+                                           'uncertainty_surprise'))
 
 # Load choice data
 data_behav = Load_data() %>%
@@ -404,8 +405,6 @@ data_rw_beta = data_betas %>%
 
 ## right bandit (beta_2)
 
-Manuscript ll. 402-403
-
 ```{r}
 # right bandit
 # Younger
@@ -421,8 +420,6 @@ b_right_oa
 
 ## left bandit (beta_1)
 
-Manuscrip l. 404
-
 ```{r}
 # left bandit
 # Younger
@@ -437,8 +434,6 @@ b_left_oa
 ```
 
 ## Correlation of betas with correct choice in low-mid
-
-Manuscript ll. 406-407
 
 ```{r}
 # Get correlation of betas with percentage correct (high betas mean less random behavior)
@@ -501,8 +496,6 @@ data_counts = data_model_comp %>%
 ```
 
 ## Across groups
-
-Manuscript ll. 422-425
 
 ```{r}
 # Count winning models across groups
@@ -598,8 +591,6 @@ p
 
 # Protected exceedance probability
 
-Manuscript ll. 412-416
-
 ```{r}
 # Set seed for sampling (for reproducibility)
 set.seed(666)
@@ -650,8 +641,6 @@ p
 # Average AICc across models
 
 ## Across age groups
-
-Manuscript ll. 409-412
 
 ```{r}
 # Across all participants
@@ -799,8 +788,6 @@ p1
 
 # Parametric AICc comparison
 
-Manuscript ll. 416-422
-
 ```{r}
 # Relative AICc to RW model
 data_model_comp_rw = data_model_comp %>%
@@ -810,16 +797,14 @@ data_model_comp_rw = data_model_comp %>%
            SEPLRmRW = AICc_seplr - AICc_rw,
            UmRW = AICc_uncertainty - AICc_rw,
            USEPLRmRW = AICc_uncertainty_seplr - AICc_rw,
-           USmRW = AICc_uncertainty_surprise - AICc_rw,
-           SEPLRSmRW = AICc_seplr_surprise - AICc_rw),
+           USmRW = AICc_uncertainty_surprise - AICc_rw),
     by = c('participant_id', 'group')] %>%
   data.table::melt(id.vars = c('participant_id', 'group'),
                    measure.vars = c('UmRW',
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW',
-                                    'SEPLRSmRW'))
+                                    'USmRW'))
 
 # Groups
 rel_model_comp_group = data_model_comp_rw %>%
@@ -857,8 +842,7 @@ data_plot = data_model_comp_rw %>%
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW',
-                                    'SEPLRSmRW'))] %>%
+                                    'USmRW'))] %>%
   .[order(variable),]
 
 data_plot_mean = data_model_comp_rw %>%
@@ -872,8 +856,7 @@ data_plot_mean = data_model_comp_rw %>%
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW',
-                                    'SEPLRSmRW'))] %>%
+                                    'USmRW'))] %>%
   .[order(variable),]
 
 p = ggplot(data = data_model_comp_rw,
@@ -900,8 +883,6 @@ data_corr = data %>%
 ```
 
 **Correlation between betas and correct 1v2 choices**
-
-Manuscript ll. 448-449
 
 ```{r}
 # V1 ~ performance
@@ -947,7 +928,6 @@ knitr::kable(data_param_summary) %>%
 
 **Correlation matrix**
 
-see figure 6, panel A (right side)
 
 ```{r}
 # Correlations between parameters
@@ -967,8 +947,6 @@ cor_mat
 ```
 
 **Individual LR functions**
-
-see figure 6, panel B
 
 ```{r}
 # Get parameter difference
@@ -1000,8 +978,6 @@ p
 
 **Number of participants with increasing LR function**
 
-Manuscript ll. 462-463
-
 ```{r}
 # Count participants within rising and faling group
 data_rising = data_surprise_param %>%
@@ -1019,8 +995,6 @@ data_rising[variable == 'n_rising',]
 
 $\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions
 
-Manuscript ll. 463-465
-
 ```{r}
 # Chi-Sq with rising
 c_sq = chisq.test(cbind(data_rising[group == 'younger']$value,
@@ -1029,8 +1003,6 @@ c_sq
 ```
 
 **Parametric** $u-l$ analysis against 0
-
-Manuscript ll. 457-459
 
 ```{r}
 # t-test vs. 0
@@ -1048,8 +1020,6 @@ p.adjust(c(ty$p.value, to$p.value),
 ```
 
 **Parametric** $u-l$ analysis between age groups
-
-Manuscript ll. 464-465
 
 ```{r}
 # t-test between groups
@@ -1088,8 +1058,6 @@ Neurocodify_plot(p)
 ```
 
 **Slope parameter** $s$ between age groups
-
-Manuscript ll. 465-466
 
 ```{r}
 # Slope parameter
@@ -1171,73 +1139,9 @@ m1 = lm(cbe ~ param_uml * group,
 summary(m1)
 ```
 
-Manuscript ll. 454-456
-
 ```{r}
 # Simple Pearson correlation
 cor(x = data_cbe_fit$param_uml,
     y = data_cbe_fit$cbe,
     method = 'pearson')
-```
-
----
-
-# Valence + Surprise model
-
-```{r}
-# Get parameters and dicho uml for seplr+surprise model (pos and neg)
-data_seplr_surprise = data[model == 'seplr_surprise' & variable == 'coefs'] %>%
-  .[x %in% c('l_pos', 'u_pos', 's_pos', 'l_neg', 'u_neg', 's_neg')] %>%
-  data.table::dcast(participant_id + group + model + AIC + AICc ~ paste0('param_', x),
-                    value.var = 'value') %>%
-  .[, ':='(uml_dicho_neg = param_u_neg > param_l_neg,
-           uml_dicho_pos = param_u_pos > param_l_pos)] %>%
-  .[, ':='(uml_dicho_neg = factor(uml_dicho_neg, labels = c('falling', 'rising')),
-           uml_dicho_pos = factor(uml_dicho_pos, labels = c('falling', 'rising')))]
-
-# Get individual LR functions for seplr+surprise model
-data_lrs = data[model == 'seplr_surprise' & variable == 'LRs' & !is.na(value)] %>%
-  .[, .SD, .SDcols = c('participant_id', 'group', 'model', 'AICc', 'variable',
-                       'x', 'value')] %>%
-  # Fuse encountered LRs with uml
-  data.table::merge.data.table(., data_seplr_surprise,
-                               by = c('participant_id', 'group', 'model', 'AICc')) %>%
-  .[, x := as.numeric(x)] %>%
-  # Add variable of LR function for different PE valence
-  .[x < 0, valence := 'neg'] %>%
-  .[x > 0, valence := 'pos']
-```
-
-```{r}
-# Neg
-p = ggplot(data_lrs[valence == 'neg'],
-           aes(x = x,
-               y = value,
-               group = participant_id,
-               color = group)) +
-  geom_line(alpha = 0.2) +
-  scale_x_continuous(limits = c(-(max(abs(data_lrs$x))), 0)) +
-  labs(x = 'PE',
-       y = 'alpha*') +
-  facet_wrap(~group + uml_dicho_neg) +
-  annotate('text', x = -50, y = 0.5, label = 'u_neg', size = 3, hjust = 0) +
-  annotate('text', x = 0, y = 0.5, label = 'l_neg', size = 3, hjust = 1)
-Neurocodify_plot(p)
-```
-
-```{r}
-# pos
-p = ggplot(data_lrs[valence == 'pos'],
-           aes(x = x,
-               y = value,
-               group = participant_id,
-               color = group)) +
-  geom_line(alpha = 0.2) +
-  labs(x = 'PE',
-       y = 'alpha*') +
-  scale_x_continuous(limits = c(0, max(abs(data_lrs$x)))) +
-  annotate('text', x = 0, y = 0.5, label = 'l_pos', size = 3, hjust = 0) +
-  annotate('text', x = 50, y = 0.5, label = 'u_pos', size = 3, hjust = 1) +
-  facet_wrap(~group + uml_dicho_pos)
-Neurocodify_plot(p)
 ```

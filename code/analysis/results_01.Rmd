@@ -163,8 +163,6 @@ Neurocodify_plot(p_noc_diff_comp_line)
 
 ## Stats
 
-LMM correct choice probabilities (manuscript ll. 307)
-
 ```{r}
 # Assure data types
 check_noc$participant_id = as.factor(check_noc$participant_id)
@@ -184,8 +182,6 @@ papeR::prettify(Anova(lme_noc))
 
 ### Main effect run
 
-Manuscript ll. 308/310
-
 ```{r}
 emmeans::emmeans(lme_noc,
                  pairwise ~ run)
@@ -193,16 +189,12 @@ emmeans::emmeans(lme_noc,
 
 ### Main effect comp
 
-Manuscript ll. 308/311
-
 ```{r}
 emmeans::emmeans(lme_noc,
                  pairwise ~ comp)
 ```
 
 ### Robust regression (due to outliers)
-
-Manuscript ll. 320-323
 
 ```{r}
 # Get correct choices
@@ -385,8 +377,6 @@ Neurocodify_plot(p) +
 
 **p-value of age group effect**
 
-Manuscript ll. 323
-
 ```{r}
 # Derive p-value from t-distribution and display
 p_value = plot_t[x == round(out$`t value`[2], 3)]$y
@@ -427,8 +417,6 @@ check_rt_mean = check_rt %>%
 
 ## Stats
 
-LMM log(RT), Manuscript ll. 324
-
 ```{r}
 # Assure data types
 check_rt_mean$participant_id = as.factor(check_rt_mean$participant_id)
@@ -447,16 +435,12 @@ papeR::prettify(Anova(lme_rt_comp))
 
 ### Main effect: Comp
 
-Manuscript ll. 325
-
 ```{r}
 emmeans::emmeans(lme_rt_comp,
                  pairwise ~ comp)
 ```
 
 ### Main effect: Age group
-
-Manuscript ll. 328
 
 ```{r}
 emmeans::emmeans(lme_rt_comp,
@@ -466,8 +450,6 @@ emmeans::emmeans(lme_rt_comp,
 
 ### Interaction effect: Group x Comp
 
-Manuscript ll. 328
-
 ```{r}
 em = emmeans::emmeans(lme_rt_comp,
                   pairwise ~ group | comp)
@@ -476,7 +458,6 @@ em
 summary(em, by = NULL, adjust = 'sidak')
 ```
 
-Comparison of age differences in 1v2 with other bandit comps (manuscript ll. 333-334)
 
 ```{r}
 # Interaction (contrast of contrast, effect in younger - effect in older)
@@ -675,8 +656,6 @@ window_data_run[window_relative %in% c('-1', '1')] %>%
 
 ## Stats
 
-Manuscript ll. 338
-
 ```{r}
 # LME for immediate before, and immediate after rare outcome
 data_lme = window_data_run[window_relative %in% c('-1', '1')] %>%
@@ -692,15 +671,11 @@ papeR::prettify(res)
 
 ### Main effect: Window
 
-Manuscript ll. 345
-
 ```{r}
 emmeans::emmeans(lme, pairwise ~ window_relative)
 ```
 
 ### Interaction effect: Window X group
-
-Manuscript ll. 342-344
 
 ```{r}
 em = emmeans::emmeans(lme, pairwise ~ window_relative | group)
@@ -711,8 +686,6 @@ summary(em, by = NULL, adjust = 'sidak')
 ```
 
 ### Main effect: Run
-
-Manuscript ll. 347-348
 
 ```{r}
 emmeans::emmeans(lme, pairwise ~ run)
@@ -879,8 +852,6 @@ window_data_participant_normal = window_data_run_normal %>%
 
 ## Stats
 
-Manuscript ll. 352-356
-
 ```{r}
 data_lme = window_data_run_normal[window_relative %in% c('-1', '1')] %>%
   .[, group := as.factor(group)] %>%
@@ -995,8 +966,6 @@ Neurocodify_plot(p) +
 
 # Risk aversion (proportion of M choices)
 
-Manuscript ll. 348-349
-
 ```{r}
 check_risk = data %>%
   Add_comp() %>%
@@ -1010,8 +979,6 @@ check_risk = data %>%
 ```
 
 ## Stats
-
-Manuscript ll. 348-349
 
 ```{r}
 # Assure data types
@@ -1141,8 +1108,6 @@ check_mean_est_diff = check_est_diff %>%
 
 ## Actually different from zero?
 
-Manuscript ll. 362-364
-
 ```{r}
 data_test = check_mean_est_diff %>%
   Prepare_data_for_plot(.) %>%
@@ -1197,8 +1162,6 @@ check_est_dist = check_est %>%
 
 ## Stats
 
-Manuscript ll. 372-374
-
 ```{r}
 # Assure data types
 check_est_dist$participant_id = as.factor(check_est_dist$participant_id)
@@ -1222,16 +1185,12 @@ emmeans::emmeans(lme_diff_EmR,
 
 ### Interaction effect: Group X Variable
 
-Manuscript ll. 371-373 (see diff_EmR_2m1 in each age group; read variable name `diff_EmR_2m1` as "difference_Estimation-minus-Real_bandit2-minus-bandit1")
-
 ```{r}
 em = emmeans::emmeans(lme_diff_EmR,
                  pairwise ~ variable | group)
 # Accurate correction
 summary(em, by = NULL, adjust = 'sidak')
 ```
-
-Comparison of low vs. mid underestimation between age groups; Manuscript ll. 373
 
 ```{r}
 # Interaction (contrast of contrast, effect in younger - effect in older)
