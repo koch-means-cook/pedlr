@@ -1,0 +1,108 @@
+---
+title: "r1c08_corr_surprise_unc"
+format: html
+editor: visual
+---
+
+```{r}
+#| message: false
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#| message: false
+
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(sdamr)
+library(gghalves)
+library(lme4)
+library(emmeans)
+library(papeR)
+library(ggridges)
+library(bmsR)
+library(fabricatr)
+library(mlisi)
+library(parallel)
+```
+
+# Setup
+
+```{r}
+#| message: false
+
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+
+source_path = file.path(base_path, 'code', 'model_fitting', 'LRfunction.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
+
+
+# Get plot colors/linetypes for plots
+custom_guides = Get_plot_guides()
+```
+
+# Get model data
+
+```{r}
+file_pattern = file.path(base_path, 'derivatives', 'model_fitting',
+                         'modeldata-*_sv-random.tsv', fsep = .Platform$file.sep)
+files = Sys.glob(file_pattern)
+
+# Function to load text files (.tsv)
+Load_tsv = function(file_path){
+  tsv = data.table::fread(file_path,
+                          sep = '\t',
+                          na.strings = 'n/a')
+  return(tsv)
+}
+
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+data = data.table::rbindlist(data_list) %>%
+  # Get surprise in each updated bandit to correlate PE and U
+  .[, u := c(u_low, u_mid, u_high)[updated_bandit],
+    by = c('participant_id', 'run', 'model', 'trial')]
+```
+
+# Get average trial-by-trial correlation between PE and U
+
+```{r}
+data_corr = data %>%
+   # Restrict analysis to uncertainty model
+  .[model == 'uncertainty', ] %>%
+  .[, .(cor_pe_u = cor(abs(pe), u, use = 'complete.obs', method = 'pearson')),
+    by = 'participant_id']
+
+# Combine with pi parameter
+data_pi = Load_model_fits_new() %>%
+  .[starting_values == 'random' & model == 'uncertainty' & variable == 'coefs' 
+    & x == 'pi',] %>%
+  .[, .(pi = unique(value)),
+    by = 'participant_id'] %>%
+  data.table::merge.data.table(., data_corr)
+
+avg_corr_pe_u = mean(data_pi$cor_pe_u)
+avg_corr_pe_u
+```
+

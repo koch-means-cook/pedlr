@@ -61,7 +61,10 @@ Figure_model_recov = function(){
   # (using optimized bind function by data.table package)
   data = data.table::rbindlist(data_list) %>%
     # Rename to avoid 'x' as column name
-    data.table::setnames(., old = 'x', new = 'params')
+    data.table::setnames(., old = 'x', new = 'params') %>%
+    # Exclude valence_surprise from main manuscript figure
+    .[model != 'seplr_surprise',] %>%
+    .[generating_model != 'seplr_surprise',]
   
   # Prepare data
   data_recovery = data %>%

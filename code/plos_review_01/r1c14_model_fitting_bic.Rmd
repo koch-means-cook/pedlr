@@ -79,16 +79,15 @@ data = Load_model_fits_new() %>%
   .[, ':='(participant_id = as.factor(participant_id),
            group = as.factor(group),
            sex = as.factor(sex),
-           starting_values = as.factor(starting_values))] %>%
-  # Exclude seplr_surprise for main manuscript
-  .[model != 'seplr_surprise',]
+           starting_values = as.factor(starting_values))]
 # Sort model levels by number of parameters
 data$model = factor(data$model, levels = c('rw',
                                            'uncertainty',
                                            'seplr',
                                            'uncertainty_seplr',
                                            'surprise',
-                                           'uncertainty_surprise'))
+                                           'uncertainty_surprise',
+                                           'seplr_surprise'))
 
 # Load choice data
 data_behav = Load_data() %>%
@@ -399,11 +398,13 @@ table_betas_group_z
 # Get statistics of beta 1 and 2 
 data_rw_beta = data_betas %>%
   .[model == 'rw',] %>%
-  data.table::dcast(participant_id + group + model + AICc ~ x, value.var = 'value') %>%
+  data.table::dcast(participant_id + group + model + BIC ~ x, value.var = 'value') %>%
   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
 ```
 
 ## right bandit (beta_2)
+
+Manuscript ll. 402-403
 
 ```{r}
 # right bandit
@@ -420,6 +421,8 @@ b_right_oa
 
 ## left bandit (beta_1)
 
+Manuscrip l. 404
+
 ```{r}
 # left bandit
 # Younger
@@ -434,6 +437,8 @@ b_left_oa
 ```
 
 ## Correlation of betas with correct choice in low-mid
+
+Manuscript ll. 406-407
 
 ```{r}
 # Get correlation of betas with percentage correct (high betas mean less random behavior)
@@ -460,32 +465,36 @@ print(paste0('p-values (corr.): ' , p_adjusted))
 # Winning model
 
 ```{r}
-# Get AICc per model
+# Get BIC and AICc per model
 data_model_comp = data %>%
   .[iter == 1] %>%
   .[, .(AICc = mean(AICc),
         sd_AICc = sd(AICc),
+        BIC = mean(BIC),
+        sd_BIC = sd(BIC),
         n_params = sum(variable == 'coefs')),
     by = c('participant_id', 'group', 'model')]
 
-# Summarize AICc across groups
+# Summarize BIC (and AICc) across groups
 data_model_comp_all = data_model_comp %>%
-  .[, .(AICc = mean(AICc)),
+  .[, .(AICc = mean(AICc),
+        BIC = mean(BIC)),
     by = 'model'] %>%
-  # Sort by lowest AIC
-  .[order(rank(AICc))]
+  # Sort by lowest
+  .[order(rank(BIC))]
 
 # And within groups
 data_model_comp_age = data_model_comp %>%
-  .[, .(AICc = mean(AICc)),
+  .[, .(AICc = mean(AICc),
+        BIC = mean(BIC)),
     by = c('group', 'model')] %>%
-  # Sort by age and lowest AIC
-  .[order(group, AICc)]
+  # Sort by age and lowest BIC
+  .[order(group, BIC)]
 
 # Get winning model within each participant
 data_counts = data_model_comp %>%
   data.table::melt(id.vars = c('participant_id', 'group', 'model'),
-                   measure.vars = c('AICc')) %>%
+                   measure.vars = c('BIC')) %>%
   .[, ':='(lowest = min(value),
            loc_winning = value == min(value),
            # Name of winning model
@@ -496,6 +505,8 @@ data_counts = data_model_comp %>%
 ```
 
 ## Across groups
+
+Manuscript ll. 422-425
 
 ```{r}
 # Count winning models across groups
@@ -522,6 +533,7 @@ table_counts_all
 
 ```{r}
 data_plot = Prepare_data_for_plot(data_counts_all)
+guides = Get_plot_guides()
 
 # Plot
 p = ggplot(data = data_plot,
@@ -529,9 +541,10 @@ p = ggplot(data = data_plot,
                y = n_winning,
                fill = model)) +
   geom_col() +
+  scale_fill_manual(values = guides) +
   facet_wrap(~variable, ncol = 2) +
-  scale_fill_manual(values = custom_guides)
-p_counts_AICc = Neurocodify_plot(p) +
+  labs(y = 'Number of best fits')
+p = Neurocodify_plot(p) +
   theme(legend.position = 'none',
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
@@ -540,8 +553,10 @@ p_counts_AICc = Neurocodify_plot(p) +
                                    vjust = 1,
                                    size = 12),
         axis.text.y = element_text(size = 12),
-        axis.title.x = element_blank())
-p_counts_AICc
+        strip.text = element_text(size = 15),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 15, face = 'bold'))
+p
 ```
 
 ## Within groups
@@ -570,26 +585,34 @@ table_counts_age
 
 ```{r}
 # Plot
-p = ggplot(data = data_counts_age,
+p = ggplot(data = Prepare_data_for_plot(data_counts_age),
            aes(x = model,
                y = n_winning,
                fill = model)) +
   geom_col() +
-  facet_wrap(group~variable, ncol = 2)
+  scale_fill_manual(values = guides) +
+  facet_wrap(group~variable, ncol = 2) +
+  labs(y = 'Number of best fits')
 p = Neurocodify_plot(p) +
   theme(legend.position = 'none',
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1),
-        axis.title.x = element_blank())
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12),
+        strip.text = element_text(size = 15),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 15, face = 'bold'))
 p
 ```
 
 ------------------------------------------------------------------------
 
 # Protected exceedance probability
+
+Manuscript ll. 412-416
 
 ```{r}
 # Set seed for sampling (for reproducibility)
@@ -599,8 +622,8 @@ set.seed(666)
 data_ep = data_model_comp %>%
   # Set order of models after winning models
   .[, model := factor(model, levels = data_counts_all$model)] %>%
-  .[, ':='(nAICc = -(AICc))] %>%
-  data.table::dcast(participant_id + group ~ model, value.var = 'nAICc')
+  .[, ':='(nBIC = -(BIC))] %>%
+  data.table::dcast(participant_id + group ~ model, value.var = 'nBIC')
 
 ep = bmsR::VB_bms(as.matrix(data_ep[, .SD, .SDcols = levels(data_counts_all$model)]),
              n_samples = 100000)
@@ -617,11 +640,13 @@ data_pxp
 
 ```{r}
 # Plot
-p = ggplot(data = data_pxp,
+p = ggplot(data = Prepare_data_for_plot(data_pxp),
            aes(x = model,
                y = pxp,
                fill = model)) +
   geom_col() +
+  labs(y = 'Protected exceedance probability') +
+  scale_fill_manual(values = guides) +
   scale_y_continuous(limits = c(0,1))
 
 p = Neurocodify_plot(p) +
@@ -630,53 +655,59 @@ p = Neurocodify_plot(p) +
         panel.grid.minor.x = element_blank(),
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1),
-        axis.title.x = element_blank())
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12),
+        strip.text = element_text(size = 15),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 15, face = 'bold'))
 p
 ```
 
 
 ------------------------------------------------------------------------
 
-# Average AICc across models
+# Average BIC across models
 
 ## Across age groups
 
+Manuscript ll. 409-412
+
 ```{r}
 # Across all participants
-data_AICc = data_model_comp %>%
-  .[, .(mean_AICc = mean(AICc),
-        sd_AICc = sd(AICc),
-        sem_AICc = sd(AICc)/sqrt(.N)),
+data_BIC = data_model_comp %>%
+  .[, .(mean_BIC = mean(BIC),
+        sd_BIC = sd(BIC),
+        sem_BIC = sd(BIC)/sqrt(.N)),
     by = c('model')]
 
 # Display table
-table_AICc_all = data_AICc %>%
-  .[, c('mean_AICc', 'sd_AICc', 'sem_AICc') := lapply(.SD, round, 2),
-    .SDcols = c('mean_AICc', 'sd_AICc', 'sem_AICc')] %>%
+table_BIC_all = data_BIC %>%
+  .[, c('mean_BIC', 'sd_BIC', 'sem_BIC') := lapply(.SD, round, 2),
+    .SDcols = c('mean_BIC', 'sd_BIC', 'sem_BIC')] %>%
   kableExtra::kbl("html", align = 'l') %>%
   kableExtra::kable_classic(full_width = FALSE) %>%
   column_spec(1,
               bold = TRUE) %>%
   row_spec(row = 0,
            bold = TRUE)
-table_AICc_all
+table_BIC_all
 ```
 
 ```{r}
 # Plot
 data_plot = Prepare_data_for_plot(data_model_comp)
-data_plot_mean = Prepare_data_for_plot(data_AICc)
+data_plot_mean = Prepare_data_for_plot(data_BIC)
 
 p1 = ggplot(data = data_plot,
            aes(x = model,
-               y = AICc,
+               y = BIC,
                fill = model,
                color = model)) +
   geom_col(data = data_plot_mean,
            inherit.aes = FALSE,
            aes(x = model,
-               y = mean_AICc,
+               y = mean_BIC,
                fill = model),
            color = NA) + 
   geom_point(position = position_jitter(width = 0.1,
@@ -687,89 +718,10 @@ p1 = ggplot(data = data_plot,
   geom_errorbar(data = data_plot_mean,
                 inherit.aes = FALSE,
                 aes(x = model,
-                    ymin = mean_AICc - sem_AICc,
-                    ymax = mean_AICc + sem_AICc),
+                    ymin = mean_BIC - sem_BIC,
+                    ymax = mean_BIC + sem_BIC),
                 color = 'black',
                 width = 0.3) +
-  scale_fill_manual(values = custom_guides)
-
-p1 = Neurocodify_plot(p1) +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        legend.position = 'none',
-        axis.title.x = element_blank(),
-        axis.text.x = element_text(angle = 45,
-                                   hjust = 1,
-                                   vjust = 1,
-                                   size = 12),
-        axis.text.y = element_text(size = 12))
-
-# Zoomed in version
-p2 = ggplot(data = data_plot,
-           aes(x = model,
-               y = AICc,
-               fill = model,
-               color = model)) +
-    geom_errorbar(data = data_plot_mean,
-                inherit.aes = FALSE,
-                aes(x = model,
-                    ymin = mean_AICc - sem_AICc,
-                    ymax = mean_AICc + sem_AICc),
-                color = 'black',
-                width = 0.3) +
-  geom_point(data = data_plot_mean,
-             inherit.aes = FALSE,
-             aes(x = model,
-                 y = mean_AICc,
-                 fill = model),
-             color = 'black',
-             size = 4,
-             shape = 23,
-             stroke = 1) +
-  scale_y_continuous(limits = c(110,125)) +
-  scale_fill_manual(values = custom_guides)
-
-
-p2 = Neurocodify_plot(p2) +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        legend.position = 'none',
-        axis.title = element_blank(),
-        axis.text.x = element_text(angle = 45,
-                                   hjust = 1,
-                                   vjust = 1,
-                                   size = 12),
-        axis.text.y = element_text(size = 12))
-
-p = cowplot::plot_grid(p1, p2,
-                       ncol = 2,
-                       nrow = 1,
-                       axis = 'bt',
-                       align = 'h',
-                       rel_widths = c(2,1.5))
-p
-```
-
-```{r}
-p1 = ggplot(data = data_plot,
-           aes(x = model,
-               y = AICc,
-               fill = model,
-               color = model)) +
-  geom_boxplot(outlier.shape = NA,
-               color = 'black') + 
-  geom_point(position = position_jitter(width = 0.1,
-                                        height = 0),
-             size = 0.5,
-             alpha = 0.5,
-             color = 'black') +
-  stat_summary(geom = 'point',
-               fun = mean,
-               shape = 23,
-               fill = 'white',
-               color = 'black',
-               size = 3,
-               stroke = 1.5) +
   scale_fill_manual(values = custom_guides)
 
 p1 = Neurocodify_plot(p1) +
@@ -780,31 +732,77 @@ p1 = Neurocodify_plot(p1) +
         axis.text.x = element_text(angle = 45,
                                    hjust = 1,
                                    vjust = 1))
-p1
+
+# Zoomed in version
+p2 = ggplot(data = data_plot,
+           aes(x = model,
+               y = BIC,
+               fill = model,
+               color = model)) +
+    geom_errorbar(data = data_plot_mean,
+                inherit.aes = FALSE,
+                aes(x = model,
+                    ymin = mean_BIC - sem_BIC,
+                    ymax = mean_BIC + sem_BIC),
+                color = 'black',
+                width = 0.3) +
+  geom_point(data = data_plot_mean,
+             inherit.aes = FALSE,
+             aes(x = model,
+                 y = mean_BIC,
+                 fill = model),
+             color = 'black',
+             size = 4,
+             shape = 23,
+             stroke = 1) +
+  scale_y_continuous(limits = c(125,150)) +
+  scale_fill_manual(values = custom_guides)
+
+
+p2 = Neurocodify_plot(p2) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none',
+        axis.title = element_blank(),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1))
+
+p = cowplot::plot_grid(p1, p2,
+                       ncol = 2,
+                       nrow = 1,
+                       axis = 'bt',
+                       align = 'h',
+                       rel_widths = c(2,1))
+p
 ```
 
 
 ------------------------------------------------------------------------
 
-# Parametric AICc comparison
+# Parametric BIC comparison
+
+Manuscript ll. 416-422
 
 ```{r}
-# Relative AICc to RW model
+# Relative BIC to RW model
 data_model_comp_rw = data_model_comp %>%
-  data.table::dcast(participant_id + group ~ paste0('AICc_', model),
-                    value.var = 'AICc') %>%
-  .[, ':='(SmRW = AICc_surprise - AICc_rw,
-           SEPLRmRW = AICc_seplr - AICc_rw,
-           UmRW = AICc_uncertainty - AICc_rw,
-           USEPLRmRW = AICc_uncertainty_seplr - AICc_rw,
-           USmRW = AICc_uncertainty_surprise - AICc_rw),
+  data.table::dcast(participant_id + group ~ paste0('BIC_', model),
+                    value.var = 'BIC') %>%
+  .[, ':='(SmRW = BIC_surprise - BIC_rw,
+           SEPLRmRW = BIC_seplr - BIC_rw,
+           UmRW = BIC_uncertainty - BIC_rw,
+           USEPLRmRW = BIC_uncertainty_seplr - BIC_rw,
+           USmRW = BIC_uncertainty_surprise - BIC_rw,
+           SSmRW = BIC_seplr_surprise - BIC_rw),
     by = c('participant_id', 'group')] %>%
   data.table::melt(id.vars = c('participant_id', 'group'),
                    measure.vars = c('UmRW',
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW'))
+                                    'USmRW',
+                                    'SSmRW'))
 
 # Groups
 rel_model_comp_group = data_model_comp_rw %>%
@@ -842,7 +840,8 @@ data_plot = data_model_comp_rw %>%
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW'))] %>%
+                                    'USmRW',
+                                    'SSmRW'))] %>%
   .[order(variable),]
 
 data_plot_mean = data_model_comp_rw %>%
@@ -856,7 +855,8 @@ data_plot_mean = data_model_comp_rw %>%
                                     'SEPLRmRW',
                                     'USEPLRmRW',
                                     'SmRW',
-                                    'USmRW'))] %>%
+                                    'USmRW',
+                                    'SSmRW'))] %>%
   .[order(variable),]
 
 p = ggplot(data = data_model_comp_rw,
@@ -878,11 +878,13 @@ Neurocodify_plot(p)
 # Data for correlation between betas and performance
 data_corr = data %>%
   .[variable == 'coefs' & model == 'surprise' & iter == 1] %>%
-  data.table::dcast(participant_id + group + AIC ~ x, value.var = 'value') %>%
+  data.table::dcast(participant_id + group + BIC ~ x, value.var = 'value') %>%
   data.table::merge.data.table(., check_noc, by = c('participant_id', 'group'))
 ```
 
 **Correlation between betas and correct 1v2 choices**
+
+Manuscript ll. 448-449
 
 ```{r}
 # V1 ~ performance
@@ -928,12 +930,13 @@ knitr::kable(data_param_summary) %>%
 
 **Correlation matrix**
 
+see figure 6, panel A (right side)
 
 ```{r}
 # Correlations between parameters
 data_surprise[x == '(Intercept)']$x = 'intercept'
 data_param_corr = data_surprise %>%
-  data.table::dcast(participant_id + group + model + AIC + AICc ~ paste0('param_', x),
+  data.table::dcast(participant_id + group + model + AIC + AICc + BIC ~ paste0('param_', x),
                     value.var = 'value')
 
 # Corr mat
@@ -948,6 +951,8 @@ cor_mat
 
 **Individual LR functions**
 
+see figure 6, panel B
+
 ```{r}
 # Get parameter difference
 data_surprise_param = data_param_corr %>%
@@ -958,11 +963,11 @@ data_surprise_param = data_param_corr %>%
 ```{r}
 # Get individual LR functions for surprise model
 data_lrs = data[model == 'surprise' & variable == 'LRs' & !is.na(value)] %>%
-  .[, .SD, .SDcols = c('participant_id', 'group', 'model', 'AICc', 'variable',
+  .[, .SD, .SDcols = c('participant_id', 'group', 'model', 'BIC', 'variable',
                        'x', 'value')] %>%
   # Fuse encountered LRs with uml
   data.table::merge.data.table(., data_surprise_param,
-                               by = c('participant_id', 'group', 'model', 'AICc'))
+                               by = c('participant_id', 'group', 'model', 'BIC'))
 
 p = ggplot(data = data_lrs,
            aes(x = as.numeric(x),
@@ -977,6 +982,8 @@ p
 ```
 
 **Number of participants with increasing LR function**
+
+Manuscript ll. 462-463
 
 ```{r}
 # Count participants within rising and faling group
@@ -995,6 +1002,8 @@ data_rising[variable == 'n_rising',]
 
 $\chi^2$-test of dichotomized $u-l$-values: Rising functions vs. Falling functions
 
+Manuscript ll. 463-465
+
 ```{r}
 # Chi-Sq with rising
 c_sq = chisq.test(cbind(data_rising[group == 'younger']$value,
@@ -1003,6 +1012,8 @@ c_sq
 ```
 
 **Parametric** $u-l$ analysis against 0
+
+Manuscript ll. 457-459
 
 ```{r}
 # t-test vs. 0
@@ -1020,6 +1031,8 @@ p.adjust(c(ty$p.value, to$p.value),
 ```
 
 **Parametric** $u-l$ analysis between age groups
+
+Manuscript ll. 464-465
 
 ```{r}
 # t-test between groups
@@ -1058,6 +1071,8 @@ Neurocodify_plot(p)
 ```
 
 **Slope parameter** $s$ between age groups
+
+Manuscript ll. 465-466
 
 ```{r}
 # Slope parameter
@@ -1139,9 +1154,229 @@ m1 = lm(cbe ~ param_uml * group,
 summary(m1)
 ```
 
+Manuscript ll. 454-456
+
 ```{r}
 # Simple Pearson correlation
 cor(x = data_cbe_fit$param_uml,
     y = data_cbe_fit$cbe,
     method = 'pearson')
+```
+
+---
+
+# Pseudo-R2
+
+```{r}
+data_prs = data %>%
+  .[iter == 1] %>%
+  .[, .(prs = unique(pseudorsq)),
+    by = c('participant_id', 'group', 'model')] %>%
+  # Highest pseudo-r2 offers best fit compared to chance
+  .[, ':='(highest = max(prs),
+           loc_winning = prs == max(prs),
+           # Name of winning model
+           winning_model = model[prs == max(prs)]),
+    by = c('participant_id', 'group')]
+
+data_prs_winning = data_prs %>%
+  .[, .(count_winning = sum(loc_winning)),
+    by = 'model']
+```
+
+```{r}
+p = ggplot(data = Prepare_data_for_plot(data_prs_winning),
+           aes(x = model,
+               y = count_winning,
+               color = model,
+               fill = model)) +
+  geom_col() +
+  labs(y = 'Count highest Pseudo-R2') +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 20,
+                                   hjust = 1),
+        legend.position = 'none')
+
+Neurocodify_plot(p)
+```
+
+```{r, warning=FALSE}
+p = ggplot(data = Prepare_data_for_plot(data_prs),
+           aes(x = model,
+               y = prs)) +
+  geom_boxplot(outlier.shape = NA,
+               width = 0.5) +
+  stat_summary(geom = 'point', fun = 'mean', shape = 23, color = 'black', fill = 'white', size = 4, stroke = 1.5) +
+  geom_line(aes(group = participant_id),
+            alpha = 0.1,
+            color = 'black') +
+  geom_point(aes(color = loc_winning,
+                 size = loc_winning),
+             alpha = 1) +
+  scale_size_manual(values = c(1,3)) +
+  labs(y = 'Pseudo-R2 (against chance)') +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 20,
+                                   hjust = 1))
+
+Neurocodify_plot(p)
+```
+
+# BIC-based model recovery (Principled Betas)
+
+## Load data
+
+```{r}
+# Glob files based on naming pattern
+load_path = file.path(here::here(),
+                      'derivatives',
+                      'parameter_recovery',
+                      fsep = .Platform$file.sep)
+# Load data with fixed betas during simulation
+files = Sys.glob(file.path(load_path,
+                           'modelrecov_base-*_randips-TRUE_randbetas-FALSE_randsvs-TRUE_principle-TRUE.tsv',
+                           fsep = .Platform$file.sep))
+
+# Function to load text files (.tsv)
+Load_tsv = function(file_path){
+  tsv = data.table::fread(file_path,
+                          sep = '\t',
+                          na.strings = 'n/a')
+  return(tsv)
+}
+
+# Get list of all text files using parallel processing
+data_list = parallel::mclapply(X = files,
+                               FUN = Load_tsv,
+                               mc.cores = 4)
+# Bind individual list entries (loaded text files) to single data frame
+# (using optimized bind function by data.table package)
+data = data.table::rbindlist(data_list) %>%
+  # Rename to avoid 'x' as column name
+  data.table::setnames(., old = 'x', new = 'params')
+```
+
+---
+
+## Recovery
+
+```{r}
+data_recovery = data %>%
+  # Exclude seplr_surprise model
+  #.[model != 'seplr_surprise',] %>%
+  #.[generating_model != 'seplr_surprise'] %>%
+  # For each model that generated data, get AICc for all fitted models
+  .[, .(BIC = unique(BIC)),
+    by = c('participant_id',
+           'generating_model',
+           'iter',
+           'model',
+           'generating_x1',
+           'generating_x2',
+           'generating_x3',
+           'generating_x4',
+           'generating_x5',
+           'generating_x6')] %>%
+  # Get winning model of recovery (lowest BIC)
+  .[, recovered_model := model[which(BIC == min(BIC))],
+    by = c('participant_id',
+           'generating_model',
+           'iter')] %>%
+  # Get match between generating/recovered model
+  .[, correct_recovery := generating_model == recovered_model] %>%
+  # Factorize variables and sort factor levels in matching manner
+  .[, c('generating_model', 'recovered_model') := lapply(.SD, factor),
+    .SDcols = c('generating_model', 'recovered_model')] %>%
+  .[, recovered_model := factor(recovered_model, levels = levels(generating_model))]
+```
+
+## Histogram matrix
+
+```{r}
+# Plot recovery as histogram
+data_plot = data_recovery %>%
+  # Detailed model names for plot
+  Prepare_data_for_plot(.) %>%
+  # Reduce to row for each attempted recovery
+  .[, .(recovered_model = unique(recovered_model)),
+    by = c('participant_id', 'generating_model', 'iter')] %>%
+  # Get matching model for each generative model to mark it in plot
+  .[, correct_model := as.character(recovered_model) == as.character(generating_model)]
+p = ggplot(data = data_plot,
+           aes(x = recovered_model,
+               color = correct_model)) +
+  scale_color_manual(values = c('transparent', 'black')) +
+  geom_bar(fill = 'lightgrey') +
+  labs(x = 'Recovered Model',
+       title = 'Model recovery: Recovered models for each generating model') + 
+  facet_grid(generating_model ~ .,
+             switch = 'y')
+Neurocodify_plot(p) +
+  theme(panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        axis.text.x = element_text(angle = 25,
+                                   hjust = 1,
+                                   vjust = 1),
+        axis.title.y = element_blank(),
+        plot.title = element_text(face = 'bold',
+                                  hjust = 0.5),
+        strip.placement = 'outside',
+        strip.text.y.left = element_text(size = 10,
+                                  face = 'bold',
+                                  angle = 0,
+                                  hjust = 1),
+        legend.position = 'none',
+        aspect.ratio = 1/6)
+```
+
+## Confusion matrix
+
+```{r}
+# Plot recovery as CM
+data_plot = data_recovery %>%
+  # Detailed model names for plot
+  Prepare_data_for_plot(.) %>%
+  # Reduce to row for each attempted recovery
+  .[, .(recovered_model = unique(recovered_model)),
+    by = c('participant_id', 'generating_model', 'iter')] %>%
+  # count recoveries (including 0s)
+  .[, .(recovered_model = levels(recovered_model),
+        count = c(table(recovered_model))),
+    by = c('generating_model')] %>%
+  data.table::setorder('generating_model') %>%
+  .[, perc := count/sum(count),
+    by = 'generating_model'] %>%
+  .[, sum_perc := sum(perc),
+    by = 'generating_model'] %>%
+  .[, label_short := substr(format(round(perc, 2), nsmall = 2), 2,4)] %>%
+  .[, is_low := perc < 0.4] %>%
+  .[, recovered_model := factor(recovered_model,
+                                levels = levels(generating_model))]
+
+p = ggplot(data = data_plot,
+           aes(x = recovered_model,
+               y = generating_model,
+               fill = perc,
+               color = is_low,
+               label = label_short)) +
+  geom_tile(color = 'black') +
+  geom_text() +
+  labs(x = 'Fit model',
+       y = 'Simulated model') +
+  theme(panel.background = element_rect(fill = NA,
+                                        color = NA),
+        panel.grid = element_blank(),
+        legend.position = 'none',
+        axis.title = element_text(size = 12, face = 'bold'),
+        axis.ticks = element_blank(),
+        strip.text = element_blank(),
+        strip.background = element_blank(),
+        plot.title = element_text(hjust = 0.5,
+                                  vjust = 0),
+        #axis.text = element_text(size = 12),
+        plot.margin = margin(0,0,0,0,'pt')) +
+  scale_y_discrete(limits = rev) +
+  scale_color_manual(values = c('black', 'white')) +
+  scale_fill_gradient(low = 'black', high = 'white')
+p
 ```

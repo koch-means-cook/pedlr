@@ -45,6 +45,8 @@ Figure_mc_nwinning = function(){
              group = as.factor(group),
              sex = as.factor(sex),
              starting_values = as.factor(starting_values))] %>%
+    # Exclude valence_surprise model for main manuscript
+    .[model != 'seplr_surprise',] %>%
     Prepare_data_for_plot(.)
   # # Sort model levels by number of parameters
   # data$model = factor(data$model, levels = c('rw',

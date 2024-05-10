@@ -29,7 +29,7 @@ Posterior_prediction = function(participant_id,
     model_fit = fit_params[model == model_name, ]
     param_names = model_fit[variable == 'x0', x]
     param_values = model_fit[variable == 'coefs' & x %in% param_names, value]
-    params = rep(NA, 4)
+    params = rep(NA, 6)
     params[1:length(param_values)] = param_values
     
     # Get beta weights (based on NON z-scored predictors)

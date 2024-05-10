@@ -62,7 +62,7 @@ MEM_MB=400
 # ===
 # Set list of models to recover
 # ===
-MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise'
+MODEL_LIST='rw uncertainty seplr uncertainty_seplr surprise uncertainty_surprise seplr_surprise'
 
 # ===
 # Set recov parameters
@@ -96,55 +96,63 @@ for DATA in ${DATA_LIST}; do
 		# 	# Set parameters specifically for models
 		# RW
 		if [[ ${MODEL} == 'rw' ]]; then
-			PARAM_LB='0.01,NA,NA,NA'
-			PARAM_UB='1,NA,NA,NA'
-			IPS='0.2,NA,NA,NA'
-			SVS='0.5,NA,NA,NA'
+			PARAM_LB='0.01,NA,NA,NA,NA,NA'
+			PARAM_UB='1,NA,NA,NA,NA,NA'
+			IPS='0.2,NA,NA,NA,NA,NA'
+			SVS='0.5,NA,NA,NA,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,NA,NA'
 			BETAS_UB='0.1,-1.2,3.4,NA,NA'
 			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 			# UNCERTAINTY
 		elif [[ ${MODEL} == 'uncertainty' ]]; then
 			# Full recovery
-			PARAM_LB='0.01,0.01,NA,NA'
-			PARAM_UB='1,1,NA,NA'
-			IPS='0.2,0.7,NA,NA'
-			SVS='0.5,0.5,NA,NA'
+			PARAM_LB='0.01,0.01,NA,NA,NA,NA'
+			PARAM_UB='1,1,NA,NA,NA,NA'
+			IPS='0.2,0.7,NA,NA,NA,NA'
+			SVS='0.5,0.5,NA,NA,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,-0.8,-0.4'
 			BETAS_UB='0.1,-1.2,3.4,0.4,0.8'
 			BETA_WEIGHTS='0,-0.21,0.21,-0.04,0.04'
 		elif [[ ${MODEL} == 'seplr' ]]; then
-			PARAM_LB='0.01,0.01,NA,NA'
-			PARAM_UB='1,1,NA,NA'
-			IPS='0.2,0.7,NA,NA'
-			SVS='0.5,0.5,NA,NA'
+			PARAM_LB='0.01,0.01,NA,NA,NA,NA'
+			PARAM_UB='1,1,NA,NA,NA,NA'
+			IPS='0.2,0.7,NA,NA,NA,NA'
+			SVS='0.5,0.5,NA,NA,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,NA,NA'
 			BETAS_UB='0.1,-1.2,3.4,NA,NA'
 			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty_seplr' ]]; then
-			PARAM_LB='0.01,0.01,0.01,NA'
-			PARAM_UB='1,1,1,NA'
-			IPS='0.2,0.7,0.7,NA'
-			SVS='0.5,0.5,0.5,NA'
+			PARAM_LB='0.01,0.01,0.01,NA,NA,NA'
+			PARAM_UB='1,1,1,NA,NA,NA'
+			IPS='0.2,0.7,0.7,NA,NA,NA'
+			SVS='0.5,0.5,0.5,NA,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,-0.8,-0.4'
 			BETAS_UB='0.1,-1.2,3.4,0.4,0.8'
 			BETA_WEIGHTS='0,-0.16,0.16,-0.02,0.02'
 		elif [[ ${MODEL} == 'surprise' ]]; then
-			PARAM_LB='0.01,0.01,0,NA'
-			PARAM_UB='1,1,10,NA'
-			IPS='0.2,0.7,5,NA'
-			SVS='0.5,0.5,0,NA'
+			PARAM_LB='0.01,0.01,1,NA,NA,NA'
+			PARAM_UB='1,1,7,NA,NA,NA'
+			IPS='0.2,0.7,5,NA,NA,NA'
+			SVS='0.5,0.5,3,NA,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,NA,NA'
 			BETAS_UB='0.1,-1.2,3.4,NA,NA'
 			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 		elif [[ ${MODEL} == 'uncertainty_surprise' ]]; then
-			PARAM_LB='0.01,0.01,0,0.01'
-			PARAM_UB='1,1,10,1'
-			IPS='0.2,0.7,5,0.7'
-			SVS='0.5,0.5,0,0.5'
+			PARAM_LB='0.01,0.01,1,0.01,NA,NA'
+			PARAM_UB='1,1,7,1,NA,NA'
+			IPS='0.2,0.7,5,0.7,NA,NA'
+			SVS='0.5,0.5,3,0.5,NA,NA'
 			BETAS_LB='-0.1,-3.4,1.2,-0.8,-0.4'
 			BETAS_UB='0.1,-1.2,3.4,0.4,0.8'
 			BETA_WEIGHTS='0,-0.16,0.16,-0.02,0.02'
+		elif [[ ${MODEL} == 'seplr_surprise' ]]; then
+			PARAM_LB='0.01,0.01,1,0.01,0.01,1'
+			PARAM_UB='1,1,7,1,1,7'
+			IPS='0.2,0.7,5,0.7,0.2,5'
+			SVS='0.5,0.5,3,0.5,0.5,3'
+			BETAS_LB='-0.1,-3.4,1.2,NA,NA'
+			BETAS_UB='0.1,-1.2,3.4,NA,NA'
+			BETA_WEIGHTS='0,-0.17,0.17,NA,NA'
 		fi
 
 		# Get job name

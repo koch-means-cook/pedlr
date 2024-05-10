@@ -55,6 +55,21 @@ Compute_value = function(V,
     slope = x[3]
     pi = x[4]
     
+  } else if(model == 'seplr_surprise'){
+    # l_pos
+    low_pos = x[1]
+    # u_pos
+    up_pos = x[2]
+    # s_pos
+    slope_pos = x[3]
+    # l_neg
+    low_neg = x[4]
+    # u_neg
+    up_neg = x[5]
+    # s_neg
+    slope_neg = x[6]
+    pi = NA
+    
     # Throw error if model unknown
   } else{
     stop(paste0("Specified model (\'",
@@ -100,6 +115,28 @@ Compute_value = function(V,
         alpha_star = alpha_neg
       }
       
+      # In case combination of seplr and surprise: use different LR function
+      # for pos and neg PEs
+    } else if(model == 'seplr_surprise'){
+      
+      # Positive PEs
+      if(PE[idx[i]] >= 0){
+        res = LRfunction(low = low_pos,
+                         up = up_pos,
+                         slope = slope_pos,
+                         PE = PE[idx[i]],
+                         tau = tau)
+        alpha_star = res[[1]]
+        
+        # Negative PEs
+      } else{
+        res = LRfunction(low = low_neg,
+                         up = up_neg,
+                         slope = slope_neg,
+                         PE = PE[idx[i]],
+                         tau = tau)
+        alpha_star = res[[1]]
+      }
       
       # In case of RW and uncertainty model: use single, static LR (but updating
       # process works identical)

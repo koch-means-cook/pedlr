@@ -241,3 +241,20 @@ p_map = ggplot(geo_data,
 p_map
 ```
 
+# Participants with individual reward schedules
+
+```{r}
+schedules = data %>%
+  # Combine reward schedule runs to one variable
+  .[, schedule := paste(name_design_r1, name_design_r2, sep = '')] %>%
+  # Get one participant for each combination of reward schedules
+  .[, .(example_participant = participant_id[1]),
+    by = 'schedule'] %>%
+  # Sort by schedules
+  .[order(rank(schedule)),]
+
+# Display as table
+knitr::kable(schedules) %>%
+  kableExtra::kable_styling()
+```
+

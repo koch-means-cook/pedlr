@@ -1,0 +1,300 @@
+---
+title: "r1c06_repeated_surprise"
+format: html
+editor: visual
+---
+
+```{r}
+#| message: false
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#| message: false
+
+library(data.table)
+library(here)
+library(magrittr)
+library(ggplot2)
+library(viridis)
+library(binhf)
+library(pwr)
+library(knitr)
+library(kableExtra)
+library(sdamr)
+library(gghalves)
+library(lme4)
+library(emmeans)
+library(papeR)
+library(ggridges)
+library(bmsR)
+library(fabricatr)
+library(mlisi)
+```
+
+# Setup
+
+```{r}
+#| message: false
+
+# Get directory of repository
+base_path = here::here()
+
+# Load pre-written functions
+source_path = file.path(base_path, 'code', 'utils',
+                        fsep = .Platform$file.sep)
+source_files = list.files(source_path, pattern = "[.][rR]$",
+                          full.names = TRUE, recursive = TRUE)
+invisible(lapply(source_files, function(x) source(x)))
+
+source_path = file.path(base_path, 'code', 'model_fitting', 'LRfunction.R',
+                        fsep = .Platform$file.sep)
+source(source_path)
+
+
+# Get plot colors/linetypes for plots
+custom_guides = Get_plot_guides()
+```
+
+# Find back-to-back rare outcomes in choices of second bandit
+
+```{r}
+# Get single instance of all used schedules
+unique_schedules = Load_data() %>%
+  # List participants for each schedule
+  .[, .(ids = unique(participant_id)),
+    by = c('name_design_r1')] %>%
+  .[order(rank(name_design_r1)),] %>%
+  # Only take first participant to get single instance of each used schedule
+  .[, .(ids = ids[1]),
+    by = 'name_design_r1']
+
+# Only look at unique schedules
+data = Load_data() %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  # Add trial counter
+  .[, trial := seq(.N),
+    by = c('participant_id', 'run')] %>%
+  # Only look at outcomes experiences in the mid bandit
+  .[option_choice == 2,] %>%
+  # Limit columns to important for analysis
+  .[, c('participant_id', 'name_design_r1', 'option_left', 'option_right',
+        'trial_type', 'forced_left', 'forced_right','block_n', 'run', 'choice',
+        'outcome', 'option_choice', 'group', 'is_rare',  'trial')] %>%
+  .[, ':='(prev_rare = data.table::shift(is_rare, n = 1),
+           prev_trial = data.table::shift(trial, n = 1)),
+    by = c('participant_id', 'run')] %>%
+  # Indicate back-to-back rare outcomes by 2 (back-to-back here means seeing two
+  # rare outcomes in the 2. bandit without seeing a non-rare outcome in the 2.
+  # bandit in between
+  # there could be choices of bandit 1 or 3 between these back-to-back rare
+  # outcomes in 2 )
+  .[, ':='(btb_rare = is_rare + prev_rare,
+           n_trials_between = trial - prev_trial - 1),
+    by = c('participant_id', 'run')] %>%
+  .[order(rank(participant_id)),]
+
+# Analyze data
+data_btb = data %>%
+  # out of all choices of bandit 2, how many of them were btb rare?
+  .[, .(n_btb_rare = sum(btb_rare == 2, na.rm = TRUE),
+        # How many choices of bandit 2 were there?
+        n_choices_2 = .N,
+        # How many choices of bandit 2 were there that gave a rare outcome?
+        n_rare_outcome = sum(is_rare == 1),
+        # How many trials were in between btb rare outcomes of 2 on average?
+        avg_trials_between = mean(n_trials_between[btb_rare == 2], na.rm = TRUE)),
+    by = c('participant_id', 'name_design_r1')]
+data_btb
+```
+
+# Statistics about BTB events
+
+```{r}
+# percentage of btb rare outcomes in all trials used in surprise analysis
+data_btb = data_btb %>%
+  .[, perc_btb := (n_btb_rare / n_rare_outcome) * 100]
+avg_perc_btb = mean(data_btb$perc_btb)
+
+# Average number of trials between btb rare outcomes
+avg_trials_between_btb = mean(data_btb$avg_trials_between)
+# Get data for "real" btb trials, so no choices of other bandits in between 
+data_n_real_btb = data %>%
+  # combine index vector of btb rare outcomes with no trials in between
+  .[, BTBandNotrials := (btb_rare == 2) + (n_trials_between == 0)] %>%
+  # Mark trials that were btb rare outcomes with no trials in between
+  .[, real_btb := as.numeric(BTBandNotrials == 2)] %>%
+  # Count for each participant
+  .[, .(n_real_btb = sum(real_btb, na.rm = TRUE)),
+    by = 'participant_id']
+
+# Load windowrized data
+load_file = file.path(base_path, 'derivatives', 'analysis', 'windowrize.tsv',
+                      fsep = .Platform$file.sep)
+data_window_raw = data.table::fread(load_file, sep = '\t', na.strings = 'n/a') %>%
+  Apply_exclusion_criteria(choice_based_exclusion = TRUE) %>%
+  .[order(rank(participant_id)),]
+
+# Get number of trials in surprise analysis for each participant
+n_trials_window = data_window_raw %>%
+  .[window_relative == 0,] %>%
+  # Count number of trials used in analysis (across runs)
+  .[, .(n_trials_in_analysis = .N),
+    by = 'participant_id'] %>%
+  # Add data about real btb events
+  data.table::merge.data.table(., data_n_real_btb, by = 'participant_id') %>%
+  # Get percentage per participant
+  .[, perc_real_btb := (n_real_btb / n_trials_in_analysis) * 100]
+avg_perc_real_btb = mean(n_trials_window$perc_real_btb)
+```
+
+**Among all trials used for surprise analysis:**
+
+Percentage of back-to-back surprising outcomes (allowing trials of other bandits in between): `r avg_perc_btb`
+
+Percentage of true back-to-back surprising outcomes (no trials in between): `r avg_perc_real_btb`
+
+# Exclude btb rare outcomes from windorrize data
+
+```{r}
+# Get trials with btb rare outcomes in option 2
+data_btb_trials = data %>%
+  .[btb_rare == 2,]
+
+# Mark btb-2 trials in windowrized data
+data_window = data_window_raw %>%
+  .[, is_btb := window_center %in% 
+      data_btb_trials$trial[which(data_btb_trials$participant_id == participant_id &
+                        data_btb_trials$run == run)],
+    by = c('participant_id', 'run')] %>%
+  # Exclude all btb-2 trials
+  .[is_btb == FALSE,]
+```
+
+
+# Repeat windowrize analysis with excluded btb rare outcomes
+
+```{r}
+# Summarize data
+window_data_run = data_window %>%
+  # Get mean accuracy across all relative window positions (-2 to +3)
+  .[, .(mean_accuracy = mean(correct_choice, na.rm = TRUE),
+        n_data = sum(!is.na(correct_choice))),
+    by = c('participant_id', 'group', 'run', 'window_relative')]
+
+# Get mean across runs
+window_data_participant = window_data_run %>%
+  .[, .(accuracy = mean(mean_accuracy, na.rm = TRUE)),
+    by = c('participant_id', 'group', 'window_relative')]
+  
+# Get age group specific mean and sd
+window_data_group = window_data_participant %>%
+  .[, .(mean_accuracy = mean(accuracy, na.rm = TRUE),
+        sd_accuracy = sd(accuracy, na.rm = TRUE)),
+    by = c('group', 'window_relative')] %>%
+  .[order(rank(group), rank(window_relative)),]
+
+
+# LME for immediate before, and immediate after rare outcome
+data_lme = window_data_run[window_relative %in% c('-1', '1')] %>%
+  .[, group := as.factor(group)] %>%
+  .[, participant_id := as.factor(participant_id)]
+
+lme = lme4::lmer(data = data_lme,
+                 mean_accuracy ~ window_relative * group * run + (1 | participant_id))
+
+res = Anova(lme)
+papeR::prettify(res)
+```
+
+## Main effect: Window
+
+```{r}
+emmeans::emmeans(lme, pairwise ~ window_relative)
+```
+
+## No Interaction effect: Window X group
+
+```{r}
+em = emmeans::emmeans(lme, pairwise ~ window_relative | group)
+em
+
+# Accurate correction
+summary(em, by = NULL, adjust = 'sidak')
+```
+
+## Main effect: Run
+
+```{r}
+emmeans::emmeans(lme, pairwise ~ run)
+```
+
+## Plot
+
+```{r}
+data_plot = Prepare_data_for_plot(window_data_participant) %>%
+  .[, window_relative := as.numeric(as.character(window_relative))] %>%
+  .[!window_relative == 0, ]
+
+
+data_plot_mean = data_plot %>%
+  .[, .(accuracy = mean(accuracy),
+        sem_accuracy = sd(accuracy) / sqrt(.N)),
+    by = c('group', 'window_relative')]
+
+dodge_width = 0.3
+
+p = ggplot(data = data_plot,
+       aes(x = window_relative,
+           y = accuracy,
+           fill = group,
+           color = group,
+           group = interaction(window_relative, group))) +
+  geom_point(position = position_jitterdodge(dodge.width = dodge_width,
+                                             jitter.width = 0.1,
+                                             jitter.height = 0,
+                                             seed = 666),
+             size = 0.5,
+             alpha = 0.5) +
+  geom_vline(xintercept = 0,
+             linetype = 'dashed') +
+  geom_path(data = data_plot_mean,
+             linewidth = 1,
+             position = position_dodge(dodge_width),
+            aes(group = group)) +
+  geom_errorbar(data = data_plot_mean,
+                  aes(x = window_relative,
+                      y = accuracy,
+                      ymin = accuracy - sem_accuracy,
+                      ymax = accuracy + sem_accuracy),
+                  size = 0.5,
+                width = dodge_width/2,
+                  position = position_dodge(dodge_width),
+                color = 'black') +
+  geom_point(data = data_plot_mean,
+                  aes(x = window_relative,
+                      y = accuracy),
+                  size = 3,
+                  position = position_dodge(dodge_width),
+             shape = 21,
+             color = 'black') +
+  scale_fill_manual(values = custom_guides) +
+  scale_color_manual(values = custom_guides) +
+  scale_x_continuous(breaks = seq(min(data_plot$window_relative),
+                                max(data_plot$window_relative))) +
+  scale_y_continuous(limits = c(0,1)) +
+  ggtext::geom_richtext(x = 0,
+                        y = 0.1,
+                        label = 'Rare outcome in Mid arm',
+                        fill = 'white',
+                        color = 'black',
+                        angle = 90,
+                        size = 3,
+                        hjust = 0) +
+  labs(y = 'p(Choice Mid | LM)') +
+  theme(legend.position = 'top')
+  
+Neurocodify_plot(p) +
+  theme(panel.grid = element_blank())
+```
