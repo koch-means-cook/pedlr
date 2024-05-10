@@ -97,16 +97,16 @@ Create_figures = function(){
          width = 8,
          height = 9)
   
-  # Parameter recovery
-  message("Creating parameter recovery figure...")
-  p_pr = Figure_param_recov()
-  out_file = file.path(base_path, 'derivatives', 'figures', 'f_pr.pdf',
-                       fsep = .Platform$file.sep)
-  ggsave(filename = out_file,
-         plot = p_pr,
-         device = 'pdf',
-         width = 9.5,
-         height = 7.5)
+  # # Parameter recovery
+  # message("Creating parameter recovery figure...")
+  # p_pr = Figure_param_recov()
+  # out_file = file.path(base_path, 'derivatives', 'figures', 'f_pr.pdf',
+  #                      fsep = .Platform$file.sep)
+  # ggsave(filename = out_file,
+  #        plot = p_pr,
+  #        device = 'pdf',
+  #        width = 9.5,
+  #        height = 7.5)
   
   # Model recovery
   message("Creating model recovery figure...")

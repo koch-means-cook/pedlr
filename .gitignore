@@ -46,6 +46,8 @@ documentation
 # Ignore slurm hpc files
 *.slurm
 
+# Ignore temporary files for knitting/rendering R stdio files
+*_files/
 
 .Rproj.user
 .Rprofile

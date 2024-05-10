@@ -320,8 +320,8 @@ Figure_model_illustration = function(){
       # Textbox U = 10
       annotate('label',
                x = -50,
-               y = 0.84,
-               label = latex2exp::TeX(r'(\textit{$\U_{k} = 10$})',
+               y = 0.81,
+               label = latex2exp::TeX(r'(\textit{$\U_{\textrm{right}} = 10$})',
                                       output = 'character'),
                parse = TRUE,
                label.size = 0,

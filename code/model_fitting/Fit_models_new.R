@@ -14,6 +14,7 @@ Fit_models_new = function(data,
                           recov_model = NA){
     
   
+  
   # Set base_path
   base_path = here::here()
   
@@ -47,7 +48,9 @@ Fit_models_new = function(data,
     # Surprise Model
     surprise = as.formula('choice ~ V1 + V2'),
     # Uncertainty+Surprise Model
-    uncertainty_surprise = as.formula('choice ~ V1 + V2 + V1u + V2u'))
+    uncertainty_surprise = as.formula('choice ~ V1 + V2 + V1u + V2u'),
+    # Valence+Surprise Model
+    seplr_surprise = as.formula('choice ~ V1 + V2'))
   # Get number of models
   n_models = length(glmods)
   
@@ -56,7 +59,7 @@ Fit_models_new = function(data,
   model_data = data.table::data.table()
   
   # Normal fitting:
-  # Fit all 6 models
+  # Fit all models
   if(param_recov == FALSE){
     model_pool = 1:n_models
   } else if(param_recov == TRUE){
@@ -86,6 +89,10 @@ Fit_models_new = function(data,
     } else if(recov_model == 'uncertainty_surprise'){
       model_pool = 6
       
+      # Uncertainty+Surprise model
+    } else if(recov_model == 'seplr_surprise'){
+      model_pool = 7
+      
       # Throw error in case model is not found
     } else{
       stop(paste0("Model specified for recovery (\'",
@@ -112,8 +119,10 @@ Fit_models_new = function(data,
       para_names = c('alpha_pos', 'alpha_neg', 'pi')
     } else if(model_name == 'surprise'){
       para_names = c('l', 'u', 's')
-    }else if(model_name == 'uncertainty_surprise'){
+    } else if(model_name == 'uncertainty_surprise'){
       para_names = c('l', 'u', 's', 'pi')
+    } else if(model_name == 'seplr_surprise'){
+      para_names = c('l_pos', 'u_pos', 's_pos', 'l_neg', 'u_neg', 's_neg')
     }
     
     if(param_recov == FALSE){
@@ -162,7 +171,10 @@ Fit_models_new = function(data,
     # Enter variables into output array
     # Average LRs IN SECOND BANDIT for each possible PE (0:99 or (-99):99)
     # Models using absolute PE (or don't distinguish between neg and pos PE)
-    if(model_name %in% c('rw', 'uncertainty', 'surprise', 'uncertainty_surprise')){
+    if(model_name %in% c('rw',
+                         'uncertainty',
+                         'surprise',
+                         'uncertainty_surprise')){
       LRs = tapply(
         # Take all seen LRs, extend with buffer of NA for every possible PE (in
         # case a specific PE did not happen for participant)
@@ -176,7 +188,9 @@ Fit_models_new = function(data,
         na.rm = TRUE)
       
       # Models using separate LRs for positive and negative LR
-    } else if(model_name %in% c('seplr', 'uncertainty_seplr')){
+    } else if(model_name %in% c('seplr',
+                                'uncertainty_seplr',
+                                'seplr_surprise')){
       LRs = tapply(
         # Take all seen LRs, extend with buffer of NA for every possible PE (in
         # case a specific PE did not happen for participant)
@@ -225,9 +239,10 @@ Fit_models_new = function(data,
     # AICs
     probs = dbinom(cres$norm[[2]]$choice=='right', prob=cres$norm[[2]]$model_p, size=1, log=TRUE)
     probs_my = probs
-    # Potential bug: also includes chosen bandit = 2; cidx = which(cres[[2]]$bandit == '12' | cres[[2]]$bandit == '21' & cres[[2]]$chosen_bandit == 1)
+    # Only take low/mid bandit comparisons
     cidx = which((cres$norm[[2]]$bandit == '12' | cres$norm[[2]]$bandit == '21'))
     cidx_my = cidx
+    # Log likelihood of relevant trials
     b2_logLik = sum(probs[cidx])
     b2_logLik_my = b2_logLik
     #AICs[cid, model_count] = 2*(length(coef(cglm)) + length(x0_model)) + 2*b2_logLik
@@ -237,6 +252,14 @@ Fit_models_new = function(data,
     n = length(cidx)
     AICs = 2*k - 2*b2_logLik
     AICc = AICs + ((2*(k^2) + 2*k) / (n - k - 1))
+    # BIC
+    BIC = k*log(n) - 2*b2_logLik
+    # chance-level log likelihood for pseudo-r2 (50/50 choice probability in
+    # each relevant trial)
+    b2_logLik_chance = n * log(.5)
+    # Pseudo-r2 (Cramerer & Ho 1999; Daw 2011)
+    # 1 - L/R = 1 - logLik under model/loglik under chance
+    pseudorsq = 1 - (b2_logLik/b2_logLik_chance)
     # x0
     x0_vals = as.data.table(cbind(para_names, x0_model))
     colnames(x0_vals) = c('x', 'value')
@@ -246,6 +269,10 @@ Fit_models_new = function(data,
     temp = data.table(rbind(LRs, coefs, x0_vals))
     temp$AIC = AICs
     temp$AICc = AICc
+    temp$BIC = BIC
+    temp$b2_loglik = b2_logLik
+    temp$b2_loglik_chance = b2_logLik_chance
+    temp$pseudorsq = pseudorsq
     temp$p_V1 = ps['V1']
     temp$p_V2 = ps['V2']
     # Add model
@@ -278,14 +305,21 @@ Fit_models_new = function(data,
         by = 'trial'] %>%
       # Add current value of each bandit for every trial
       cbind(., vals) %>%
+      # Add uncertainty values
+      .[, ':='(u_low = cres$norm[[6]][1,],
+               u_mid = cres$norm[[6]][2,],
+               u_high = cres$norm[[6]][3,])] %>%
       # Select only neccessary columns
-      .[, c('trial', 'updated_bandit', 'pe', 'value_low', 'value_mid', 'value_high')]
+      .[, c('trial', 'updated_bandit', 'pe', 'value_low', 'value_mid', 'value_high', 'u_low', 'u_mid', 'u_high')]
     # Add relevant information for output
     temp_model_data$model = model_name
-    temp_model_data$b2_ll = b2_logLik
+    temp_model_data$b2_loglik = b2_logLik
+    temp_model_data$b2_loglik_chance = b2_logLik_chance
+    temp_model_data$pseudorsq = pseudorsq
     temp_model_data$AIC = AICs
     temp_model_data$AICc = AICc
-    temp_model_data = setcolorder(temp_model_data, c('model', 'b2_ll', 'AIC', 'AICc'))
+    temp_model_data$BIC = BIC
+    temp_model_data = setcolorder(temp_model_data, c('model', 'b2_loglik', 'b2_loglik_chance', 'pseudorsq', 'AIC', 'AICc', 'BIC'))
     
     # Add behavioral data to modeling output
     temp_model_data = cbind(data, temp_model_data)

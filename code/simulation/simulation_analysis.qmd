@@ -69,7 +69,7 @@ data = data.table::rbindlist(data_list)
 
 ```{r}
 # Average over design bases ("participants")
-data_avg = data %>%
+data_avg_surprise = data %>%
   # Focus on surprise model
   .[model == 'surprise',] %>%
   # Focus on one trial before and two trials after
@@ -90,28 +90,35 @@ data_avg = data %>%
         lmu_dicho = unique(lmu_dicho),
         n = .N),
     by = c('para_id', 'model', 'window_relative')]
-
 ```
 
 ```{r}
 #| out-width: 100%
+#| fig-height: 4
+#| fig-width: 3
 
-# Dont plot l = u to avoid clutter
-p = ggplot(data = data_avg[!l == u,],
+p = ggplot(data = data_avg_surprise[l == 0.25 & s == 2.5,],
        aes(x = window_relative,
            y = mean_accuracy,
-           color = l,
-           group = l)) +
+           color = u,
+           group = u)) +
   labs(x = '1v2 x trials after rare outcome',
        y = 'Prob of choosing 2 in 1v2 trials') +
   geom_point() +
   geom_line() +
   geom_vline(xintercept = 0) +
-  #annotate(geom = 'label', x = 0, y = 0.85, label = 'Rare outcome', size = 3) +
-  scale_y_continuous(limits = c(0.7,0.9),
-                     breaks = c(0.7,0.9)) +
-  facet_grid(u~s, labeller = label_both)
-p
+  scale_color_continuous(breaks = unique(data_avg_surprise$u)) +
+  scale_y_continuous(limits = c(0.5, 1),
+                     breaks = c(0.5, 1)) +
+  labs(title = 'Surprise Model')
+p_surprise = Neurocodify_plot(p) +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold', size = 15),
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 12, face = 'bold'),
+        axis.text = element_text(size = 10),
+        legend.position = 'bottom',
+        legend.title = element_text(vjust = 0.8))
+p_surprise
 ```
 
 # Effect strength 
@@ -239,3 +246,118 @@ p
    - Also stronger effects with stronger `u` for `s >= 5`
       - Interpretation: high `s` means that `l` controls the effect of rare outcomes (because LR changes very late)
 - Weird variance in `s == 10`
+
+# Uncertainty model
+
+```{r}
+# Average over design bases ("participants")
+data_avg_unc = data %>%
+  # Focus on surprise model
+  .[model == 'uncertainty',] %>%
+  # Focus on one trial before and two trials after
+  .[window_relative %in% c(-1,1,2)] %>%
+  # Rename parameters
+  setnames(old = c('x1', 'x2'),
+           new = c('alpha', 'pi')) %>%
+  # Average over IDs and runs
+  .[, .(mean_accuracy = mean(mean_accuracy),
+        sd = sd(mean_accuracy),
+        alpha = unique(alpha),
+        pi = unique(pi),
+        n = .N),
+    by = c('para_id', 'model', 'window_relative')]
+```
+
+```{r}
+#| out-width: 100%
+#| fig-height: 4
+#| fig-width: 3
+
+p = ggplot(data = data_avg_unc[alpha == 0.25],
+       aes(x = window_relative,
+           y = mean_accuracy,
+           color = pi,
+           group = pi)) +
+  labs(x = '1v2 x trials after rare outcome',
+       y = 'Prob of choosing 2 in 1v2 trials') +
+  geom_point() +
+  geom_line() +
+  scale_color_continuous(breaks = unique(data_avg_unc$pi)) +
+  geom_vline(xintercept = 0) +
+  scale_y_continuous(limits = c(0.5, 1),
+                     breaks = c(0.5, 1)) +
+  labs(title = 'Uncertainty Model')
+p_unc = Neurocodify_plot(p) +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold', size = 15),
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 12, face = 'bold'),
+        axis.text = element_text(size = 10),
+        legend.position = 'bottom',
+        legend.title = element_text(vjust = 0.8))
+p_unc
+```
+
+# Valence model
+
+```{r}
+# Average over design bases ("participants")
+data_avg_sep = data %>%
+  # Focus on surprise model
+  .[model == 'seplr',] %>%
+  # Focus on one trial before and two trials after
+  .[window_relative %in% c(-1,1,2)] %>%
+  # Rename parameters
+  setnames(old = c('x1', 'x2'),
+           new = c('alpha_pos', 'alpha_neg')) %>%
+  # Average over IDs and runs
+  .[, .(mean_accuracy = mean(mean_accuracy),
+        sd = sd(mean_accuracy),
+        alpha_pos = unique(alpha_pos),
+        alpha_neg = unique(alpha_neg),
+        n = .N),
+    by = c('para_id', 'model', 'window_relative')]
+```
+
+```{r}
+#| out-width: 100%
+#| fig-height: 4
+#| fig-width: 3
+
+
+p = ggplot(data = data_avg_sep[alpha_pos == 0.25],
+       aes(x = window_relative,
+           y = mean_accuracy,
+           color = alpha_neg,
+           group = alpha_neg)) +
+  labs(x = '1v2 x trials after rare outcome',
+       y = 'Prob of choosing 2 in 1v2 trials') +
+  geom_point() +
+  geom_line() +
+  geom_vline(xintercept = 0) +
+  scale_color_continuous(breaks = unique(data_avg_sep$alpha_neg)) +
+  scale_y_continuous(limits = c(0.5, 1),
+                     breaks = c(0.5, 1)) +
+  labs(title = 'Valence Model')
+p_val = Neurocodify_plot(p) +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold', size = 15),
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 12, face = 'bold'),
+        axis.text = element_text(size = 10),
+        legend.position = 'bottom',
+        legend.title = element_text(vjust = 0.8))
+p_val
+```
+
+```{r}
+#| fig-width: 9
+#| fig-height: 4
+
+
+# combine plots
+
+cowplot::plot_grid(p_surprise, p_unc, p_val,
+                   nrow = 1,
+                   axis = 'b',
+                   align = 'v')
+```
+

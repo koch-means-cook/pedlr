@@ -80,10 +80,7 @@ data_list = parallel::mclapply(X = files,
 # (using optimized bind function by data.table package)
 data = data.table::rbindlist(data_list) %>%
   # Rename to avoid 'x' as column name
-  data.table::setnames(., old = 'x', new = 'params') %>%
-  # Exclude seplr_surprise model from main results
-  .[model != 'seplr_surprise'] %>%
-  .[generating_model != 'seplr_surprise']
+  data.table::setnames(., old = 'x', new = 'params')
 ```
 
 ## Recovery
@@ -131,30 +128,40 @@ p = ggplot(data = data_plot,
            aes(x = recovered_model,
                color = correct_model)) +
   scale_color_manual(values = c('transparent', 'black')) +
+  scale_y_continuous(breaks = c(0,500),
+                     expand = c(0.2,0.2)) +
   geom_bar(fill = 'lightgrey') +
   labs(x = 'Recovered Model',
-       title = 'Model recovery: Recovered models for each generating model') + 
+       y = 'Generating Model',
+       title = 'Number of recoveries') + 
   facet_grid(generating_model ~ .,
              switch = 'y')
-Neurocodify_plot(p) +
-  theme(panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank(),
-        axis.text.x = element_text(angle = 25,
+p_recov_count = Neurocodify_plot(p) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_text(size = 15,
+                                    face = 'bold',
+                                    margin = margin(t = 10, unit = 'pt')),
+        axis.title.y = element_text(size = 15,
+                                    face = 'bold',
+                                    margin = margin(r = 10, unit = 'pt')),
+        axis.text.x = element_text(angle = 45,
                                    hjust = 1,
-                                   vjust = 1),
-        axis.title.y = element_blank(),
+                                   vjust = 1,
+                                   size = 12),
         plot.title = element_text(face = 'bold',
                                   hjust = 0.5),
         strip.placement = 'outside',
-        strip.text.y.left = element_text(size = 10,
-                                  face = 'bold',
+        strip.text.y.left = element_text(size = 12,
+                                         face = 'plain',
                                   angle = 0,
                                   hjust = 1),
-        legend.position = 'none',
-        aspect.ratio = 1/6)
+        legend.position = 'none')
+p_recov_count
 ```
 
 ## Confusion matrix
+
 
 ```{r}
 # Plot recovery as CM
@@ -164,7 +171,7 @@ data_plot = data_recovery %>%
   # Reduce to row for each attempted recovery
   .[, .(recovered_model = unique(recovered_model)),
     by = c('participant_id', 'generating_model', 'iter')] %>%
-    # count recoveries (including 0s)
+  # count recoveries (including 0s)
   .[, .(recovered_model = levels(recovered_model),
         count = c(table(recovered_model))),
     by = c('generating_model')] %>%
@@ -175,35 +182,63 @@ data_plot = data_recovery %>%
     by = 'generating_model'] %>%
   .[, label_short := substr(format(round(perc, 2), nsmall = 2), 2,4)] %>%
   .[, is_low := perc < 0.4] %>%
-  # Align factor level sorting
   .[, recovered_model := factor(recovered_model,
                                 levels = levels(generating_model))]
 
-p = ggplot(data = data_plot,
+p_recov_rate = ggplot(data = data_plot,
            aes(x = recovered_model,
                y = generating_model,
                fill = perc,
                color = is_low,
                label = label_short)) +
   geom_tile(color = 'black') +
-  geom_text() +
-  labs(x = 'Fit model',
-       y = 'Simulated model') +
+  geom_text(size = 3) +
+  labs(x = 'Recovered model',
+       y = 'Generating model',
+       title = 'Rate of recovery') +
   theme(panel.background = element_rect(fill = NA,
                                         color = NA),
         panel.grid = element_blank(),
         legend.position = 'none',
-        axis.title = element_text(size = 12, face = 'bold'),
+        axis.title.x = element_text(size = 15, face = 'bold',
+                                    margin = margin(t = 10, unit = 'pt')),
+        axis.title.y = element_text(size = 15, face = 'bold',
+                                    margin = margin(r = 10, unit = 'pt')),
+        axis.text.x = element_text(angle = 45,
+                                   hjust = 1,
+                                   vjust = 1,
+                                   size = 12),
+        axis.text.y = element_text(size = 12),
         axis.ticks = element_blank(),
         strip.text = element_blank(),
         strip.background = element_blank(),
-        plot.title = element_text(hjust = 0.5,
-                                  vjust = 0),
-        #axis.text = element_text(size = 12),
-        plot.margin = margin(0,0,0,0,'pt')) +
+        plot.title = element_text(face = 'bold',
+                                  hjust = 0.5)) +
   scale_y_discrete(limits = rev) +
   scale_color_manual(values = c('black', 'white')) +
   scale_fill_gradient(low = 'black', high = 'white')
-p
+p_recov_rate
+```
+
+## Figure for review
+
+```{r}
+#| fig-width: 9
+#| fig-height: 4
+
+
+p_r1c02 = cowplot::plot_grid(p_recov_count, NULL, p_recov_rate,
+                             rel_widths = c(1.1,0.1,1),
+                             nrow = 1,
+                             axis = 'tb',
+                             align = 'h')
+p_r1c02
+
+file = file.path(here::here(), 'derivatives', 'plos_review_01', 'figures',
+                 'r1c02_recovery', fsep = .Platform$file.sep)
+ggsave(filename = paste0(file, '.pdf'), plot = p_r1c02, width = 9, height = 4,
+       units = 'in', device = 'pdf')
+ggsave(filename = paste0(file, '.png'), plot = p_r1c02, width = 9, height = 4,
+       units = 'in', device = 'png', dpi = 300)
 ```
 
