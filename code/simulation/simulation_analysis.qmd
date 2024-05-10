@@ -94,23 +94,31 @@ data_avg_surprise = data %>%
 
 ```{r}
 #| out-width: 100%
+#| fig-height: 4
+#| fig-width: 3
 
-# Dont plot l = u to avoid clutter
-p = ggplot(data = data_avg_surprise[!l == u,],
+p = ggplot(data = data_avg_surprise[l == 0.25 & s == 2.5,],
        aes(x = window_relative,
            y = mean_accuracy,
-           color = l,
-           group = l)) +
+           color = u,
+           group = u)) +
   labs(x = '1v2 x trials after rare outcome',
        y = 'Prob of choosing 2 in 1v2 trials') +
   geom_point() +
   geom_line() +
   geom_vline(xintercept = 0) +
-  #annotate(geom = 'label', x = 0, y = 0.85, label = 'Rare outcome', size = 3) +
-  scale_y_continuous(limits = c(0.7, 0.95),
-                     breaks = c(0.7, 0.95)) +
-  facet_grid(u~s, labeller = label_both)
-p
+  scale_color_continuous(breaks = unique(data_avg_surprise$u)) +
+  scale_y_continuous(limits = c(0.5, 1),
+                     breaks = c(0.5, 1)) +
+  labs(title = 'Surprise Model')
+p_surprise = Neurocodify_plot(p) +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold', size = 15),
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 12, face = 'bold'),
+        axis.text = element_text(size = 10),
+        legend.position = 'bottom',
+        legend.title = element_text(vjust = 0.8))
+p_surprise
 ```
 
 # Effect strength 
@@ -262,22 +270,31 @@ data_avg_unc = data %>%
 
 ```{r}
 #| out-width: 100%
+#| fig-height: 4
+#| fig-width: 3
 
-# Dont plot l = u to avoid clutter
-p = ggplot(data = data_avg_unc,
+p = ggplot(data = data_avg_unc[alpha == 0.25],
        aes(x = window_relative,
            y = mean_accuracy,
-           color = alpha,
+           color = pi,
            group = pi)) +
   labs(x = '1v2 x trials after rare outcome',
        y = 'Prob of choosing 2 in 1v2 trials') +
   geom_point() +
   geom_line() +
+  scale_color_continuous(breaks = unique(data_avg_unc$pi)) +
   geom_vline(xintercept = 0) +
-  scale_y_continuous(limits = c(0.7, 0.95),
-                     breaks = c(0.7, 0.95)) +
-  facet_grid(alpha~pi, labeller = label_both)
-p
+  scale_y_continuous(limits = c(0.5, 1),
+                     breaks = c(0.5, 1)) +
+  labs(title = 'Uncertainty Model')
+p_unc = Neurocodify_plot(p) +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold', size = 15),
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 12, face = 'bold'),
+        axis.text = element_text(size = 10),
+        legend.position = 'bottom',
+        legend.title = element_text(vjust = 0.8))
+p_unc
 ```
 
 # Valence model
@@ -303,20 +320,44 @@ data_avg_sep = data %>%
 
 ```{r}
 #| out-width: 100%
+#| fig-height: 4
+#| fig-width: 3
 
-# Dont plot l = u to avoid clutter
-p = ggplot(data = data_avg_sep,
+
+p = ggplot(data = data_avg_sep[alpha_pos == 0.25],
        aes(x = window_relative,
            y = mean_accuracy,
-           color = alpha_pos,
+           color = alpha_neg,
            group = alpha_neg)) +
   labs(x = '1v2 x trials after rare outcome',
        y = 'Prob of choosing 2 in 1v2 trials') +
   geom_point() +
   geom_line() +
   geom_vline(xintercept = 0) +
-  scale_y_continuous(limits = c(0.7, 0.95),
-                     breaks = c(0.7, 0.95)) +
-  facet_grid(alpha_pos~alpha_neg, labeller = label_both)
-p
+  scale_color_continuous(breaks = unique(data_avg_sep$alpha_neg)) +
+  scale_y_continuous(limits = c(0.5, 1),
+                     breaks = c(0.5, 1)) +
+  labs(title = 'Valence Model')
+p_val = Neurocodify_plot(p) +
+  theme(plot.title = element_text(hjust = 0.5, face = 'bold', size = 15),
+        panel.grid = element_blank(),
+        axis.title = element_text(size = 12, face = 'bold'),
+        axis.text = element_text(size = 10),
+        legend.position = 'bottom',
+        legend.title = element_text(vjust = 0.8))
+p_val
 ```
+
+```{r}
+#| fig-width: 9
+#| fig-height: 4
+
+
+# combine plots
+
+cowplot::plot_grid(p_surprise, p_unc, p_val,
+                   nrow = 1,
+                   axis = 'b',
+                   align = 'v')
+```
+
