@@ -5,12 +5,6 @@ scientists are Christoph Koch, Ondrej Zika, Rasmus Bruckner, and Nicolas W. Schu
 
 ---
 
-## DOI
-
-[![DOI](https://zenodo.org/badge/426637607.svg)](https://zenodo.org/doi/10.5281/zenodo.10211238)
-
----
-
 ## Structure
 
 ```
@@ -37,7 +31,7 @@ scientists are Christoph Koch, Ondrej Zika, Rasmus Bruckner, and Nicolas W. Schu
 │   ├── figures
 │   │   ├── Create_figures.R                      # Function to create all figures
 │   │   └── (...)
-│   ├── model_fitting                             # Directory holding model fiting functions
+│   ├── model_fitting                             # Directory holding model fitting functions
 │   │   ├── Compute_value.R                       # Function to compute values of bandits during model fitting
 │   │   ├── Fit_models_new.R                      # Main function to fit all models choice data
 │   │   ├── Fit_models_new_wrapper.R              # Wrapper function to fit models
@@ -53,6 +47,8 @@ scientists are Christoph Koch, Ondrej Zika, Rasmus Bruckner, and Nicolas W. Schu
 │   │   ├── Param_recov_wrapper.R                 # Wrapper function to perform parameter and model recovery
 │   │   ├── Render_analysis_model_recov.R         # Function rendering `analysis_model_recov.qmd` into derivatives
 │   │   └── Render_analysis_param_recov.R         # Function rendering `analysis_parameter_recov.qmd` into derivatives
+│   ├── plos_review_01                            # Directory holding all analyses made during plos review round 1
+│   │   └── (...)                                 # Scripts are labelled specifically for reviewer comments
 │   ├── posterior_pred_checks                     # Directory holding alls functions for post. pred. checks
 │   │   ├── analysis_posterior_pred_checks.qmd    # Analysis script for post. pred. checks
 │   │   ├── Get_fit.R                             # Function to get fitted parameters for each participant
