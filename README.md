@@ -5,6 +5,18 @@ scientists are Christoph Koch, Ondrej Zika, Rasmus Bruckner, and Nicolas W. Schu
 
 # Manuscript
 
+# Components
+
+Main code repo: https://github.com/koch-means-cook/pedlr
+
+Task repo: https://github.com/ozika/pedlr-task 
+
+Raw data: https://gin.g-node.org/koch_means_cook/pedlr-main-data.git 
+
+Derivatives: https://gin.g-node.org/koch_means_cook/pedlr-derivatives.git
+
+
+
 
 # Instructions for reproduction 
 
