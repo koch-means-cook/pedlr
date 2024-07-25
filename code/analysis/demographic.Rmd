@@ -29,6 +29,17 @@ email: koch@mpib-berlin.mpg.de
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(here)
+
+here::i_am(".pedlr_root")
+here::here()
+
+renv::load(here::here())
+
+
+```
+
 ```{r, message=FALSE}
 library(data.table)
 library(here)

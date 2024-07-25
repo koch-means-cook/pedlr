@@ -1,0 +1,36 @@
+---
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Set up renv for the first time
+
+The only prerequisite is to have `here` package installed. 
+
+
+```{r}
+
+# load here
+library(here)
+
+# find root of the folder (this is done by searching for a hidden file)
+here::i_am(".pedlr_root")
+
+# print the root address - this should correspond to location of the pedlr folder
+here::here()
+
+# load environment
+renv::load(here::here())
+
+# install environment 
+renv::install()
+
+# sometimes issues with dependencies occur, in that case you can try to rebuild the entire enviroment
+renv::rebuild()
+
+
+```
+

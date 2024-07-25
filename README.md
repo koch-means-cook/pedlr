@@ -1,11 +1,86 @@
-# Pediction Error Dependent Learning Rate (PEDLR)
+# Prediction Error Dependent Learning Rate (PEDLR)
 
 This is the repository and documentation for the PEDLR project. Involved
 scientists are Christoph Koch, Ondrej Zika, Rasmus Bruckner, and Nicolas W. Schuck.
 
+# Manuscript
+
+
+# Instructions for reproduction 
+
+## Pre-requisites
+**Datalad**
+Data for this repository are hosted on `gin.g-node.org` and made to work using datalad. For more information on how to use and set up datalad on your machine please see https://www.datalad.org/.
+A thorough walkthrough on how to use datalad is given by the datalad handbook. See the installation page in the datalad handbook for more information about setup and configuration of datalad. 
+
+**Folder structure** 
+All data and code are meant to be located in this git repository folder. However, because data and derivatives are hosted on separate repository they need to be cloned in separately. 
+Note that for this reason, the `derivatives` folder is not cloned, and is present in `.gitignore`. 
+
+
+## Step-by-step guide
+
+
+**1 Clone main github repo**
+
+`git clone git@github.com:koch-means-cook/pedlr.git` 
+
+This will create a folder called `pedlr` on your computer. The project is entirely contained in this folder. 
+
+**2 Clone derivatives**
+
+Derivatives are hosted here: https://gin.g-node.org/koch_means_cook/pedlr-derivatives.git 
+
+To clone them, go to the `pedlr` folder and execute:
+
+`datalad clone https://gin.g-node.org/koch_means_cook/pedlr-derivatives.git dervatives`
+
+Large files will not be downloaded automatically. To get them, you can use
+
+`datalad get <filename>`
+
+Large files that have been downloaded will be 'locked' and therefore read-only. If you wish to write you will need to unlock them using
+
+`datalad unlock <filename>`
+
+For more information on locked/unlocked files see [here](https://handbook.datalad.org/en/latest/basics/101-114-txt2git.html).
+
+
+**3 setup R environment**
+
+The project comes with a dedicated r environment built using `renv`. Before any scripts can be executed, the environment needs to be installed. 
+
+To do the first time follow these steps 
+Note: you can also go to `utils/Renv_setup.Rmd` and execute all steps there directly 
+
+```r
+# load here
+library(here)
+
+# find root of the folder (this is done by searching for a hidden file)
+here::i_am(".pedlr_root")
+
+# print the root address - this should correspond to location of the pedlr folder
+here::here()
+
+# load environment
+renv::load(here::here())
+
+# install environment 
+renv::install()
+
+# sometimes issues with dependencies occur, in that case you can try to rebuild the entire enviroment
+renv::rebuild()
+```
+
+
+
+
 ---
 
 ## Structure
+
+Here is a printout of the folder structure
 
 ```
 ├── code
