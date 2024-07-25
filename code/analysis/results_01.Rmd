@@ -38,11 +38,6 @@ here::here()
 
 renv::load(here::here())
 
-## On the first run, packages might not be installed, for that do: 
-# renv::install()
-# if you encounter dependency issues, either install manually or reuild the entire env
-# renv::rebuild()
-
 
 ```
 
