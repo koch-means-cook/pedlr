@@ -29,6 +29,23 @@ email: koch@mpib-berlin.mpg.de
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+```{r}
+library(here)
+
+here::i_am(".pedlr_root")
+here::here()
+
+renv::load(here::here())
+
+## On the first run, packages might not be installed, for that do: 
+# renv::install()
+# if you encounter dependency issues, either install manually or reuild the entire env
+# renv::rebuild()
+
+
+```
+
 ```{r, message=FALSE}
 library(data.table)
 library(here)
@@ -37,7 +54,6 @@ library(ggplot2)
 library(viridis)
 library(binhf)
 library(pwr)
-library(knitr)
 library(kableExtra)
 library(sdamr)
 library(gghalves)
@@ -46,6 +62,7 @@ library(emmeans)
 library(papeR)
 library(ggtext)
 library(MASS)
+
 ```
 
 ```{r, message=FALSE}
